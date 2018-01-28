@@ -17,7 +17,7 @@ resources:
           managerIP2: 172.31.31.252
           managerIP3: 172.31.31.253
           managerIP4: 172.31.31.254
-          sizeManager: 5
+          sizeManager: 1
           sizeWorker: 1
           instanceTypeManager: n1-standard-16
           instanceTypeWorker: n1-highmem-8
