@@ -19,6 +19,6 @@ resources:
           managerIP4: 172.31.31.254
           sizeManager: 1
           sizeWorker: 1
-          instanceTypeManager: n1-standard-16
+          instanceTypeManager: n1-standard-64
           instanceTypeWorker: n1-highmem-64
           composeLocation: https://raw.githubusercontent.com/wongwill86/air-tasks/ranl/docker/docker-compose-CeleryExecutor.yml
