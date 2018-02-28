@@ -21,4 +21,4 @@ resources:
           sizeWorker: 1
           instanceTypeManager: n1-standard-16
           instanceTypeWorker: n1-highmem-32
-          composeLocation: https://raw.githubusercontent.com/wongwill86/air-tasks/ranl/docker/docker-compose-CeleryExecutor.yml
+          composeLocation: https://raw.githubusercontent.com/wongwill86/air-tasks/ranl/deploy/docker-compose-CeleryExecutor.yml
