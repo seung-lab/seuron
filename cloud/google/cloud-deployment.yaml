@@ -12,13 +12,16 @@ resources:
           user: ranl
           #password:
           project: test_watershed
-          managerIP0: 172.31.31.250
-          managerIP1: 172.31.31.251
-          managerIP2: 172.31.31.252
-          managerIP3: 172.31.31.253
-          managerIP4: 172.31.31.254
+          managerIP0: 172.31.31.249
+          managerIP1: 172.31.31.250
+          managerIP2: 172.31.31.251
+          managerIP3: 172.31.31.252
+          managerIP4: 172.31.31.253
+          databaseIP0: 172.31.31.254
           sizeManager: 1
+          sizeDatabase: 1
           sizeWorker: 1
           instanceTypeManager: n1-standard-16
-          instanceTypeWorker: n1-standard-1
+          instanceTypeDatabase: n1-standard-64
+          instanceTypeWorker: f1-micro
           composeLocation: https://raw.githubusercontent.com/wongwill86/air-tasks/ranl/deploy/docker-compose-CeleryExecutor.yml
