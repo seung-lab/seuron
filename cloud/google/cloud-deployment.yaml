@@ -7,8 +7,8 @@ resources:
       properties:
           zone: us-east1-b
           image: infrakit/devbundle:master-2662
-          configRoot: https://raw.githubusercontent.com/wongwill86/examples/ranl_basil_full/latest/swarm/
-          configURL: https://raw.githubusercontent.com/wongwill86/examples/ranl_basil_full/latest/metadata/google/export.ikt
+          configRoot: https://raw.githubusercontent.com/wongwill86/examples/ranl_basil_full_aug/latest/swarm/
+          configURL: https://raw.githubusercontent.com/wongwill86/examples/ranl_basil_full_aug/latest/metadata/google/export.ikt
           user: ranl
           #password:
           project: test_watershed
@@ -24,4 +24,4 @@ resources:
           instanceTypeManager: n1-standard-16
           instanceTypeDatabase: n1-standard-64
           instanceTypeWorker: f1-micro
-          composeLocation: https://raw.githubusercontent.com/wongwill86/air-tasks/ranl_basil_full/deploy/docker-compose-CeleryExecutor.yml
+          composeLocation: https://raw.githubusercontent.com/wongwill86/air-tasks/ranl_basil_full_aug/deploy/docker-compose-CeleryExecutor.yml
