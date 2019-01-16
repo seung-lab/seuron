@@ -22,11 +22,11 @@ services:
         deploy:
             placement:
                 constraints: [ engine.labels.infrakit-role == database ]
-        command: --max_connections=20000 --wait-timeout=600 --interactive-timeout=600 --max-allowed-packet=500M --range-optimizer-max-mem-size=0
+        command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --range-optimizer-max-mem-size=0
 
     # single shot initialize the database
     init-db:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: on-failure
         depends_on:
             - postgres
@@ -50,7 +50,7 @@ services:
                 condition: on-failure
 
     webserver:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -75,7 +75,7 @@ services:
                 window: 120s
 
     flower:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -90,7 +90,7 @@ services:
                 condition: any
 
     scheduler:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -124,7 +124,7 @@ services:
                 condition: any
 
     worker-worker:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -150,7 +150,7 @@ services:
                 condition: any
 
     worker-atomic:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -177,7 +177,7 @@ services:
                 condition: any
 
     worker-composite:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -204,7 +204,7 @@ services:
                 condition: any
 
     worker-composite-atomic:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -231,7 +231,7 @@ services:
                 condition: any
 
     worker-remap:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
@@ -258,7 +258,7 @@ services:
                 condition: any
 
     worker-manager:
-        image: wongwill86/air-tasks:ranl_rizzo
+        image: ranlu/air-tasks:ranl_minnie
         restart: always
         depends_on:
             - init-db
