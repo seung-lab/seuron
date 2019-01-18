@@ -5,7 +5,7 @@ resources:
     - name: deploy
       type: deploy-template.jinja
       properties:
-          zone: us-central1-c
+          zone: us-central1-a
           image: infrakit/devbundle:master-2662
           configRoot: https://raw.githubusercontent.com/seung-lab/seuron_examples/ranl_minnie/latest/swarm/
           configURL: https://raw.githubusercontent.com/seung-lab/seuron_examples/ranl_minnie/latest/metadata/google/export.ikt
