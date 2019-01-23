@@ -26,11 +26,11 @@ services:
         deploy:
             placement:
                 constraints: [ engine.labels.infrakit-role == database ]
-        command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --range-optimizer-max-mem-size=0
+        command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --range-optimizer-max-mem-size=0 --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout
 
     # single shot initialize the database
     init-db:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: on-failure
         depends_on:
             - postgres
@@ -54,7 +54,7 @@ services:
                 condition: on-failure
 
     webserver:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
@@ -79,7 +79,7 @@ services:
                 window: 120s
 
     flower:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
@@ -94,7 +94,7 @@ services:
                 condition: any
 
     scheduler:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
@@ -128,7 +128,7 @@ services:
                 condition: any
 
     worker-worker:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
@@ -154,7 +154,7 @@ services:
                 condition: any
 
     worker-atomic:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
@@ -171,7 +171,7 @@ services:
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
-            - AIRFLOW__CELERY__CELERYD_CONCURRENCY=16
+            - AIRFLOW__CELERY__CELERYD_CONCURRENCY=1
         command: airflow worker -q atomic
         deploy:
             mode: global
@@ -181,7 +181,7 @@ services:
                 condition: any
 
     worker-composite:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
@@ -207,62 +207,8 @@ services:
             restart_policy:
                 condition: any
 
-    worker-composite-atomic:
-        image: ranlu/air-tasks:ranl_minnie
-        restart: always
-        depends_on:
-            - init-db
-            - rabbitmq
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /tmp:/tmp
-        environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
-            - AWS_ACCESS_KEY_ID
-            - AWS_SECRET_ACCESS_KEY
-            - AWS_DEFAULT_REGION
-            - AIRFLOW__CELERY__CELERYD_CONCURRENCY=64
-        command: airflow worker -q atomic
-        deploy:
-            mode: global
-            placement:
-                constraints: [ engine.labels.infrakit-role == composite ]
-            restart_policy:
-                condition: any
-
-    worker-remap:
-        image: ranlu/air-tasks:ranl_minnie
-        restart: always
-        depends_on:
-            - init-db
-            - rabbitmq
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /tmp:/tmp
-        environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
-            - AWS_ACCESS_KEY_ID
-            - AWS_SECRET_ACCESS_KEY
-            - AWS_DEFAULT_REGION
-            - AIRFLOW__CELERY__CELERYD_CONCURRENCY=16
-        command: airflow worker -q remap
-        deploy:
-            mode: global
-            placement:
-                constraints: [ engine.labels.infrakit-role == remap ]
-            restart_policy:
-                condition: any
-
     worker-manager:
-        image: ranlu/air-tasks:ranl_minnie
+        image: ranlu/air-tasks:ranl_minnie_800_fast
         restart: always
         depends_on:
             - init-db
