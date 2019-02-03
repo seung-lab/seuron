@@ -16,5 +16,5 @@ CELERY_CONFIG = {
         configuration.getint('celery', 'CELERYD_CONCURRENCY'),
     'task_default_queue': configuration.get('celery', 'DEFAULT_QUEUE'),
     'task_default_exchange': configuration.get('celery', 'DEFAULT_QUEUE'),
-    'worker_send_task_events': True
+    'worker_send_task_events': False
 }
