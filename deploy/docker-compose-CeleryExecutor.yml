@@ -78,21 +78,6 @@ services:
                 delay: 10m
                 window: 120s
 
-    flower:
-        image: ranlu/air-tasks:ranl_minnie_400
-        restart: always
-        depends_on:
-            - init-db
-            - rabbitmq
-        #ports:
-            #- "5555:5555"
-        command: airflow flower
-        deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
-            restart_policy:
-                condition: any
-
     scheduler:
         image: ranlu/air-tasks:ranl_minnie_400
         restart: always
@@ -108,19 +93,6 @@ services:
         environment:
             - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
         command: airflow scheduler
-        deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
-            restart_policy:
-                condition: any
-
-    visualizer:
-        image: dockersamples/visualizer:stable
-        restart: always
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-        #ports:
-            #- "8080:8080"
         deploy:
             placement:
                 constraints: [ engine.labels.infrakit-role == manager ]
@@ -242,8 +214,6 @@ services:
             - "443:443"
         depends_on:
             - webserver
-            - flower
-            - visualizer
             - rabbitmq
         deploy:
             placement:
@@ -296,24 +266,6 @@ services:
                         if (\\$$is_airflow ~* AB) { \\n
                             rewrite ^\\/*(.*) \\/airflow\\/\\$$1 permanent;\\n
                         }\\n
-                        if (\\$$http_referer ~* \\\".*\\/flower\\/*.*\\\") {\\n
-                            set \\$$is_flower \\\"A\\\";\\n
-                        }\\n
-                        if (\\$$request_uri !~* ^\\/flower\\/.*) {\\n
-                            set \\$$is_flower \\\"\\$${is_flower}B\\\";\\n
-                        }\\n
-                        if (\\$$is_flower = AB) { \\n
-                            rewrite ^\\/*(.*) \\/flower\\/\\$$1 permanent;\\n
-                        }\\n
-                        if (\\$$http_referer ~* \\\".*\\/visualizer\\/*.*\\\") {\\n
-                            set \\$$is_visualizer \\\"A\\\";\\n
-                        }\\n
-                        if (\\$$request_uri !~* ^\\/visualizer\\/.*) {\\n
-                            set \\$$is_visualizer \\\"\\$${is_visualizer}B\\\";\\n
-                        }\\n
-                        if (\\$$is_visualizer = AB) { \\n
-                            rewrite ^\\/*(.*) \\/visualizer\\/\\$$1 permanent;\\n
-                        }\\n
                         if (\\$$http_referer ~* \\\".*\\/rabbitmq\\/*.*\\\") {\\n
                             set \\$$is_rabbitmq \\\"A\\\";\\n
                         }\\n
@@ -329,18 +281,6 @@ services:
                         location ^~ \\/airflow\\/ {\\n
                             proxy_redirect http:\\/\\/\\$$host \\$$scheme:\\/\\/\\$$host;\\n
                             proxy_pass http:\\/\\/webserver:8080\\/;\\n
-                        }\\n
-                        location ^~ \\/flower\\/ {\\n
-                            sub_filter_last_modified on;\\n
-                            sub_filter_once off;\\n
-                            sub_filter_types application\\/javascript;\\n
-                            sub_filter \\\"url_prefix() +\\\" \\\"'\\/flower' +\\\";\\n
-                            proxy_redirect http:\\/\\/\\$$host \\$$scheme:\\/\\/\\$$host;\\n
-                            proxy_pass http:\\/\\/flower:5555\\/;\\n
-                        }\\n
-                        location ^~ \\/visualizer\\/ {\\n
-                            proxy_redirect http:\\/\\/\\$$host \\$$scheme:\\/\\/\\$$host;\\n
-                            proxy_pass http:\\/\\/visualizer:8080\\/;\\n
                         }\\n
                         location ^~ \\/rabbitmq\\/ {\\n
                             proxy_pass http:\\/\\/rabbitmq:15672\\/;\\n
