@@ -10,9 +10,14 @@ from airflow.hooks.base_hook import BaseHook
 
 from chunk_iterator import ChunkIterator
 from cloudvolume import CloudVolume
+from taskqueue import TaskQueue
+from cloudvolume.lib import Vec
+import igneous.task_creation as tc
+from time import sleep
 import os
 
 SLACK_CONN_ID = 'Slack'
+AWS_CONN_ID = 'AWS'
 
 default_args = {
     'owner': 'airflow',
@@ -217,6 +222,41 @@ def process_composite_tasks(c, top_mip):
         generate_chunks_ws[tag].set_downstream(generate_chunks_ws[parent_tag])
         generate_chunks_agg[tag].set_downstream(generate_chunks_agg[parent_tag])
 
+def check_queue(tq):
+    totalTries = 5
+    nTries = totalTries
+    while True:
+        sleep(20)
+        nTasks = tq.enqueued
+        print("Tasks left: {}".format(nTasks))
+        if nTasks == 0:
+            nTries -= 1
+        else:
+            nTries = totalTries
+        if nTries == 0:
+            return
+
+def downsample_and_mesh():
+    url = "https://sqs.us-east-1.amazonaws.com/098703261575/ranl-iarpa-igneous"
+
+    seg_cloudpath = param["SEG_PATH"]
+
+    try:
+        os.environ['AWS_ACCESS_KEY_ID'] = BaseHook.get_connection(AWS_CONN_ID).login
+        os.environ['AWS_SECRET_ACCESS_KEY'] = BaseHook.get_connection(AWS_CONN_ID).password
+    except:
+        pass
+
+    with TaskQueue(url, queue_server='sqs') as tq:
+        tc.create_downsampling_tasks(tq, seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+        check_queue(tq)
+        tc.create_meshing_tasks(tq, seg_cloudpath, mip=2, shape=Vec(256, 256, 256))
+        check_queue(tq)
+        tc.create_mesh_manifest_tasks(tq, seg_cloudpath, magnitude=4)
+        check_queue(tq)
+        #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
+        #check_queue(tq)
+
 
 #data_bbox = [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
 init_ws = PythonOperator(
@@ -237,11 +277,20 @@ init_agg = PythonOperator(
     dag=dag,
     queue = "manager"
 )
-done = DummyOperator(
-    task_id = "Finish",
+#done  = DummyOperator(
+#    task_id = "Finish",
+#    default_args=default_args,
+#    on_success_callback=task_done_alert,
+#    dag=dag,
+#    queue = "manager"
+#)
+igneous_task = PythonOperator(
+    task_id = "Downsample_and_Mesh",
+    python_callable=downsample_and_mesh,
     default_args=default_args,
     on_success_callback=task_done_alert,
-    dag=dag
+    dag=dag,
+    queue = "manager"
 )
 
 data_bbox = param["BBOX"]
