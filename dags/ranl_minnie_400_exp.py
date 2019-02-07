@@ -66,31 +66,16 @@ cmd_proto = '/bin/bash -c "mkdir $AIRFLOW_TMP_DIR/work && cd $AIRFLOW_TMP_DIR/wo
 config_mounts = ['neuroglancer-google-secret.json', 'google-secret.json', config_file]
 
 def slack_alert(msg, context):
-    """
-    Sends message to a slack channel.
+    text="""
+        {msg}
+        *Task*: {task}
+        *Dag*: {dag}
+        """.format(msg=msg,
+        task=context.get('task_instance').task_id,
+        dag=context.get('task_instance').dag_id,
+        ti=context.get('task_instance'))
 
-    If you want to send it to a "user" -> use "@user",
-        if "public channel" -> use "#channel",
-        if "private channel" -> use "channel"
-    """
-    slack_channel = BaseHook.get_connection(SLACK_CONN_ID).login
-    slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
-
-    slack_message = SlackAPIPostOperator(
-        task_id='slack_message',
-        channel=slack_channel,
-        token=slack_token,
-        queue="manager",
-        text="""
-            {msg}
-            *Task*: {task}
-            *Dag*: {dag}
-            """.format(msg=msg,
-            task=context.get('task_instance').task_id,
-            dag=context.get('task_instance').dag_id,
-            ti=context.get('task_instance')
-        )
-    )
+    slack_message = slack_message_op(dag, "slack_message", text)
     return slack_message.execute(context=context)
 
 def task_start_alert(context):
@@ -122,6 +107,27 @@ def composite_chunks_wrap_op(dag, queue, tag, stage, op):
         queue=queue,
         dag=dag
     )
+
+def slack_message_op(dag, id, msg):
+    try:
+        slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
+        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
+        slack_channel = BaseHook.get_connection(SLACK_CONN_ID).extra
+    except:
+        slack_username = "Airflow"
+        slack_channel = "#general"
+        slack_token = 'unset'
+
+    return SlackAPIPostOperator(
+        task_id='slack_message_{}'.format(id),
+        username=slack_username,
+        channel=slack_channel,
+        token=slack_token,
+        queue="manager",
+        text=msg,
+        dag=dag
+    )
+
 
 def composite_chunks_batch_op(dag, queue, mip, tag, stage, op):
     cmdlist = "export STAGE={} && /root/{}/scripts/run_batch.sh {} {} {}".format(stage, stage, op, mip, tag)
