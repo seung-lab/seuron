@@ -51,7 +51,8 @@ param_default = {
     "AGG_THRESHOLD":"0.2",
     "WS_IMAGE":"ranlu/watershed:ranl_minnie_exp",
     "AGG_IMAGE":"ranlu/agglomeration:ranl_minnie_exp",
-    "BBOX": [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
+    "BBOX": [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993],
+    "RESOLUTION": [8,8,40]
 }
 
 Variable.setdefault("param",param_default, deserialize_json=True)
