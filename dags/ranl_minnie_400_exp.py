@@ -206,28 +206,25 @@ def process_composite_tasks(c, top_mip):
     top_tag = str(top_mip)+"_0_0_0"
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
     if c.mip_level() > batch_mip:
-        generate_chunks_ws[tag]=composite_chunks_wrap_op(dag, composite_queue, tag, "ws", "ws")
-        generate_chunks_agg[tag]=composite_chunks_wrap_op(dag, composite_queue, tag, "agg", "me")
+        for stage, op in [("ws", "ws"), ("agg", "me")]:
+            generate_chunks[stage][tag]=composite_chunks_wrap_op(dag, composite_queue, tag, stage, op)
+            slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][tag])
     elif c.mip_level() == batch_mip:
-        generate_chunks_ws[tag]=composite_chunks_batch_op(dag, short_queue, batch_mip, tag, "ws", "ws")
-        remap_chunks_ws[tag]=remap_chunks_batch_op(dag, short_queue, batch_mip, tag, "ws", "ws")
-        generate_chunks_agg[tag]=composite_chunks_batch_op(dag, short_queue, batch_mip, tag, "agg", "me")
-        remap_chunks_agg[tag]=remap_chunks_batch_op(dag, short_queue, batch_mip, tag, "agg", "me")
+        for stage, op in [("ws", "ws"), ("agg", "me")]:
+            generate_chunks[stage][tag]=composite_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
+            slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][tag])
+            remap_chunks[stage][tag]=remap_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
+            slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
+            generate_chunks[stage][top_tag].set_downstream(remap_chunks[stage][tag])
+            init[stage].set_downstream(generate_chunks[stage][tag])
 
-        generate_chunks_ws[top_tag].set_downstream(remap_chunks_ws[tag])
-        generate_chunks_agg[top_tag].set_downstream(remap_chunks_agg[tag])
-
-        init_ws.set_downstream(generate_chunks_ws[tag])
-        init_agg.set_downstream(generate_chunks_agg[tag])
-        init_agg.set_upstream(remap_chunks_ws[tag])
-        done.set_upstream(remap_chunks_agg[tag])
         #remap_chunks_ws[tag].set_downstream(init_agg)
 
     if c.mip_level() < top_mip:
         parent_coord = [i//2 for i in c.coordinate()]
         parent_tag = str(c.mip_level()+1) + "_" + "_".join([str(i) for i in parent_coord])
-        generate_chunks_ws[tag].set_downstream(generate_chunks_ws[parent_tag])
-        generate_chunks_agg[tag].set_downstream(generate_chunks_agg[parent_tag])
+        for stage in ["ws", "agg"]:
+            generate_chunks[stage][tag].set_downstream(generate_chunks[stage][parent_tag])
 
 def check_queue(tq):
     totalTries = 5
@@ -266,7 +263,9 @@ def downsample_and_mesh():
 
 
 #data_bbox = [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
-init_ws = PythonOperator(
+init = {}
+
+init["ws"] = PythonOperator(
     task_id = "Init_Watershed",
     python_callable=create_info,
     op_args = ["ws", param],
@@ -275,7 +274,7 @@ init_ws = PythonOperator(
     dag=dag,
     queue = "manager"
 )
-init_agg = PythonOperator(
+init["agg"] = PythonOperator(
     task_id = "Init_Agglomeration",
     python_callable=create_info,
     op_args = ["agg", param],
@@ -309,14 +308,30 @@ high_mip = 5
 v = ChunkIterator(data_bbox, chunk_size)
 top_mip = v.top_mip_level()
 
-generate_chunks_ws = {}
-remap_chunks_ws = {}
+generate_chunks = {
+    "ws": {},
+    "agg": {}
+}
+remap_chunks = {
+    "ws": {},
+    "agg": {}
+}
 
-generate_chunks_agg = {}
-remap_chunks_agg = {}
+slack_ops = {
+    "ws": {},
+    "agg": {}
+}
 
 for c in v:
     if c.mip_level() < batch_mip:
         break
     else:
+        for k in ["ws","agg"]:
+            if c.mip_level() not in slack_ops[k]:
+                slack_ops[k][c.mip_level()] = slack_message_op(dag, k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
+                if c.mip_level() == batch_mip:
+                    slack_ops[k]["remap"] = slack_message_op(dag, "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
         process_composite_tasks(c, top_mip)
+
+igneous_task.set_upstream(slack_ops["agg"]["remap"])
+init["agg"].set_upstream(slack_ops["ws"]["remap"])
