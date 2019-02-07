@@ -20,12 +20,21 @@ ENV AIRFLOW_USER ${AIRFLOW_USER}
 
 WORKDIR ${AIRFLOW_HOME}
 RUN apt-get -y update \
-    && apt-get -y install build-essential libmysqlclient-dev \
+    && apt-get -y install build-essential libmysqlclient-dev libboost-dev curl\
     && git clone https://github.com/wongwill86/incubator-airflow.git --depth 1 -b v1-9-stable-3-scheduler_speed \
     # Deleting this symlink not handled correctly by shutil.copy
     && rm -rf incubator-airflow/airflow/www/static/docs \
-    && pip install incubator-airflow/[crypto,celery,postgres,mysql] \
+    && pip install incubator-airflow/[crypto,celery,postgres,mysql,slack] \
     && rm -rf incubator-airflow
+
+RUN pip install -U pip
+RUN pip install -U cloud-volume
+
+RUN git clone https://github.com/seung-lab/igneous.git --depth 1 \
+    && pip install igneous/ \
+    && rm -rf igneous
+
+RUN pip install google-resumable-media[requests]
 
 # Move base version information directly into airflow home directory
 RUN mkdir -p ${AIRFLOW_HOME}/version
