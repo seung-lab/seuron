@@ -18,6 +18,8 @@ import os
 
 SLACK_CONN_ID = 'Slack'
 AWS_CONN_ID = 'AWS'
+CLUSTER_1_CONN_ID = "InstanceGroup1"
+CLUSTER_2_CONN_ID = "InstanceGroup2"
 
 default_args = {
     'owner': 'airflow',
@@ -170,6 +172,32 @@ def remap_chunks_batch_op(dag, queue, mip, tag, stage, op):
         weight_rule=WeightRule.ABSOLUTE,
         execution_timeout=timedelta(minutes=30),
         queue=queue,
+        dag=dag
+    )
+
+def resize_cluster_op(dag, stage, connection, size):
+    try:
+        zone = BaseHook.get_connection(connection).login
+        cluster = BaseHook.get_connection(connection).host
+        max_size = int(BaseHook.get_connection(connection).extra)
+    except:
+        tid = "{}_{}".format(stage, size)
+        return -1, placeholder_op(dag, tid)
+
+    trigger_rule = "one_success" if size > 0 else "all_success"
+    real_size = size if size < max_size else max_size
+    cmdline = '/bin/bash -c ". /root/google-cloud-sdk/path.bash.inc && gcloud compute instance-groups managed resize {cluster} --size {size} --zone {zone}" && sleep 120'.format(cluster=cluster, size=real_size, zone=zone)
+    return real_size, DockerWithVariablesOperator(
+        config_mounts,
+        mount_point=cv_path,
+        task_id='resize_{}_{}'.format(stage, size),
+        command=cmdline,
+        default_args=default_args,
+        image=ws_image,
+        weight_rule=WeightRule.ABSOLUTE,
+        execution_timeout=timedelta(minutes=5),
+        trigger_rule=trigger_rule,
+        queue='manager',
         dag=dag
     )
 
@@ -345,5 +373,66 @@ for c in v:
                     slack_ops[k]["remap"] = slack_message_op(dag, "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
         process_composite_tasks(c, top_mip)
 
-igneous_task.set_upstream(slack_ops["agg"]["remap"])
+cluster_size = len(remap_chunks["ws"])
+
+scaling_ops = {
+    "ws": {},
+    "agg": {}
+}
+
 init["agg"].set_upstream(slack_ops["ws"]["remap"])
+
+
+no_rescale_msg = ":exclamation: Cannot rescale cluster"
+rescale_message = ":heavy_check_mark: Rescaled cluster {} to {} instances"
+
+real_size, scaling_global_start = resize_cluster_op(dag, "global_start", CLUSTER_1_CONN_ID, cluster_size)
+if real_size == -1:
+    slack_scaling_global_start = slack_message_op(dag, "scaling_up_global_start", no_rescale_msg)
+    scaling_global_start.set_downstream(slack_scaling_global_start)
+    slack_scaling_global_start.set_downstream(init["ws"])
+    igneous_task.set_upstream(slack_ops["agg"]["remap"])
+else:
+    slack_scaling_global_start = slack_message_op(dag, "scaling_up_global_start", rescale_message.format(1, real_size))
+    scaling_global_start.set_downstream(slack_scaling_global_start)
+
+    slack_scaling_global_start.set_downstream(init["ws"])
+
+    _, scaling_global_finish = resize_cluster_op(dag, "global_finish", CLUSTER_1_CONN_ID, 0)
+    slack_scaling_global_finish = slack_message_op(dag, "scaling_down_global_finish", rescale_message.format(1, 0))
+    scaling_global_finish.set_downstream(slack_scaling_global_finish)
+
+    scaling_global_finish.set_upstream(slack_ops["agg"]["remap"])
+
+    igneous_task.set_upstream(slack_scaling_global_finish)
+
+    if top_mip > high_mip:
+        for stage in ["ws", "agg"]:
+            _, scaling_ops[stage]["down"] = resize_cluster_op(dag, stage, CLUSTER_1_CONN_ID, 0)
+            slack_ops[stage]["down"]= slack_message_op(dag, "scaling_down_{}".format(stage), rescale_message.format(1,0))
+            scaling_ops[stage]["down"].set_downstream(slack_ops[stage]["down"])
+
+            _, scaling_ops[stage]["up"] = resize_cluster_op(dag, stage, CLUSTER_1_CONN_ID, cluster_size)
+            slack_ops[stage]["up"]= slack_message_op(dag, "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
+            scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
+
+            scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
+            scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
+
+            real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(dag, stage+"_long", CLUSTER_2_CONN_ID, 4)
+
+            for k in generate_chunks[stage][high_mip-1]:
+                scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
+
+            if real_size2 == -1:
+                slack_ops[stage]["up_long"] = slack_message_op(dag, "scaling_up_{}_long".format(stage), no_rescale_msg)
+            else:
+                slack_ops[stage]["up_long"] = slack_message_op(dag, "scaling_up_{}_long".format(stage), rescale_message.format(2, real_size2))
+
+            scaling_ops[stage]["up_long"].set_downstream(slack_ops[stage]["up_long"])
+
+            if real_size2 != -1:
+                real_size2, scaling_ops[stage]["down_long"] = resize_cluster_op(dag, stage+"_long", CLUSTER_2_CONN_ID, 0)
+                slack_ops[stage]["down_long"] = slack_message_op(dag, "scaling_down_{}_long".format(stage), rescale_message.format(2, 0))
+                scaling_ops[stage]["down_long"].set_downstream(slack_ops[stage]["down_long"])
+                scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
