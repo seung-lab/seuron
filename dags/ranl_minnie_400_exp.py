@@ -216,16 +216,16 @@ def process_composite_tasks(c, top_mip):
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
     if c.mip_level() > batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][tag]=composite_chunks_wrap_op(dag, composite_queue, tag, stage, op)
-            slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][tag])
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(dag, composite_queue, tag, stage, op)
+            slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
     elif c.mip_level() == batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][tag]=composite_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
-            slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][tag])
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
+            slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
             remap_chunks[stage][tag]=remap_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
-            generate_chunks[stage][top_tag].set_downstream(remap_chunks[stage][tag])
-            init[stage].set_downstream(generate_chunks[stage][tag])
+            generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
+            init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
 
         #remap_chunks_ws[tag].set_downstream(init_agg)
 
@@ -233,7 +233,7 @@ def process_composite_tasks(c, top_mip):
         parent_coord = [i//2 for i in c.coordinate()]
         parent_tag = str(c.mip_level()+1) + "_" + "_".join([str(i) for i in parent_coord])
         for stage in ["ws", "agg"]:
-            generate_chunks[stage][tag].set_downstream(generate_chunks[stage][parent_tag])
+            generate_chunks[stage][c.mip_level()][tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
 
 def check_queue(tq):
     totalTries = 5
@@ -336,6 +336,9 @@ for c in v:
         break
     else:
         for k in ["ws","agg"]:
+            if c.mip_level() not in generate_chunks[k]:
+                generate_chunks[k][c.mip_level()] = {}
+
             if c.mip_level() not in slack_ops[k]:
                 slack_ops[k][c.mip_level()] = slack_message_op(dag, k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
                 if c.mip_level() == batch_mip:
