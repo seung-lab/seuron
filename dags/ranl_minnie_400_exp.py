@@ -250,15 +250,15 @@ def check_queue(tq):
             return
 
 def downsample_and_mesh():
-    url = "https://sqs.us-east-1.amazonaws.com/098703261575/ranl-iarpa-igneous"
 
     seg_cloudpath = param["SEG_PATH"]
 
     try:
         os.environ['AWS_ACCESS_KEY_ID'] = BaseHook.get_connection(AWS_CONN_ID).login
         os.environ['AWS_SECRET_ACCESS_KEY'] = BaseHook.get_connection(AWS_CONN_ID).password
+        url = BaseHook.get_connection(AWS_CONN_ID).extra
     except:
-        pass
+        return
 
     with TaskQueue(url, queue_server='sqs') as tq:
         tc.create_downsampling_tasks(tq, seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
