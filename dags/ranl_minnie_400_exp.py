@@ -108,18 +108,27 @@ def composite_chunks_wrap_op(dag, queue, tag, stage, op):
         dag=dag
     )
 
-def slack_message_op(dag, id, msg):
+def placeholder_op(dag, tid):
+    return DummyOperator(
+        task_id = "dummy_{}".format(tid),
+        default_args=default_args,
+        dag=dag,
+        queue = "manager"
+    )
+
+def slack_message_op(dag, tid, msg):
     try:
         slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
         slack_channel = BaseHook.get_connection(SLACK_CONN_ID).extra
     except:
-        slack_username = "Airflow"
-        slack_channel = "#general"
-        slack_token = 'unset'
+        return placeholder_op(dag, tid)
+
+    if (not slack_username) or (not slack_token) or (not slack_channel):
+        return placeholder_op(dag, tid)
 
     return SlackAPIPostOperator(
-        task_id='slack_message_{}'.format(id),
+        task_id='slack_message_{}'.format(tid),
         username=slack_username,
         channel=slack_channel,
         token=slack_token,
