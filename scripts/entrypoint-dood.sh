@@ -7,7 +7,7 @@ sudo sed -i "/$AIRFLOW_USER/d" /etc/sudoers
 echo "start script with group $DOCKER_GROUP"
 # DOCKER_GROUP from /add-user-docker.sh
 if [ -z ${DOCKER_GROUP} ]; then
-    exec ${COMMAND} $*
+    exec "$@"
 else
     exec sg ${DOCKER_GROUP} "$*"
 fi
