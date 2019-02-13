@@ -43,12 +43,16 @@ def humanize_bytes(bytesize, precision=2):
 # this is taken directly from docker client:
 #   https://github.com/docker/docker/blob/28a7577a029780e4533faf3d057ec9f6c7a10948/api/client/stats.go#L309
 def calculate_cpu_percent(d):
-    cpu_count = len(d["cpu_stats"]["cpu_usage"]["percpu_usage"])
     cpu_percent = 0.0
-    cpu_delta = float(d["cpu_stats"]["cpu_usage"]["total_usage"]) - \
-                float(d["precpu_stats"]["cpu_usage"]["total_usage"])
-    system_delta = float(d["cpu_stats"]["system_cpu_usage"]) - \
-                   float(d["precpu_stats"]["system_cpu_usage"])
+    try:
+        cpu_count = len(d["cpu_stats"]["cpu_usage"]["percpu_usage"])
+        cpu_delta = float(d["cpu_stats"]["cpu_usage"]["total_usage"]) - \
+                    float(d["precpu_stats"]["cpu_usage"]["total_usage"])
+        system_delta = float(d["cpu_stats"]["system_cpu_usage"]) - \
+                       float(d["precpu_stats"]["system_cpu_usage"])
+    except KeyError:
+        return cpu_percent
+
     if system_delta > 0.0:
         cpu_percent = cpu_delta / system_delta * 100.0 * cpu_count
     return cpu_percent
