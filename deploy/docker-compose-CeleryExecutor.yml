@@ -199,6 +199,7 @@ services:
             - AWS_DEFAULT_REGION
             - INFRAKIT_IMAGE
             - INFRAKIT_GROUPS_URL
+            - AIRFLOW__CELERY__CELERYD_CONCURRENCY=4
         command: airflow worker -q manager
         deploy:
             placement:
