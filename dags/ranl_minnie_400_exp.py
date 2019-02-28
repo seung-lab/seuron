@@ -1,235 +1,53 @@
-from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.docker_plugin import DockerWithVariablesOperator
+
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.dummy_operator import DummyOperator
-from airflow.operators.slack_operator import SlackAPIPostOperator
-from airflow.utils.weight_rule import WeightRule
+
+from airflow.operators.dagrun_operator import TriggerDagRunOperator
 from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
+
+from cloudvolume import Storage
 
 from chunk_iterator import ChunkIterator
-from cloudvolume import CloudVolume
-from taskqueue import TaskQueue
-from cloudvolume.lib import Vec
-import igneous.task_creation as tc
-from time import sleep
-import os
 
-SLACK_CONN_ID = 'Slack'
-AWS_CONN_ID = 'AWS'
-CLUSTER_1_CONN_ID = "InstanceGroup1"
-CLUSTER_2_CONN_ID = "InstanceGroup2"
+from slack_message import slack_message, task_start_alert, task_done_alert
+from segmentation_op import composite_chunks_batch_op, composite_chunks_wrap_op, remap_chunks_batch_op
+from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_op, reset_flags_op
 
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'start_date': datetime(2019, 2, 4),
-    'cactchup_by_default': False,
-    'retries': 100,
-    'retry_delay': timedelta(seconds=10),
-    'retry_exponential_backoff': True,
-    }
+from param_default import param_default, batch_mip, high_mip, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
+from igneous_and_cloudvolume import create_info, downsample_and_mesh
+import numpy as np
 
-dag = DAG(
-    "ranl_minnie_seg", default_args=default_args, schedule_interval=None)
 
-param_default = {
-    "SCRATCH_PATH":"gs://ranl-scratch/minnie_367_0",
+dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None)
 
-    "AFF_PATH":"gs://microns-seunglab/minnie_v0/minnie10/affinitymap/test",
-    "AFF_MIP":"1",
+dag = dict()
 
-    "WS_PATH":"gs://microns-seunglab/minnie_v0/minnie10/ws_367_0",
-    "WS_MIP":"0",
+dag["ws"] = DAG("watershed", default_args=default_args, schedule_interval=None)
 
-    "SEG_PATH":"gs://microns-seunglab/minnie_v0/minnie10/seg_367_0",
-    "SEG_MIP":"0",
+dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=None)
 
-    "WS_HIGH_THRESHOLD":"0.99",
-    "WS_LOW_THRESHOLD":"0.01",
-    "WS_SIZE_THRESHOLD":"200",
+dag_ws = dag["ws"]
+dag_agg = dag["agg"]
 
-    "AGG_THRESHOLD":"0.2",
-    "WS_IMAGE":"ranlu/watershed:ranl_minnie_exp",
-    "AGG_IMAGE":"ranlu/agglomeration:ranl_minnie_exp",
-    "BBOX": [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993],
-    "RESOLUTION": [8,8,40]
-}
-
-Variable.setdefault("param",param_default, deserialize_json=True)
+Variable.setdefault("param", param_default, deserialize_json=True)
 param = Variable.get("param", deserialize_json=True)
-ws_image = param["WS_IMAGE"]
-agg_image = param["AGG_IMAGE"]
+image = dict()
+image["ws"] = param["WS_IMAGE"]
+image["agg"] = param["AGG_IMAGE"]
 
-cv_path = "/root/.cloudvolume/secrets/"
-config_file = "param"
-cmd_proto = '/bin/bash -c "mkdir $AIRFLOW_TMP_DIR/work && cd $AIRFLOW_TMP_DIR/work && {} && rm -rf $AIRFLOW_TMP_DIR/work || {{ rm -rf $AIRFLOW_TMP_DIR/work; exit 111; }}"'
-config_mounts = ['neuroglancer-google-secret.json', 'google-secret.json', config_file]
+for p in ["SCRATCH", "WS", "SEG"]:
+    path = "{}_PATH".format(p)
+    if path not in param:
+        param[path] = param["{}_PREFIX".format(p)]+param["NAME"]
 
-def slack_alert(msg, context):
-    text="""
-        {msg}
-        *Task*: {task}
-        *Dag*: {dag}
-        """.format(msg=msg,
-        task=context.get('task_instance').task_id,
-        dag=context.get('task_instance').dag_id,
-        ti=context.get('task_instance'))
+def confirm_dag_run(context, dag_run_obj):
+    skip_flag = context['params']['skip_flag']
+    op = context['params']['op']
+    if param[skip_flag]:
+        slack_message(":exclamation: Skip {op}".format(op=op))
+    else:
+        return dag_run_obj
 
-    slack_message = slack_message_op(dag, "slack_message", text)
-    return slack_message.execute(context=context)
-
-def task_start_alert(context):
-    return slack_alert(":arrow_forward: Task Started", context)
-
-def task_retry_alert(context):
-    try_number = context.get('task_instance').try_number
-    if try_number > 2:
-        return slack_alert(":exclamation: Task up for retry: {}".format(try_number-1), context)
-
-def task_done_alert(context):
-    return slack_alert(":heavy_check_mark: Task Finished", context)
-
-def composite_chunks_wrap_op(dag, queue, tag, stage, op):
-    cmdlist = "export STAGE={} && /root/{}/scripts/run_wrapper.sh . composite_chunk_{} {}".format(stage, stage, op, tag)
-
-    image = ws_image if stage == "ws" else agg_image
-
-    return DockerWithVariablesOperator(
-        config_mounts,
-        mount_point=cv_path,
-        task_id='composite_chunk_{}_{}'.format(stage, tag),
-        command=cmd_proto.format(cmdlist),
-        default_args=default_args,
-        image=image,
-        on_retry_callback=task_retry_alert,
-        weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=2880),
-        queue=queue,
-        dag=dag
-    )
-
-def placeholder_op(dag, tid):
-    return DummyOperator(
-        task_id = "dummy_{}".format(tid),
-        default_args=default_args,
-        dag=dag,
-        queue = "manager"
-    )
-
-def slack_message_op(dag, tid, msg):
-    try:
-        slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
-        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
-        slack_channel = BaseHook.get_connection(SLACK_CONN_ID).extra
-    except:
-        return placeholder_op(dag, tid)
-
-    if (not slack_username) or (not slack_token) or (not slack_channel):
-        return placeholder_op(dag, tid)
-
-    return SlackAPIPostOperator(
-        task_id='slack_message_{}'.format(tid),
-        username=slack_username,
-        channel=slack_channel,
-        token=slack_token,
-        queue="manager",
-        text=msg,
-        dag=dag
-    )
-
-
-def composite_chunks_batch_op(dag, queue, mip, tag, stage, op):
-    cmdlist = "export STAGE={} && /root/{}/scripts/run_batch.sh {} {} {}".format(stage, stage, op, mip, tag)
-
-    image = ws_image if stage == "ws" else agg_image
-
-    return DockerWithVariablesOperator(
-        config_mounts,
-        mount_point=cv_path,
-        task_id='composite_chunk_{}_{}'.format(stage, tag),
-        command=cmd_proto.format(cmdlist),
-        default_args=default_args,
-        image=image,
-        on_retry_callback=task_retry_alert,
-        weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=30),
-        queue=queue,
-        dag=dag
-    )
-
-def remap_chunks_batch_op(dag, queue, mip, tag, stage, op):
-    cmdlist = "export STAGE={} && /root/ws/scripts/remap_batch.sh {} {} {}".format(stage, stage, mip, tag)
-    return DockerWithVariablesOperator(
-        config_mounts,
-        mount_point=cv_path,
-        task_id='remap_chunk_{}_{}'.format(stage, tag),
-        command=cmd_proto.format(cmdlist),
-        default_args=default_args,
-        image=ws_image,
-        on_retry_callback=task_retry_alert,
-        weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=30),
-        queue=queue,
-        dag=dag
-    )
-
-def resize_cluster_op(dag, stage, connection, size):
-    try:
-        zone = BaseHook.get_connection(connection).login
-        cluster = BaseHook.get_connection(connection).host
-        max_size = int(BaseHook.get_connection(connection).extra)
-    except:
-        tid = "{}_{}".format(stage, size)
-        return -1, placeholder_op(dag, tid)
-
-    trigger_rule = "one_success" if size > 0 else "all_success"
-    real_size = size if size < max_size else max_size
-    cmdline = '/bin/bash -c ". /root/google-cloud-sdk/path.bash.inc && gcloud compute instance-groups managed resize {cluster} --size {size} --zone {zone}" && sleep 120'.format(cluster=cluster, size=real_size, zone=zone)
-    return real_size, DockerWithVariablesOperator(
-        config_mounts,
-        mount_point=cv_path,
-        task_id='resize_{}_{}'.format(stage, size),
-        command=cmdline,
-        default_args=default_args,
-        image=ws_image,
-        weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=5),
-        trigger_rule=trigger_rule,
-        queue='manager',
-        dag=dag
-    )
-
-def create_info(stage, param):
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
-    if not os.path.exists(cv_secrets_path):
-        os.makedirs(cv_secrets_path)
-
-
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
-        v = Variable.get(k)
-        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
-            value_file.write(v)
-
-    bbox = param["BBOX"]
-    metadata_seg = CloudVolume.create_new_info(
-        num_channels    = 1,
-        layer_type      = 'segmentation',
-        data_type       = 'uint64',
-        encoding        = 'raw',
-        resolution      = param["RESOLUTION"], # Pick scaling for your data!
-        voxel_offset    = bbox[0:3],
-        chunk_size      = [128,128,16], # This must divide evenly into image length or you won't cover the #
-        volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]
-        )
-    cv_path = param["WS_PATH"] if stage == "ws" else param["SEG_PATH"]
-    vol = CloudVolume(cv_path, mip=0, info=metadata_seg, provenance=param)
-    vol.commit_info()
-    vol.commit_provenance()
-
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
-        os.remove(os.path.join(cv_secrets_path, k))
 
 def process_composite_tasks(c, top_mip):
     if c.mip_level() < batch_mip:
@@ -244,18 +62,16 @@ def process_composite_tasks(c, top_mip):
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
     if c.mip_level() > batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(dag, composite_queue, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image[stage], dag[stage], composite_queue, tag, stage, op)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
     elif c.mip_level() == batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image[stage], dag[stage], short_queue, batch_mip, tag, stage, op)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-            remap_chunks[stage][tag]=remap_chunks_batch_op(dag, short_queue, batch_mip, tag, stage, op)
+            remap_chunks[stage][tag]=remap_chunks_batch_op(image["ws"], dag[stage], short_queue, batch_mip, tag, stage, op)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
             generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
             init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
-
-        #remap_chunks_ws[tag].set_downstream(init_agg)
 
     if c.mip_level() < top_mip:
         parent_coord = [i//2 for i in c.coordinate()]
@@ -263,44 +79,73 @@ def process_composite_tasks(c, top_mip):
         for stage in ["ws", "agg"]:
             generate_chunks[stage][c.mip_level()][tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
 
-def check_queue(tq):
-    totalTries = 5
-    nTries = totalTries
-    while True:
-        sleep(20)
-        nTasks = tq.enqueued
-        print("Tasks left: {}".format(nTasks))
-        if nTasks == 0:
-            nTries -= 1
-        else:
-            nTries = totalTries
-        if nTries == 0:
-            return
+def get_infos(param):
+#    try:
+    content = b''
+    with Storage(param["SCRATCH_PATH"]) as storage:
+        v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
+        for c in v:
+            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+            content += storage.get_file('agg/info/info_{}.data'.format(tag))
 
-def downsample_and_mesh():
+    return content
 
-    seg_cloudpath = param["SEG_PATH"]
+#    except:
+#        print("Cannot read all the info files")
+#        return None
 
-    try:
-        os.environ['AWS_ACCESS_KEY_ID'] = BaseHook.get_connection(AWS_CONN_ID).login
-        os.environ['AWS_SECRET_ACCESS_KEY'] = BaseHook.get_connection(AWS_CONN_ID).password
-        url = BaseHook.get_connection(AWS_CONN_ID).extra
-    except:
-        return
 
-    with TaskQueue(url, queue_server='sqs') as tq:
-        tc.create_downsampling_tasks(tq, seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-        check_queue(tq)
-        tc.create_meshing_tasks(tq, seg_cloudpath, mip=2, shape=Vec(256, 256, 256))
-        check_queue(tq)
-        tc.create_mesh_manifest_tasks(tq, seg_cloudpath, magnitude=4)
-        check_queue(tq)
-        #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
-        #check_queue(tq)
+def process_infos(param):
+    dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
+    content = get_infos(param)
+    data = np.frombuffer(content, dtype=dt_count)
+    order = np.argsort(data['count'])[::-1]
+    data_sorted = data[order]
+    msg = '''*Agglomeration Finished*
+*{nseg}* segments (*{nsv}* supervoxels)
+
+Largest segments:
+{top20list}'''.format(
+    nseg=len(data_sorted),
+    nsv=np.sum(data_sorted['count']),
+    top20list="\n".join("id: {} ({})".format(data_sorted[i][0], data_sorted[i][1]) for i in range(20))
+    )
+    slack_message(msg)
+
+
+data_bbox = param["BBOX"]
+
+chunk_size = param["CHUNK_SIZE"]
 
 
 #data_bbox = [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
-init = {}
+starting_msg ='''*Start Segmenting {name}*
+Affinity map: `{aff}`
+Affinity mip level: {mip}
+Bounding box: [{bbox}]'''.format(
+    name = param["NAME"],
+    aff = param["AFF_PATH"],
+    bbox = ", ".join(str(x) for x in param["BBOX"]),
+    mip = param["AFF_MIP"]
+)
+
+ending_msg = '''*Finish Segmenting {name}*
+Watershed layer: `{ws}`
+Segmentation Layer: `{seg}`'''.format(
+    name = param["NAME"],
+    ws = param["WS_PATH"],
+    seg = param["SEG_PATH"]
+)
+
+no_rescale_msg = ":exclamation: Cannot rescale cluster"
+rescale_message = ":heavy_check_mark: Rescaled cluster {} to {} instances"
+
+starting_op = slack_message_op(dag_manager, "start", starting_msg)
+ending_op = slack_message_op(dag_manager, "end", ending_msg)
+
+reset_flags = reset_flags_op(dag_manager, param)
+
+init = dict()
 
 init["ws"] = PythonOperator(
     task_id = "Init_Watershed",
@@ -308,47 +153,26 @@ init["ws"] = PythonOperator(
     op_args = ["ws", param],
     default_args=default_args,
     on_success_callback=task_start_alert,
-    dag=dag,
+    dag=dag["ws"],
     queue = "manager"
 )
+
 init["agg"] = PythonOperator(
     task_id = "Init_Agglomeration",
     python_callable=create_info,
     op_args = ["agg", param],
     default_args=default_args,
     on_success_callback=task_start_alert,
-    dag=dag,
-    queue = "manager"
-)
-#done  = DummyOperator(
-#    task_id = "Finish",
-#    default_args=default_args,
-#    on_success_callback=task_done_alert,
-#    dag=dag,
-#    queue = "manager"
-#)
-igneous_task = PythonOperator(
-    task_id = "Downsample_and_Mesh",
-    python_callable=downsample_and_mesh,
-    default_args=default_args,
-    on_success_callback=task_done_alert,
-    dag=dag,
+    dag=dag["agg"],
     queue = "manager"
 )
 
-data_bbox = param["BBOX"]
-
-chunk_size = [512,512,128]
-batch_mip = 2
-high_mip = 5
-
-v = ChunkIterator(data_bbox, chunk_size)
-top_mip = v.top_mip_level()
 
 generate_chunks = {
     "ws": {},
     "agg": {}
 }
+
 remap_chunks = {
     "ws": {},
     "agg": {}
@@ -359,6 +183,55 @@ slack_ops = {
     "agg": {}
 }
 
+scaling_ops = {
+    "ws": {},
+    "agg": {}
+}
+
+triggers = dict()
+wait = dict()
+mark_done = dict()
+
+triggers["ws"] = TriggerDagRunOperator(
+    task_id="trigger_ws",
+    trigger_dag_id="watershed",
+    python_callable=confirm_dag_run,
+    params={'skip_flag': "SKIP_WS",
+            'op': "watershed"},
+    queue="manager",
+    dag=dag_manager
+)
+
+wait["ws"] = wait_op(dag_manager, "ws_done")
+
+mark_done["ws"] = mark_done_op(dag["ws"], "ws_done")
+
+triggers["agg"] = TriggerDagRunOperator(
+    task_id="trigger_agg",
+    trigger_dag_id="agglomeration",
+    python_callable=confirm_dag_run,
+    params={'skip_flag': "SKIP_AGG",
+            'op': "agglomeration"},
+    queue="manager",
+    dag=dag_manager
+)
+
+check_seg = PythonOperator(
+    task_id = "Check_Segmentation",
+    python_callable=process_infos,
+    op_args = [param],
+    default_args=default_args,
+    dag=dag_manager,
+    queue = "manager"
+)
+
+wait["agg"] = wait_op(dag_manager, "agg_done")
+
+mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
+
+v = ChunkIterator(data_bbox, chunk_size)
+top_mip = v.top_mip_level()
+
 for c in v:
     if c.mip_level() < batch_mip:
         break
@@ -368,71 +241,62 @@ for c in v:
                 generate_chunks[k][c.mip_level()] = {}
 
             if c.mip_level() not in slack_ops[k]:
-                slack_ops[k][c.mip_level()] = slack_message_op(dag, k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
+                slack_ops[k][c.mip_level()] = slack_message_op(dag[k], k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
                 if c.mip_level() == batch_mip:
-                    slack_ops[k]["remap"] = slack_message_op(dag, "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
+                    slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
+                    slack_ops[k]["remap"] >> mark_done[k]
         process_composite_tasks(c, top_mip)
 
-cluster_size = len(remap_chunks["ws"])
+cluster1_size = len(remap_chunks["ws"])
 
-scaling_ops = {
-    "ws": {},
-    "agg": {}
-}
+real_size, scaling_global_start = resize_cluster_op(image["ws"], dag_manager, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
 
-init["agg"].set_upstream(slack_ops["ws"]["remap"])
+slack_scaling_global_start = slack_message_op(dag_manager, "scaling_up_global_start", no_rescale_msg) if real_size == -1 else slack_message_op(dag_manager, "scaling_up_global_start", rescale_message.format(1, real_size))
 
+_, scaling_global_finish = resize_cluster_op(image["ws"], dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0)
+slack_scaling_global_finish = slack_message_op(dag_manager, "scaling_down_global_finish", rescale_message.format(1, 0))
 
-no_rescale_msg = ":exclamation: Cannot rescale cluster"
-rescale_message = ":heavy_check_mark: Rescaled cluster {} to {} instances"
+igneous_task = PythonOperator(
+    task_id = "Downsample_and_Mesh",
+    python_callable=downsample_and_mesh,
+    op_args = [param,],
+    default_args=default_args,
+    on_success_callback=task_done_alert,
+    dag=dag_manager,
+    queue = "manager"
+)
 
-real_size, scaling_global_start = resize_cluster_op(dag, "global_start", CLUSTER_1_CONN_ID, cluster_size)
-if real_size == -1:
-    slack_scaling_global_start = slack_message_op(dag, "scaling_up_global_start", no_rescale_msg)
-    scaling_global_start.set_downstream(slack_scaling_global_start)
-    slack_scaling_global_start.set_downstream(init["ws"])
-    igneous_task.set_upstream(slack_ops["agg"]["remap"])
-else:
-    slack_scaling_global_start = slack_message_op(dag, "scaling_up_global_start", rescale_message.format(1, real_size))
-    scaling_global_start.set_downstream(slack_scaling_global_start)
+starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> slack_scaling_global_finish >> check_seg >>  igneous_task >> ending_op
 
-    slack_scaling_global_start.set_downstream(init["ws"])
+if real_size > 0 and top_mip >= high_mip:
+    for stage in ["ws", "agg"]:
+        _, scaling_ops[stage]["down"] = resize_cluster_op(image["ws"], dag[stage], stage, CLUSTER_1_CONN_ID, 0)
+        slack_ops[stage]["down"]= slack_message_op(dag[stage], "scaling_down_{}".format(stage), rescale_message.format(1,0))
+        scaling_ops[stage]["down"].set_downstream(slack_ops[stage]["down"])
 
-    _, scaling_global_finish = resize_cluster_op(dag, "global_finish", CLUSTER_1_CONN_ID, 0)
-    slack_scaling_global_finish = slack_message_op(dag, "scaling_down_global_finish", rescale_message.format(1, 0))
-    scaling_global_finish.set_downstream(slack_scaling_global_finish)
+        _, scaling_ops[stage]["up"] = resize_cluster_op(image["ws"], dag[stage], stage, CLUSTER_1_CONN_ID, cluster1_size)
+        slack_ops[stage]["up"]= slack_message_op(dag[stage], "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
+        scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
 
-    scaling_global_finish.set_upstream(slack_ops["agg"]["remap"])
+        scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
+        scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
 
-    igneous_task.set_upstream(slack_scaling_global_finish)
+        cluster2_size = max(1, len(generate_chunks[stage][high_mip])/8)
 
-    if top_mip > high_mip:
-        for stage in ["ws", "agg"]:
-            _, scaling_ops[stage]["down"] = resize_cluster_op(dag, stage, CLUSTER_1_CONN_ID, 0)
-            slack_ops[stage]["down"]= slack_message_op(dag, "scaling_down_{}".format(stage), rescale_message.format(1,0))
-            scaling_ops[stage]["down"].set_downstream(slack_ops[stage]["down"])
+        real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(image["ws"], dag[stage], stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
 
-            _, scaling_ops[stage]["up"] = resize_cluster_op(dag, stage, CLUSTER_1_CONN_ID, cluster_size)
-            slack_ops[stage]["up"]= slack_message_op(dag, "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
-            scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
+        for k in generate_chunks[stage][high_mip-1]:
+            scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
 
-            scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
-            scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
+        if real_size2 == -1:
+            slack_ops[stage]["up_long"] = slack_message_op(dag[stage], "scaling_up_{}_long".format(stage), no_rescale_msg)
+        else:
+            slack_ops[stage]["up_long"] = slack_message_op(dag[stage], "scaling_up_{}_long".format(stage), rescale_message.format(2, real_size2))
 
-            real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(dag, stage+"_long", CLUSTER_2_CONN_ID, 4)
+        scaling_ops[stage]["up_long"].set_downstream(slack_ops[stage]["up_long"])
 
-            for k in generate_chunks[stage][high_mip-1]:
-                scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
-
-            if real_size2 == -1:
-                slack_ops[stage]["up_long"] = slack_message_op(dag, "scaling_up_{}_long".format(stage), no_rescale_msg)
-            else:
-                slack_ops[stage]["up_long"] = slack_message_op(dag, "scaling_up_{}_long".format(stage), rescale_message.format(2, real_size2))
-
-            scaling_ops[stage]["up_long"].set_downstream(slack_ops[stage]["up_long"])
-
-            if real_size2 != -1:
-                real_size2, scaling_ops[stage]["down_long"] = resize_cluster_op(dag, stage+"_long", CLUSTER_2_CONN_ID, 0)
-                slack_ops[stage]["down_long"] = slack_message_op(dag, "scaling_down_{}_long".format(stage), rescale_message.format(2, 0))
-                scaling_ops[stage]["down_long"].set_downstream(slack_ops[stage]["down_long"])
-                scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
+        if real_size2 != -1:
+            real_size2, scaling_ops[stage]["down_long"] = resize_cluster_op(image["ws"], dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0)
+            slack_ops[stage]["down_long"] = slack_message_op(dag[stage], "scaling_down_{}_long".format(stage), rescale_message.format(2, 0))
+            scaling_ops[stage]["down_long"].set_downstream(slack_ops[stage]["down_long"])
+            scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])

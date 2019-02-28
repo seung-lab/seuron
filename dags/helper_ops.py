@@ -1,29 +1,23 @@
-from airflow.operators.slack_operator import SlackAPIPostOperator
+from airflow.operators.docker_plugin import DockerWithVariablesOperator
+from airflow.operators.python_operator import PythonOperator
 from airflow.operators.dummy_operator import DummyOperator
+from airflow.utils.weight_rule import WeightRule
 from airflow.hooks.base_hook import BaseHook
-
-SLACK_CONN_ID = 'Slack'
+from airflow.models import Variable
+from datetime import timedelta
+from time import sleep
+from slack_message import slack_message
+from param_default import default_args, cv_path, config_mounts
 
 def slack_message_op(dag, tid, msg):
-    try:
-        slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
-        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
-        slack_channel = BaseHook.get_connection(SLACK_CONN_ID).extra
-    except:
-        return placeholder_op(dag, tid)
-
-    if (not slack_username) or (not slack_token) or (not slack_channel):
-        return placeholder_op(dag, tid)
-
-    return SlackAPIPostOperator(
+    return PythonOperator(
         task_id='slack_message_{}'.format(tid),
-        username=slack_username,
-        channel=slack_channel,
-        token=slack_token,
+        python_callable=slack_message,
+        op_args = (msg,),
         queue="manager",
-        text=msg,
         dag=dag
     )
+
 
 def placeholder_op(dag, tid):
     return DummyOperator(
@@ -33,3 +27,84 @@ def placeholder_op(dag, tid):
     )
 
 
+def reset_flags_op(dag, param):
+    return PythonOperator(
+        task_id="reset_flags",
+        python_callable=reset_flags,
+        op_args=[param,],
+        dag=dag,
+        queue="manager"
+    )
+
+
+def reset_flags(param):
+    if param["SKIP_WS"]:
+        Variable.set("ws_done", "yes")
+    else:
+        Variable.set("ws_done", "no")
+    if param["SKIP_AGG"]:
+        Variable.set("agg_done", "yes")
+    else:
+        Variable.set("agg_done", "no")
+
+
+def set_variable(key, value):
+    Variable.set(key, value)
+
+
+def mark_done_op(dag, var):
+    return PythonOperator(
+        task_id="mark_{}".format(var),
+        python_callable=set_variable,
+        op_args=(var, "yes"),
+        dag=dag,
+        queue="manager"
+    )
+
+
+def wait(var):
+    Variable.setdefault(var, "no")
+
+    while True:
+        cond = Variable.get(var)
+        if cond == "yes":
+            return
+        else:
+            sleep(30)
+
+
+def wait_op(dag, var):
+    return PythonOperator(
+        task_id="waiting_for_{}".format(var),
+        python_callable=wait,
+        op_args=(var,),
+        dag=dag,
+        queue="manager"
+    )
+
+
+def resize_cluster_op(img, dag, stage, connection, size):
+    try:
+        zone = BaseHook.get_connection(connection).login
+        cluster = BaseHook.get_connection(connection).host
+        max_size = int(BaseHook.get_connection(connection).extra)
+    except:
+        tid = "{}_{}".format(stage, size)
+        return -1, placeholder_op(dag, tid)
+
+    trigger_rule = "one_success" if size > 0 else "all_success"
+    real_size = size if size < max_size else max_size
+    cmdline = '/bin/bash -c ". /root/google-cloud-sdk/path.bash.inc && gcloud compute instance-groups managed resize {cluster} --size {size} --zone {zone}" && sleep 120'.format(cluster=cluster, size=real_size, zone=zone)
+    return real_size, DockerWithVariablesOperator(
+        config_mounts,
+        mount_point=cv_path,
+        task_id='resize_{}_{}'.format(stage, size),
+        command=cmdline,
+        default_args=default_args,
+        image=img,
+        weight_rule=WeightRule.ABSOLUTE,
+        execution_timeout=timedelta(minutes=5),
+        trigger_rule=trigger_rule,
+        queue='manager',
+        dag=dag
+    )
