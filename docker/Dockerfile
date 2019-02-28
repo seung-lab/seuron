@@ -19,16 +19,20 @@ ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
 
 WORKDIR ${AIRFLOW_HOME}
+COPY ./setup_airflow.py .
+
 RUN apt-get -y update \
-    && apt-get -y install build-essential libmysqlclient-dev libboost-dev curl\
+    && apt-get -y install build-essential libmysqlclient-dev libboost-dev\
     && git clone https://github.com/wongwill86/incubator-airflow.git --depth 1 -b v1-9-stable-3-scheduler_speed \
     # Deleting this symlink not handled correctly by shutil.copy
     && rm -rf incubator-airflow/airflow/www/static/docs \
-    && pip install incubator-airflow/[crypto,celery,postgres,mysql,slack] \
+    && mv setup_airflow.py incubator-airflow/setup.py \
+    && pip install incubator-airflow/[crypto,celery,postgres,mysql,slack,gcp_api] \
     && rm -rf incubator-airflow
 
-RUN pip install -U pip
-RUN pip install -U cloud-volume
+RUN pip install -U pip \
+    && pip install -U numpy \
+    && pip install -U cloud-volume
 
 RUN git clone https://github.com/seung-lab/igneous.git --depth 1 \
     && pip install igneous/ \
@@ -66,6 +70,7 @@ RUN cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
 WORKDIR /usr/local/lib/python3.6/site-packages/
 
 RUN patch -p1 < ${AIRFLOW_HOME}/airflow.patch
+RUN patch -p1 < ${AIRFLOW_HOME}/celery.patch
 
 USER ${AIRFLOW_USER}
 WORKDIR ${AIRFLOW_HOME}
