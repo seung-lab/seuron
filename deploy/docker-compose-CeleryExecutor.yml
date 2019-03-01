@@ -4,8 +4,8 @@ services:
         image: rabbitmq:3.6.12-management-alpine
         environment:
             - RABBITMQ_ERLANG_COOKIE=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
-        tmpfs:
-            - /var/lib
+        volumes:
+            - /var/lib:/var/lib
         ports:
             - "5672:5672"
         deploy:
