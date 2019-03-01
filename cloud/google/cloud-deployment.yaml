@@ -21,7 +21,7 @@ resources:
           sizeManager: 1
           sizeDatabase: 1
           sizeWorker: 1
-          instanceTypeManager: n1-standard-16
+          instanceTypeManager: n1-standard-64
           instanceTypeDatabase: n1-standard-64
           instanceTypeWorker: f1-micro
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/ranl_minnie/deploy/docker-compose-CeleryExecutor.yml
