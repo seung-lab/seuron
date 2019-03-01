@@ -16,7 +16,7 @@ import os
 
 from airflow import configuration as conf
 
-GCS_LOG_FOLDER = 'gs://ranl-scratch/airflow-logs-exp/'
+GCS_LOG_FOLDER = 'gs://ranl-scratch/airflow-minnie-logs/'
 
 # TODO: Logging format and level should be configured
 # in this file instead of from airflow.cfg. Currently

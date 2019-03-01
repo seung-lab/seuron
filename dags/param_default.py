@@ -18,7 +18,7 @@ param_default = {
     "AGG_THRESHOLD":"0.25",
     "WS_IMAGE":"ranlu/watershed:ranl_minnie_test",
     "AGG_IMAGE":"ranlu/agglomeration:ranl_minnie_test",
-    "BBOX": [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993],
+    "BBOX": [126280, 64280, 20826, 129020, 129020, 20993],
     "RESOLUTION": [8,8,40],
     "CHUNK_SIZE": [512, 512, 128],
     "SKIP_WS": False,
@@ -29,7 +29,7 @@ param_default = {
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2019, 2, 4),
+    'start_date': datetime(2019, 2, 28),
     'cactchup_by_default': False,
     'retries': 100,
     'retry_delay': timedelta(seconds=10),
