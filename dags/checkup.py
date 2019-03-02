@@ -63,6 +63,11 @@ def get_num_task_instances(session):
         TI.state == State.UP_FOR_RETRY
     ).count()
 
+    if running > 2: #ws or agg running
+        running -= 2
+    elif running == 2: #segmentation?
+        running = 1
+
     message = '''*Pipeline heartbeat:*
 *{}* tasks running, *{}* tasks queued, *{}* tasks up for retry'''.format(running, queued, up_for_retry)
     slack_message(message)
