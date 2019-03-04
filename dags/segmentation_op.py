@@ -5,7 +5,7 @@ from param_default import default_args, cv_path, config_mounts, cmd_proto
 from slack_message import task_retry_alert
 
 
-def composite_chunks_wrap_op(img, dag, queue, tag, stage, op):
+def composite_chunks_wrap_op(img, dag, queue, mip, tag, stage, op):
     cmdlist = "export STAGE={} && /root/{}/scripts/run_wrapper.sh . composite_chunk_{} {}".format(stage, stage, op, tag)
 
     return DockerWithVariablesOperator(
@@ -18,7 +18,7 @@ def composite_chunks_wrap_op(img, dag, queue, tag, stage, op):
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
         execution_timeout=timedelta(minutes=5760),
-        queue=queue,
+        queue=queue+"_"+mip,
         dag=dag
     )
 
