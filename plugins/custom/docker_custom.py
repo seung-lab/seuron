@@ -1,5 +1,6 @@
 import os
 import json
+from time import sleep
 from docker import APIClient as Client
 from airflow.exceptions import AirflowException
 from airflow.plugins_manager import AirflowPlugin
@@ -166,6 +167,7 @@ class DockerConfigurableOperator(DockerOperator):
                                  humanize_bytes(blk_write),
                                  humanize_bytes(net_r),
                                  humanize_bytes(net_w)))
+            sleep(60)
 
     # This needs to be updated whenever we update to a new version of airflow!
     def execute(self, context):
