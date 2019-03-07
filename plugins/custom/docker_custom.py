@@ -2,6 +2,7 @@ import os
 import json
 from time import sleep
 from docker import APIClient as Client
+import docker
 from airflow.exceptions import AirflowException
 from airflow.plugins_manager import AirflowPlugin
 from airflow.models import Variable
@@ -140,11 +141,17 @@ class DockerConfigurableOperator(DockerOperator):
             self.host_args = host_args
         super().__init__(*args, **kwargs)
 
-    def _read_task_stats(self, stream):
+    def _read_task_stats(self):
         cpu_total = 0.0
         cpu_system = 0.0
         cpu_percent = 0.0
-        for x in stream:
+        while True:
+            try:
+                x = self.cli.stats(container=self.container['Id'], decode=True, stream=False)
+            except docker.errors.APIError:
+                sleep(60)
+
+
             blk_read, blk_write = calculate_blkio_bytes(x)
             net_r, net_w = calculate_network_bytes(x)
             try:
@@ -226,7 +233,6 @@ class DockerConfigurableOperator(DockerOperator):
 
             log_reader = threading.Thread(
                 target=self._read_task_stats,
-                args=(self.cli.stats(container=self.container['Id'], decode=True, stream=True),),
             )
 
             log_reader.daemon = True
