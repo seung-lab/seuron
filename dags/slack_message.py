@@ -2,7 +2,7 @@ from airflow.hooks.base_hook import BaseHook
 from slackclient import SlackClient
 from param_default import SLACK_CONN_ID
 
-def slack_message(msg):
+def slack_message(msg, channel=None):
     try:
         slack_workername = BaseHook.get_connection(SLACK_CONN_ID).host
         slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
@@ -13,14 +13,23 @@ def slack_message(msg):
 
     sc = SlackClient(slack_token)
 
+    text="<@{username}>, {message}".format(
+        username=slack_username,
+        message=msg
+    )
+
+    if channel is not None:
+        slack_channel = channel
+        text="{botname}: {message}".format(
+            botname=slack_workername,
+            message=msg
+        )
+
     rc = sc.api_call(
         "chat.postMessage",
         username=slack_workername,
         channel=slack_channel,
-        text="<@{username}>, {message}".format(
-            username=slack_username,
-            message=msg
-        )
+        text=text
     )
 
     if not rc["ok"]:
@@ -44,7 +53,7 @@ def slack_userinfo():
 
     return None
 
-def slack_alert(msg, context):
+def slack_alert(msg, channel, context):
     text="""
         {msg}
         *Task*: {task}
@@ -54,18 +63,18 @@ def slack_alert(msg, context):
         dag=context.get('task_instance').dag_id,
         ti=context.get('task_instance'))
 
-    return slack_message(text)
+    return slack_message(text, channel=channel)
 
 
 def task_start_alert(context):
-    return slack_alert(":arrow_forward: Task Started", context)
+    return slack_alert(":arrow_forward: Task Started", None, context)
 
 
 def task_retry_alert(context):
     try_number = context.get('task_instance').try_number
     if try_number > 4:
-        return slack_alert(":exclamation: Task up for retry: {}".format(try_number-1), context)
+        return slack_alert(":exclamation: Task up for retry: {}".format(try_number-1), "#seuron-alerts", context)
 
 
 def task_done_alert(context):
-    return slack_alert(":heavy_check_mark: Task Finished", context)
+    return slack_alert(":heavy_check_mark: Task Finished", None, context)
