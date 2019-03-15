@@ -5,6 +5,8 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.operators.dagrun_operator import TriggerDagRunOperator
 from airflow.models import Variable
 
+from cloudvolume import Storage
+
 from chunk_iterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert
@@ -12,10 +14,8 @@ from segmentation_op import composite_chunks_batch_op, composite_chunks_wrap_op,
 from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_op, reset_flags_op
 
 from param_default import param_default, batch_mip, high_mip, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
-from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job
+from igneous_and_cloudvolume import create_info, downsample_and_mesh
 import numpy as np
-
-from joblib import Parallel, delayed
 
 
 dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None)
@@ -79,37 +79,21 @@ def process_composite_tasks(c, top_mip):
         for stage in ["ws", "agg"]:
             generate_chunks[stage][c.mip_level()][tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
 
-
-def generate_batches(param):
-    v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
-    top_mip = v.top_mip_level()
-    batch_mip = 3
-    batch_chunks = []
-    high_mip_chunks = []
-    if top_mip > batch_mip:
-        for c in v:
-            if c.mip_level() < batch_mip:
-                break
-            elif c.mip_level() == batch_mip:
-                batch_chunks.append(ChunkIterator(param["BBOX"], param["CHUNK_SIZE"], start_from = [batch_mip]+c.coordinate()))
-            else:
-                high_mip_chunks.append(c)
-
-    else:
-        batch_chunks=[v]
-
-    return high_mip_chunks, batch_chunks
-
-
 def get_infos(param):
-    high_mip_chunks, batch_chunks = generate_batches(param)
-    content = get_info_job(high_mip_chunks, param)
-    contents = Parallel(n_jobs=-2)(delayed(get_info_job)(sv, param) for sv in batch_chunks)
-
-    for c in contents:
-        content+=c
+#    try:
+    content = b''
+    with Storage(param["SCRATCH_PATH"]) as storage:
+        v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
+        for c in v:
+            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+            content += storage.get_file('agg/info/info_{}.data'.format(tag))
 
     return content
+
+#    except:
+#        print("Cannot read all the info files")
+#        return None
+
 
 def process_infos(param):
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
