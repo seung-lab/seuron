@@ -281,7 +281,7 @@ if real_size > 0 and top_mip >= high_mip:
         scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
         scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
 
-        cluster2_size = max(1, len(generate_chunks[stage][high_mip])/8)
+        cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
 
         real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(image["ws"], dag[stage], stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
 
