@@ -17,7 +17,7 @@ def composite_chunks_wrap_op(img, dag, queue, tag, stage, op):
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=5760),
+        execution_timeout=timedelta(minutes=11520),
         queue=queue,
         dag=dag
     )
