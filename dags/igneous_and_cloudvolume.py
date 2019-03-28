@@ -1,11 +1,12 @@
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
-from cloudvolume import CloudVolume
+from cloudvolume import CloudVolume, Storage
 from taskqueue import TaskQueue
 from cloudvolume.lib import Vec
 import igneous.task_creation as tc
 import os
 from time import sleep, strftime
+from chunk_iterator import ChunkIterator
 
 from param_default import cv_chunk_size, AWS_CONN_ID
 from slack_message import slack_message, slack_userinfo
@@ -48,6 +49,21 @@ def create_info(stage, param):
 
     for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
         os.remove(os.path.join(cv_secrets_path, k))
+
+
+def get_info_job(v, param):
+#    try:
+    content = b''
+    with Storage(param["SCRATCH_PATH"]) as storage:
+        for c in v:
+            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+            content += storage.get_file('agg/info/info_{}.data'.format(tag))
+
+    return content
+
+#    except:
+#        print("Cannot read all the info files")
+#        return None
 
 
 def check_queue(tq):

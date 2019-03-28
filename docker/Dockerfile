@@ -31,7 +31,7 @@ RUN apt-get -y update \
     && rm -rf incubator-airflow
 
 RUN pip install -U pip \
-    && pip install -U numpy \
+    && pip install -U numpy joblib\
     && pip install -U cloud-volume
 
 RUN git clone https://github.com/seung-lab/igneous.git --depth 1 \
