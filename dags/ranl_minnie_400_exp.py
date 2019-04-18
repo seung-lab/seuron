@@ -15,8 +15,6 @@ from param_default import param_default, batch_mip, high_mip, default_args, CLUS
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job
 import numpy as np
 
-from joblib import Parallel, delayed
-
 
 dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None)
 
@@ -102,6 +100,8 @@ def generate_batches(param):
 
 
 def get_infos(param):
+    from joblib import Parallel, delayed
+
     high_mip_chunks, batch_chunks = generate_batches(param)
     content = get_info_job(high_mip_chunks, param)
     contents = Parallel(n_jobs=-2)(delayed(get_info_job)(sv, param) for sv in batch_chunks)
