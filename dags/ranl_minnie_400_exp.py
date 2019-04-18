@@ -116,15 +116,14 @@ def process_infos(param):
     content = get_infos(param)
     data = np.frombuffer(content, dtype=dt_count)
     order = np.argsort(data['count'])[::-1]
-    data_sorted = data[order]
     msg = '''*Agglomeration Finished*
 *{nseg}* segments (*{nsv}* supervoxels)
 
 Largest segments:
 {top20list}'''.format(
-    nseg=len(data_sorted),
-    nsv=np.sum(data_sorted['count']),
-    top20list="\n".join("id: {} ({})".format(data_sorted[i][0], data_sorted[i][1]) for i in range(20))
+    nseg=len(data),
+    nsv=np.sum(data['count']),
+    top20list="\n".join("id: {} ({})".format(data[order[i]][0], data[order[i]][1]) for i in range(20))
     )
     slack_message(msg)
 
