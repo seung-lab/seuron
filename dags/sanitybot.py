@@ -57,8 +57,8 @@ def check_affinitymap(param):
 
     target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
     if not aff_bbox.contains_bbox(target_bbox):
-        slack_message("WARNING: Bounding box is outside of the affinity map")
-        #raise ValueError('Bounding box is outside of the affinity map')
+        slack_message("ERROR: Bounding box is outside of the affinity map")
+        raise ValueError('Bounding box is outside of the affinity map')
 
     if any(param["RESOLUTION"] != vol.resolution):
         slack_message("Affinity map resolution does not much")
