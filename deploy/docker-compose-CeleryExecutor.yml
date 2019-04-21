@@ -13,7 +13,7 @@ services:
                 constraints: [ engine.labels.infrakit-role == manager ]
 
     postgres:
-        image: mysql:5.7
+        image: mariadb:10.3
         environment:
             - MYSQL_USER=airflow
             - MYSQL_PASSWORD=airflow
@@ -26,7 +26,7 @@ services:
         deploy:
             placement:
                 constraints: [ engine.labels.infrakit-role == database ]
-                command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --range-optimizer-max-mem-size=0 --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout --innodb-buffer-pool-size=100G
+                command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout --innodb-buffer-pool-size=100G
 
     # single shot initialize the database
     init-db:

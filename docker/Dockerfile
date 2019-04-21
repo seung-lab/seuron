@@ -5,11 +5,11 @@
 # SOURCE: https://github.com/wongwill86/air-tasks
 
 ARG BASE_DIST=slim
-ARG BASE_TAG=0.0.6-customAF
+ARG BASE_TAG=0.0.7-customAF
 ARG BASE_TEST=
 
-FROM wongwill86/air-tasks:base-${BASE_DIST}-${BASE_TAG}${BASE_TEST}
-MAINTAINER wongwill86
+FROM ranlu/air-tasks:base-${BASE_DIST}-${BASE_TAG}${BASE_TEST}
+MAINTAINER ranlu
 
 ARG BASE_DIST
 ARG BASE_TAG
@@ -19,26 +19,23 @@ ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
 
 WORKDIR ${AIRFLOW_HOME}
+
 COPY ./setup_airflow.py .
 
 RUN apt-get -y update \
-    && apt-get -y install build-essential libmysqlclient-dev libboost-dev\
-    && git clone https://github.com/wongwill86/incubator-airflow.git --depth 1 -b v1-9-stable-3-scheduler_speed \
+    && apt-get -y install build-essential libmariadbclient-dev libpq-dev libboost-dev\
+    && pip install -U pip \
+    && pip install -U numpy joblib \
+    && pip install -U cloud-volume \
+    && git clone https://github.com/seung-lab/airflow --depth 1 -b v1-9-stable-3-ranl_cherrypick \
+    && git clone https://github.com/seung-lab/igneous --depth 1 \
     # Deleting this symlink not handled correctly by shutil.copy
-    && rm -rf incubator-airflow/airflow/www/static/docs \
-    && mv setup_airflow.py incubator-airflow/setup.py \
-    && pip install incubator-airflow/[crypto,celery,postgres,mysql,slack,gcp_api] \
-    && rm -rf incubator-airflow
-
-RUN pip install -U pip \
-    && pip install -U numpy joblib\
-    && pip install -U cloud-volume
-
-RUN git clone https://github.com/seung-lab/igneous.git --depth 1 \
+    && rm -rf airflow/airflow/www/static/docs \
+    && mv setup_airflow.py airflow/setup.py \
     && pip install igneous/ \
-    && rm -rf igneous
-
-RUN pip install google-resumable-media[requests]
+    && pip install airflow/[crypto,celery,postgres,mysql,slack,gcp_api] \
+    && rm -rf igneous \
+    && rm -rf airflow
 
 # Move base version information directly into airflow home directory
 RUN mkdir -p ${AIRFLOW_HOME}/version
