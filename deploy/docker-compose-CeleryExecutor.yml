@@ -207,6 +207,29 @@ services:
             restart_policy:
                 condition: any
 
+    slackbot:
+        image: ranlu/air-tasks:ranl_upgrade_airflow
+        restart: always
+        depends_on:
+            - init-db
+        volumes:
+            # Warning mounting dags/plugins not working for autoscaler
+            #- ../dags/:/usr/local/airflow/dags
+            #- ../plugins:/usr/local/airflow/plugins
+            #- ../config:/usr/local/airflow/config
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /tmp:/tmp
+        environment:
+            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - SLACK_TOKEN
+            - WORKERID
+        command: python slackbot/slack_bot.py
+        deploy:
+            placement:
+                constraints: [ engine.labels.infrakit-role == manager ]
+            restart_policy:
+                condition: any
+
     proxy:
         image: nginx:1.13.5-alpine
         restart: always
