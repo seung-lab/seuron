@@ -16,7 +16,7 @@ import os
 
 from airflow import configuration as conf
 
-GCS_LOG_FOLDER = 'gs://ranl-scratch/airflow-minnie-logs/'
+GCS_LOG_FOLDER = conf.get('core', 'remote_log_folder')
 
 # TODO: Logging format and level should be configured
 # in this file instead of from airflow.cfg. Currently
