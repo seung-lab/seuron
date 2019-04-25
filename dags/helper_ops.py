@@ -15,6 +15,7 @@ def slack_message_op(dag, tid, msg):
         python_callable=slack_message,
         op_args = (msg,),
         queue="manager",
+        priority_weight=1000,
         dag=dag
     )
 
@@ -23,6 +24,7 @@ def placeholder_op(dag, tid):
     return DummyOperator(
         task_id = "dummy_{}".format(tid),
         dag=dag,
+        priority_weight=1000,
         queue = "manager"
     )
 
@@ -33,6 +35,7 @@ def reset_flags_op(dag, param):
         python_callable=reset_flags,
         op_args=[param,],
         dag=dag,
+        priority_weight=1000,
         queue="manager"
     )
 
@@ -58,6 +61,7 @@ def mark_done_op(dag, var):
         python_callable=set_variable,
         op_args=(var, "yes"),
         dag=dag,
+        priority_weight=1000,
         queue="manager"
     )
 
@@ -79,6 +83,7 @@ def wait_op(dag, var):
         python_callable=wait,
         op_args=(var,),
         dag=dag,
+        priority_weight=1000,
         queue="manager"
     )
 
@@ -103,6 +108,7 @@ def resize_cluster_op(img, dag, stage, connection, size):
         default_args=default_args,
         image=img,
         weight_rule=WeightRule.ABSOLUTE,
+        priority_weight=1000,
         execution_timeout=timedelta(minutes=5),
         trigger_rule=trigger_rule,
         queue='manager',
