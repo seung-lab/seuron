@@ -25,7 +25,7 @@ services:
             - /var/lib/mysql:/var/lib/mysql
         deploy:
             placement:
-                constraints: [ engine.labels.infrakit-role == database ]
+                constraints: [ engine.labels.infrakit-role == manager ]
         command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout --innodb-buffer-pool-size=100G
 
     # single shot initialize the database
