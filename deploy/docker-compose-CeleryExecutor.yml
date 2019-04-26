@@ -30,7 +30,7 @@ services:
 
     # single shot initialize the database
     init-db:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: on-failure
         depends_on:
             - postgres
@@ -54,7 +54,7 @@ services:
                 condition: on-failure
 
     webserver:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
@@ -79,7 +79,7 @@ services:
                 window: 120s
 
     scheduler:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
@@ -100,7 +100,7 @@ services:
                 condition: any
 
     worker-worker:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
@@ -126,7 +126,7 @@ services:
                 condition: any
 
     worker-atomic:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
@@ -153,7 +153,7 @@ services:
                 condition: any
 
     worker-composite:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
@@ -180,7 +180,7 @@ services:
                 condition: any
 
     worker-manager:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
@@ -208,7 +208,7 @@ services:
                 condition: any
 
     slackbot:
-        image: ranlu/air-tasks:ranl_upgrade_airflow
+        image: ranlu/air-tasks:ranl_seungimport
         restart: always
         depends_on:
             - init-db
