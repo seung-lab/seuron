@@ -48,7 +48,11 @@ def confirm_dag_run(context, dag_run_obj):
 
 
 def process_composite_tasks(c, top_mip):
-    if c.mip_level() < batch_mip:
+    local_batch_mip = batch_mip
+    if top_mip < batch_mip:
+        local_batch_mip = top_mip
+
+    if c.mip_level() < local_batch_mip:
         return
 
     short_queue = "atomic"
@@ -58,15 +62,15 @@ def process_composite_tasks(c, top_mip):
 
     top_tag = str(top_mip)+"_0_0_0"
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-    if c.mip_level() > batch_mip:
+    if c.mip_level() > local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image[stage], dag[stage], composite_queue, tag, stage, op)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-    elif c.mip_level() == batch_mip:
+    elif c.mip_level() == local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image[stage], dag[stage], short_queue, batch_mip, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image[stage], dag[stage], short_queue, local_batch_mip, tag, stage, op)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-            remap_chunks[stage][tag]=remap_chunks_batch_op(image["ws"], dag[stage], short_queue, batch_mip, tag, stage, op)
+            remap_chunks[stage][tag]=remap_chunks_batch_op(image["ws"], dag[stage], short_queue, local_batch_mip, tag, stage, op)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
             generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
             init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
@@ -246,9 +250,13 @@ mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
 v = ChunkIterator(data_bbox, chunk_size)
 top_mip = v.top_mip_level()
+local_batch_mip = batch_mip
+
+if top_mip < batch_mip:
+    local_batch_mip = top_mip
 
 for c in v:
-    if c.mip_level() < batch_mip:
+    if c.mip_level() < local_batch_mip:
         break
     else:
         for k in ["ws","agg"]:
@@ -257,7 +265,7 @@ for c in v:
 
             if c.mip_level() not in slack_ops[k]:
                 slack_ops[k][c.mip_level()] = slack_message_op(dag[k], k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
-                if c.mip_level() == batch_mip:
+                if c.mip_level() == local_batch_mip:
                     slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
                     slack_ops[k]["remap"] >> mark_done[k]
         process_composite_tasks(c, top_mip)

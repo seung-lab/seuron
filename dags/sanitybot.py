@@ -93,17 +93,21 @@ def print_summary(param):
     hchunks = 0
     ntasks = 0
     nnodes = 0
+    top_mip = v.top_mip_level()
+    local_batch_mip = batch_mip
+    if top_mip < local_batch_mip:
+        local_batch_mip = top_mip
 
     for c in v:
         mip = c.mip_level()
         if nnodes % 1000 == 0:
             print("{} nodes processed".format(nnodes))
-        if mip < batch_mip:
+        if mip < local_batch_mip:
             break
         else:
             ntasks+=1
             nnodes += 1
-            if mip == batch_mip:
+            if mip == local_batch_mip:
                 bchunks+=1
             elif mip >= high_mip:
                 hchunks+=1
@@ -127,7 +131,7 @@ Agglomeration image: {agg_image}
 Fundamental chunk size: {chunk_size}
 
 {nnodes} nodes in the octree
-{bchunks} bundle chunks at mip level {batch_mip}
+{bchunks} bundle chunks at mip level {local_batch_mip}
 {hchunks} chunks at mip level {high_mip} and above
 {ntasks} tasks in total
 '''.format(
@@ -145,7 +149,7 @@ Fundamental chunk size: {chunk_size}
         chunk_size = param["CHUNK_SIZE"],
         nnodes = nnodes,
         bchunks = bchunks,
-        batch_mip = batch_mip,
+        local_batch_mip = local_batch_mip,
         hchunks = hchunks,
         high_mip = high_mip,
         ntasks = ntasks
