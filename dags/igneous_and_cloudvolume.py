@@ -86,6 +86,14 @@ def downsample_and_mesh(param):
         slack_message(":exclamation: Skip downsample and mesh as instructed")
         return
 
+    try:
+        os.environ['AWS_ACCESS_KEY_ID'] = BaseHook.get_connection(AWS_CONN_ID).login
+        os.environ['AWS_SECRET_ACCESS_KEY'] = BaseHook.get_connection(AWS_CONN_ID).password
+        url = BaseHook.get_connection(AWS_CONN_ID).host
+    except:
+        slack_message(":exclamation: Incorrect AWS SQS settings, cannot downsample or mesh")
+        return
+
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
@@ -100,21 +108,20 @@ def downsample_and_mesh(param):
     seg_cloudpath = param["SEG_PATH"]
 
     try:
-        os.environ['AWS_ACCESS_KEY_ID'] = BaseHook.get_connection(AWS_CONN_ID).login
-        os.environ['AWS_SECRET_ACCESS_KEY'] = BaseHook.get_connection(AWS_CONN_ID).password
-        url = BaseHook.get_connection(AWS_CONN_ID).host
-
         mesh_mip = 3 - int(param["AFF_MIP"])
         #cube_dim = 512//(2**(mesh_mip+1))
 
         with TaskQueue(url, queue_server='sqs') as tq:
-            tc.create_downsampling_tasks(tq, seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+            tq.insert_all(tasks)
             check_queue(tq)
             slack_message(":arrow_forward: Downsampled")
-            tc.create_meshing_tasks(tq, seg_cloudpath, mip=mesh_mip, shape=Vec(256, 256, 256))
+            tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, shape=Vec(256, 256, 256))
+            tq.insert_all(tasks)
             check_queue(tq)
             slack_message(":arrow_forward: Meshed")
-            tc.create_mesh_manifest_tasks(tq, seg_cloudpath, magnitude=2)
+            tasks = tc.create_mesh_manifest_tasks(seg_cloudpath, magnitude=2)
+            tq.insert_all(tasks)
             check_queue(tq)
             slack_message(":arrow_forward: Manifest genrated")
             #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
