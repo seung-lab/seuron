@@ -66,7 +66,6 @@ RUN cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
 
 WORKDIR /usr/local/lib/python3.6/site-packages/
 
-RUN patch -p1 < ${AIRFLOW_HOME}/airflow.patch
 RUN patch -p1 < ${AIRFLOW_HOME}/celery.patch
 
 USER ${AIRFLOW_USER}
