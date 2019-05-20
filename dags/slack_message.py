@@ -25,8 +25,7 @@ def slack_message(msg, channel=None):
             message=msg
         )
 
-    rc = sc.api_call(
-        "chat.postMessage",
+    rc = sc.chat_postMessage(
         username=slack_workername,
         channel=slack_channel,
         text=text
@@ -43,8 +42,7 @@ def slack_userinfo():
         return None
 
     sc = WebClient(slack_token, timeout=600)
-    rc = sc.api_call(
-        "users.info",
+    rc = sc.users_info(
         user=slack_username
     )
     if rc["ok"]:
