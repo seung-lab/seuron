@@ -1,5 +1,5 @@
 from airflow.hooks.base_hook import BaseHook
-from slackclient import SlackClient
+from slack import WebClient
 from param_default import SLACK_CONN_ID
 
 def slack_message(msg, channel=None):
@@ -11,7 +11,7 @@ def slack_message(msg, channel=None):
     except:
         return
 
-    sc = SlackClient(slack_token)
+    sc = WebClient(slack_token, timeout=300)
 
     text="<@{username}>, {message}".format(
         username=slack_username,
@@ -42,7 +42,7 @@ def slack_userinfo():
     except:
         return None
 
-    sc = SlackClient(slack_token)
+    sc = WebClient(slack_token, timeout=600)
     rc = sc.api_call(
         "users.info",
         user=slack_username
