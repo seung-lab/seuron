@@ -27,7 +27,7 @@ RUN apt-get -y update \
     && pip install -U pip \
     && pip install -U numpy joblib \
     && pip install -U cloud-volume \
-    && git clone https://github.com/seung-lab/airflow --depth 1 -b v1-9-stable-3-ranl_cherrypick \
+    && git clone https://github.com/seung-lab/airflow --depth 1 -b v1-9-stable-3-ranl_seuronbot \
     && git clone https://github.com/seung-lab/igneous --depth 1 \
     # Deleting this symlink not handled correctly by shutil.copy
     && rm -rf airflow/airflow/www/static/docs \
