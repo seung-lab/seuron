@@ -2,8 +2,6 @@ version: '3.3'
 services:
     rabbitmq:
         image: rabbitmq:3.6.12-management-alpine
-        environment:
-            - RABBITMQ_ERLANG_COOKIE=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
         volumes:
             - /var/lib:/var/lib
         ports:
