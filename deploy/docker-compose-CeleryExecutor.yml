@@ -30,13 +30,13 @@ services:
 
     # single shot initialize the database
     init-db:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: on-failure
         depends_on:
             - postgres
             - rabbitmq
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -54,13 +54,13 @@ services:
                 condition: on-failure
 
     webserver:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
             - rabbitmq
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -79,7 +79,7 @@ services:
                 window: 120s
 
     scheduler:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
@@ -91,7 +91,7 @@ services:
             #- ../config:/usr/local/airflow/config
             - /var/run/docker.sock:/var/run/docker.sock
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
         command: airflow scheduler
         deploy:
             placement:
@@ -100,7 +100,7 @@ services:
                 condition: any
 
     worker-worker:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
@@ -113,7 +113,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -126,7 +126,7 @@ services:
                 condition: any
 
     worker-atomic:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
@@ -139,7 +139,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -153,7 +153,7 @@ services:
                 condition: any
 
     worker-composite:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
@@ -166,7 +166,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -180,7 +180,7 @@ services:
                 condition: any
 
     worker-manager:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
@@ -193,7 +193,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -208,7 +208,7 @@ services:
                 condition: any
 
     slackbot:
-        image: ranlu/air-tasks:ranl_seungimport
+        image: ranlu/air-tasks:ranl_testing
         restart: always
         depends_on:
             - init-db
@@ -220,7 +220,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY=Z3jDcE-i0gRc7-A0ETMDUxd1MuL3Ye0tVcdDl5zmnec=
+            - FERNET_KEY
             - SLACK_TOKEN
             - WORKERID
         command: python slackbot/slack_bot.py
