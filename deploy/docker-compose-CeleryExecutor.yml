@@ -15,10 +15,10 @@ services:
     postgres:
         image: mariadb:10.3
         environment:
-            - MYSQL_USER=airflow
-            - MYSQL_PASSWORD=airflow
-            - MYSQL_DATABASE=airflow
-            - MYSQL_ROOT_PASSWORD=root_password
+            - MYSQL_USER
+            - MYSQL_PASSWORD
+            - MYSQL_DATABASE
+            - MYSQL_ROOT_PASSWORD
         ports:
             - "3306:3306"
         volumes:
