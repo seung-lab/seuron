@@ -51,6 +51,29 @@ services:
             restart_policy:
                 condition: on-failure
 
+    init-seuronbot:
+        image: ranlu/air-tasks:${SEURON_TAG}
+        restart: on-failure
+        depends_on:
+            - init-db
+        environment:
+            - FERNET_KEY
+        volumes:
+            # Warning mounting dags/plugins not working for autoscaler
+            #- ../dags/:/usr/local/airflow/dags
+            #- ../plugins:/usr/local/airflow/plugins
+            #- ../config:/usr/local/airflow/config
+            - /var/run/docker.sock:/var/run/docker.sock
+        #ports:
+            #- "8080:8080"
+        command: airflow init_seuronbot
+        deploy:
+            placement:
+                constraints: [ engine.labels.infrakit-role == manager ]
+        deploy:
+            restart_policy:
+                condition: on-failure
+
     webserver:
         image: ranlu/air-tasks:${SEURON_TAG}
         restart: always
