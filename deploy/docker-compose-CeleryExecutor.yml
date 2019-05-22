@@ -48,7 +48,7 @@ services:
         command: airflow upgradedb
         deploy:
             placement:
-                constraints: [ engine.labels.infrakit-role == database ]
+                constraints: [ engine.labels.infrakit-role == manager ]
         deploy:
             restart_policy:
                 condition: on-failure
