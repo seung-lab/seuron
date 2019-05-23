@@ -38,6 +38,11 @@ def path_exist_alert(context):
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
+def affinity_check_alert(context):
+    msg = "Cannot check the affinity, do you have the correct secret files?"
+    slack_msg = slack_message_op(dag, "slack_message", msg)
+    return slack_msg.execute(context=context)
+
 def check_affinitymap(param):
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
@@ -180,6 +185,7 @@ affinity_check = PythonOperator(
     task_id="check_task_status",
     python_callable=check_affinitymap,
     op_args = (param,),
+    on_failure_callback=affinity_check_alert,
     queue="manager",
     dag=dag)
 
