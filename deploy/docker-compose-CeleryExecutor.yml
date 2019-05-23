@@ -35,6 +35,7 @@ services:
             - rabbitmq
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -58,6 +59,7 @@ services:
             - init-db
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -82,6 +84,7 @@ services:
             - rabbitmq
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -113,6 +116,7 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
         command: airflow scheduler
         deploy:
             placement:
@@ -135,6 +139,7 @@ services:
             - /tmp:/tmp
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -161,6 +166,7 @@ services:
             - /tmp:/tmp
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -188,6 +194,7 @@ services:
             - /tmp:/tmp
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -215,6 +222,7 @@ services:
             - /tmp:/tmp
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
             - AWS_ACCESS_KEY_ID
             - AWS_SECRET_ACCESS_KEY
             - AWS_DEFAULT_REGION
@@ -242,6 +250,7 @@ services:
             - /tmp:/tmp
         environment:
             - FERNET_KEY
+            - REMOTE_LOG_FOLDER
             - SLACK_TOKEN
             - WORKERID
         command: python slackbot/slack_bot.py
