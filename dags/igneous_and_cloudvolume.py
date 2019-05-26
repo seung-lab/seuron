@@ -116,6 +116,10 @@ def downsample_and_mesh(param):
             tq.insert_all(tasks)
             check_queue(tq)
             slack_message(":arrow_forward: Downsampled")
+            vol = CloudVolume(seg_cloudpath)
+            if mesh_mip not in vol.available_mips:
+                mesh_mip = max(vol.available_mips)
+            slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
             tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, shape=Vec(256, 256, 256))
             tq.insert_all(tasks)
             check_queue(tq)
