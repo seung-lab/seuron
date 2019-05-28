@@ -99,8 +99,6 @@ services:
                 constraints: [ engine.labels.infrakit-role == manager ]
             restart_policy:
                 condition: any
-                delay: 10m
-                window: 120s
 
     scheduler:
         image: ranlu/air-tasks:${SEURON_TAG}
