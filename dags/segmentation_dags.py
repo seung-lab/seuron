@@ -14,6 +14,43 @@ from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_o
 from param_default import param_default, batch_mip, high_mip, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job
 import numpy as np
+import json
+import urllib
+from collections import OrderedDict
+
+
+def generate_link(param):
+    ng_host = "https://neuromancer-seung-import.appspot.com"
+    layers = OrderedDict()
+    if "IMAGE_PATH" in param:
+        layers["img"] = {
+            "source": "precomputed://"+param["IMAGE_PATH"],
+            "type": "image"
+        }
+
+    layers["aff"] = {
+        "source": "precomputed://"+param["AFF_PATH"],
+        "type": "image",
+        "visible": False
+    }
+
+    layers["ws"] = {
+        "source": "precomputed://"+param["WS_PATH"],
+        "type": "segmentation",
+        "visible": False
+    }
+
+    layers["seg"] = {
+        "source": "precomputed://"+param["SEG_PATH"],
+        "type": "segmentation"
+    }
+
+    payload = OrderedDict([("layers", layers),("showSlices", False),("layout", "xy-3d")])
+
+    url = "neuroglancer link: {host}/#!{payload}".format(
+        host=ng_host,
+        payload=urllib.parse.quote(json.dumps(payload)))
+    slack_message(url)
 
 
 dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None)
@@ -291,7 +328,16 @@ igneous_task = PythonOperator(
     queue = "manager"
 )
 
-starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> slack_scaling_global_finish >> igneous_task >> ending_op
+nglink_task = PythonOperator(
+    task_id = "Generate_neuroglancer_link",
+    python_callable=generate_link,
+    op_args = [param,],
+    default_args=default_args,
+    dag=dag_manager,
+    queue = "manager"
+)
+
+starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> slack_scaling_global_finish >> igneous_task >> nglink_task >> ending_op
 scaling_global_finish >> check_seg
 if real_size > 0 and top_mip >= high_mip:
     for stage in ["ws", "agg"]:
