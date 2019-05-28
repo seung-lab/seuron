@@ -16,8 +16,7 @@ param_default = {
     "WS_SIZE_THRESHOLD":"200",
 
     "AGG_THRESHOLD":"0.25",
-    "WS_IMAGE":"ranlu/watershed:ranl_minnie_test",
-    "AGG_IMAGE":"ranlu/agglomeration:ranl_minnie_test",
+    "WORKER_IMAGE":"ranlu/segmentation:ranl_testing",
     "BBOX": [126280, 64280, 20826, 129020, 129020, 20993],
     "RESOLUTION": [8,8,40],
     "CHUNK_SIZE": [512, 512, 128],

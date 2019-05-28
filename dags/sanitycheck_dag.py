@@ -80,7 +80,7 @@ def check_path_exists_op(dag, tag, path):
         task_id='check_path_{}'.format(tag.replace("PREFIX", "PATH")),
         command=cmdline,
         default_args=default_args,
-        image=param["WS_IMAGE"],
+        image=param["WORKER_IMAGE"],
         weight_rule=WeightRule.ABSOLUTE,
         execution_timeout=timedelta(minutes=5),
         on_failure_callback=path_exist_alert,
@@ -132,8 +132,7 @@ Segmentation: `{seg}`
 Region graph and friends: `{scratch}`
 Watershed parameters: {ws_param}
 Agglomeration threshold: {agg_threshold}
-Watershed image: {ws_image}
-Agglomeration image: {agg_image}
+Worker image: {worker_image}
 Fundamental chunk size: {chunk_size}
 
 {nnodes} nodes in the octree
@@ -150,8 +149,7 @@ Fundamental chunk size: {chunk_size}
         scratch = param["SCRATCH_PATH"],
         ws_param = "(high: {}, low: {}, size: {})".format(param["WS_HIGH_THRESHOLD"], param["WS_LOW_THRESHOLD"], param["WS_SIZE_THRESHOLD"]),
         agg_threshold = param["AGG_THRESHOLD"],
-        ws_image = param["WS_IMAGE"],
-        agg_image = param["AGG_IMAGE"],
+        worker_image = param["WORKER_IMAGE"],
         chunk_size = param["CHUNK_SIZE"],
         nnodes = nnodes,
         bchunks = bchunks,
