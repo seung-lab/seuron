@@ -60,7 +60,7 @@ services:
         environment:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
-        volumes:
+        #volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
             #- ../plugins:/usr/local/airflow/plugins
