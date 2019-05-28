@@ -38,6 +38,12 @@ def path_exist_alert(context):
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
+def task_done_alert(context):
+    msg = "succeeded: {}".format(context.get('task_instance').task_id)
+    slack_msg = slack_message_op(dag, "slack_message", msg)
+    return slack_msg.execute(context=context)
+
+
 def affinity_check_alert(context):
     msg = "Cannot check the affinity, do you have the correct secret files?"
     slack_msg = slack_message_op(dag, "slack_message", msg)
@@ -84,6 +90,7 @@ def check_path_exists_op(dag, tag, path):
         weight_rule=WeightRule.ABSOLUTE,
         execution_timeout=timedelta(minutes=5),
         on_failure_callback=path_exist_alert,
+        on_success_callback=task_done_alert,
         queue='manager',
         dag=dag
     )
@@ -181,10 +188,11 @@ for p in [("WS","WS"), ("AGG","SEG")]:
 
 
 affinity_check = PythonOperator(
-    task_id="check_task_status",
+    task_id="check_affinity_layer",
     python_callable=check_affinitymap,
     op_args = (param,),
     on_failure_callback=affinity_check_alert,
+    on_success_callback=task_done_alert,
     queue="manager",
     dag=dag)
 
