@@ -45,10 +45,7 @@ CLUSTER_2_CONN_ID = "InstanceGroup2"
 
 
 cv_path = "/root/.cloudvolume/secrets/"
-config_file = "param"
 cmd_proto = '/bin/bash -c "mkdir $AIRFLOW_TMP_DIR/work && cd $AIRFLOW_TMP_DIR/work && {} && rm -rf $AIRFLOW_TMP_DIR/work || {{ rm -rf $AIRFLOW_TMP_DIR/work; exit 111; }}"'
-config_mounts = ['neuroglancer-google-secret.json', 'google-secret.json', config_file]
-
 
 cv_chunk_size=[128,128,16]
 batch_mip = 3

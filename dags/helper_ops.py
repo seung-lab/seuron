@@ -7,7 +7,7 @@ from airflow.models import Variable
 from datetime import timedelta
 from time import sleep
 from slack_message import slack_message
-from param_default import default_args, cv_path, config_mounts
+from param_default import default_args, cv_path
 
 def slack_message_op(dag, tid, msg):
     return PythonOperator(
@@ -88,7 +88,7 @@ def wait_op(dag, var):
     )
 
 
-def resize_cluster_op(img, dag, stage, connection, size):
+def resize_cluster_op(img, dag, config_mounts, stage, connection, size):
     try:
         zone = BaseHook.get_connection(connection).login
         cluster = BaseHook.get_connection(connection).host

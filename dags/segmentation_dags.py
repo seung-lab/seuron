@@ -47,7 +47,7 @@ def confirm_dag_run(context, dag_run_obj):
         return dag_run_obj
 
 
-def process_composite_tasks(c, top_mip):
+def process_composite_tasks(c, cm, top_mip):
     local_batch_mip = batch_mip
     if top_mip < batch_mip:
         local_batch_mip = top_mip
@@ -64,13 +64,13 @@ def process_composite_tasks(c, top_mip):
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
     if c.mip_level() > local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image[stage], dag[stage], composite_queue, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image[stage], dag[stage], cm, composite_queue, tag, stage, op)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
     elif c.mip_level() == local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image[stage], dag[stage], short_queue, local_batch_mip, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image[stage], dag[stage], cm, short_queue, local_batch_mip, tag, stage, op)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-            remap_chunks[stage][tag]=remap_chunks_batch_op(image["ws"], dag[stage], short_queue, local_batch_mip, tag, stage, op)
+            remap_chunks[stage][tag]=remap_chunks_batch_op(image["ws"], dag[stage], cm, short_queue, local_batch_mip, tag, stage, op)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
             generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
             init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
@@ -252,6 +252,10 @@ v = ChunkIterator(data_bbox, chunk_size)
 top_mip = v.top_mip_level()
 local_batch_mip = batch_mip
 
+cm = ["param"]
+if "MOUNT_SECRETES" in param:
+    cm += param["MOUNT_SECRETES"]
+
 if top_mip < batch_mip:
     local_batch_mip = top_mip
 
@@ -268,15 +272,15 @@ for c in v:
                 if c.mip_level() == local_batch_mip:
                     slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
                     slack_ops[k]["remap"] >> mark_done[k]
-        process_composite_tasks(c, top_mip)
+        process_composite_tasks(c, cm, top_mip)
 
 cluster1_size = len(remap_chunks["ws"])
 
-real_size, scaling_global_start = resize_cluster_op(image["ws"], dag_manager, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
+real_size, scaling_global_start = resize_cluster_op(image["ws"], dag_manager, cm, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
 
 slack_scaling_global_start = slack_message_op(dag_manager, "scaling_up_global_start", no_rescale_msg) if real_size == -1 else slack_message_op(dag_manager, "scaling_up_global_start", rescale_message.format(1, real_size))
 
-_, scaling_global_finish = resize_cluster_op(image["ws"], dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0)
+_, scaling_global_finish = resize_cluster_op(image["ws"], dag_manager, cm, "global_finish", CLUSTER_1_CONN_ID, 0)
 slack_scaling_global_finish = slack_message_op(dag_manager, "scaling_down_global_finish", rescale_message.format(1, 0))
 
 igneous_task = PythonOperator(
@@ -293,11 +297,11 @@ starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start
 scaling_global_finish >> check_seg
 if real_size > 0 and top_mip >= high_mip:
     for stage in ["ws", "agg"]:
-        _, scaling_ops[stage]["down"] = resize_cluster_op(image["ws"], dag[stage], stage, CLUSTER_1_CONN_ID, 0)
+        _, scaling_ops[stage]["down"] = resize_cluster_op(image["ws"], dag[stage], cm, stage, CLUSTER_1_CONN_ID, 0)
         slack_ops[stage]["down"]= slack_message_op(dag[stage], "scaling_down_{}".format(stage), rescale_message.format(1,0))
         scaling_ops[stage]["down"].set_downstream(slack_ops[stage]["down"])
 
-        _, scaling_ops[stage]["up"] = resize_cluster_op(image["ws"], dag[stage], stage, CLUSTER_1_CONN_ID, cluster1_size)
+        _, scaling_ops[stage]["up"] = resize_cluster_op(image["ws"], dag[stage], cm, stage, CLUSTER_1_CONN_ID, cluster1_size)
         slack_ops[stage]["up"]= slack_message_op(dag[stage], "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
         scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
 
@@ -306,7 +310,7 @@ if real_size > 0 and top_mip >= high_mip:
 
         cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
 
-        real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(image["ws"], dag[stage], stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
+        real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(image["ws"], dag[stage], cm, stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
 
         for k in generate_chunks[stage][high_mip-1]:
             scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
@@ -319,7 +323,7 @@ if real_size > 0 and top_mip >= high_mip:
         scaling_ops[stage]["up_long"].set_downstream(slack_ops[stage]["up_long"])
 
         if real_size2 != -1:
-            real_size2, scaling_ops[stage]["down_long"] = resize_cluster_op(image["ws"], dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0)
+            real_size2, scaling_ops[stage]["down_long"] = resize_cluster_op(image["ws"], dag[stage], cm, stage+"_long", CLUSTER_2_CONN_ID, 0)
             slack_ops[stage]["down_long"] = slack_message_op(dag[stage], "scaling_down_{}_long".format(stage), rescale_message.format(2, 0))
             scaling_ops[stage]["down_long"].set_downstream(slack_ops[stage]["down_long"])
             scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])

@@ -1,11 +1,11 @@
 from airflow.operators.docker_plugin import DockerWithVariablesOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import timedelta
-from param_default import default_args, cv_path, config_mounts, cmd_proto
+from param_default import default_args, cv_path, cmd_proto
 from slack_message import task_retry_alert
 
 
-def composite_chunks_wrap_op(img, dag, queue, tag, stage, op):
+def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op):
     cmdlist = "export STAGE={} && /root/{}/scripts/run_wrapper.sh . composite_chunk_{} {}".format(stage, stage, op, tag)
 
     return DockerWithVariablesOperator(
@@ -23,7 +23,7 @@ def composite_chunks_wrap_op(img, dag, queue, tag, stage, op):
     )
 
 
-def composite_chunks_batch_op(img, dag, queue, mip, tag, stage, op):
+def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op):
     cmdlist = "export STAGE={} && /root/{}/scripts/run_batch.sh {} {} {}".format(stage, stage, op, mip, tag)
 
     return DockerWithVariablesOperator(
@@ -41,7 +41,7 @@ def composite_chunks_batch_op(img, dag, queue, mip, tag, stage, op):
     )
 
 
-def remap_chunks_batch_op(img, dag, queue, mip, tag, stage, op):
+def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op):
     cmdlist = "export STAGE={} && /root/ws/scripts/remap_batch.sh {} {} {}".format(stage, stage, mip, tag)
     return DockerWithVariablesOperator(
         config_mounts,

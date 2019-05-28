@@ -48,8 +48,9 @@ def check_affinitymap(param):
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
+    mount_secrets = param.get("MOUNT_SECRETES", [])
 
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
+    for k in mount_secrets:
         v = Variable.get(k)
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
@@ -69,7 +70,7 @@ def check_affinitymap(param):
         slack_message("Affinity map resolution does not much")
         raise ValueError('Affinity map resolution does not much')
 
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
+    for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
 
 def check_path_exists_op(dag, tag, path):

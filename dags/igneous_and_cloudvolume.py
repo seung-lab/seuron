@@ -17,8 +17,9 @@ def create_info(stage, param):
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
+    mount_secrets = param.get("MOUNT_SECRETES", [])
 
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
+    for k in mount_secrets:
         v = Variable.get(k)
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
@@ -47,7 +48,7 @@ def create_info(stage, param):
     })
     vol.commit_provenance()
 
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
+    for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
 
 
@@ -98,8 +99,9 @@ def downsample_and_mesh(param):
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
+    mount_secrets = param.get("MOUNT_SECRETES", [])
 
-    for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
+    for k in mount_secrets:
         v = Variable.get(k)
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
@@ -134,7 +136,7 @@ def downsample_and_mesh(param):
         slack_message(":exclamation: Incorrect AWS SQS settings, cannot downsample or mesh")
         return
     finally:
-        for k in ['neuroglancer-google-secret.json', 'google-secret.json']:
+        for k in mount_secrets:
             os.remove(os.path.join(cv_secrets_path, k))
 
 
