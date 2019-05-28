@@ -65,10 +65,10 @@ services:
             #- ../dags/:/usr/local/airflow/dags
             #- ../plugins:/usr/local/airflow/plugins
             #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
+            #- /var/run/docker.sock:/var/run/docker.sock
         #ports:
             #- "8080:8080"
-        command: airflow init_seuronbot
+        command: python pipeline/init_pipeline.py
         deploy:
             placement:
                 constraints: [ engine.labels.infrakit-role == manager ]
