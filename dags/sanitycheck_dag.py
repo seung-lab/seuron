@@ -39,7 +39,7 @@ def path_exist_alert(context):
     return slack_msg.execute(context=context)
 
 def task_done_alert(context):
-    msg = "succeeded: {}".format(context.get('task_instance').task_id)
+    msg = "{} passed".format(context.get('task_instance').task_id)
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
