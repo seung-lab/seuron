@@ -45,7 +45,24 @@ def generate_link(param):
         "type": "segmentation"
     }
 
-    payload = OrderedDict([("layers", layers),("showSlices", False),("layout", "xy-3d")])
+    ng_resolution = param.get('NG_RESOLUTION', [4,4,40])
+    seg_resolution = param["RESOLUTION"]
+    bbox = param["BBOX"]
+
+    scale = [seg_resolution[i]/ng_resolution[i] for i in range(3)]
+    center = [(bbox[i]+bbox[i+3])/2*scale[i] for i in range(3)]
+
+    navigation = {
+        "pose": {
+            "position": {
+                "voxelSize": ng_resolution,
+                "voxelCoordinates": center
+            }
+        },
+        "zoomFactor": 4
+    }
+
+    payload = OrderedDict([("layers", layers),("navigation", navigation),("showSlices", False),("layout", "xy-3d")])
 
     url = "neuroglancer link: {host}/#!{payload}".format(
         host=ng_host,
