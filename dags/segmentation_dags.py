@@ -354,8 +354,8 @@ nglink_task = PythonOperator(
     queue = "manager"
 )
 
-starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> slack_scaling_global_finish >> igneous_task >> nglink_task >> ending_op
-scaling_global_finish >> check_seg
+starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> scaling_global_finish >> slack_scaling_global_finish >> nglink_task >> ending_op
+wait["agg"] >> check_seg
 if real_size > 0 and top_mip >= high_mip:
     for stage in ["ws", "agg"]:
         _, scaling_ops[stage]["down"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, 0)

@@ -1,16 +1,12 @@
 from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
 from cloudvolume import CloudVolume, Storage
-from taskqueue import TaskQueue
 from cloudvolume.lib import Vec
-import igneous.task_creation as tc
 import os
+import requests
 from time import sleep, strftime
-from chunk_iterator import ChunkIterator
 
-from param_default import cv_chunk_size, AWS_CONN_ID
+from param_default import cv_chunk_size
 from slack_message import slack_message, slack_userinfo
-
 
 def create_info(stage, param):
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
@@ -67,12 +63,16 @@ def get_info_job(v, param):
 #        return None
 
 
-def check_queue(tq):
-    totalTries = 5
+def check_queue(queue):
+    totalTries = 2
     nTries = totalTries
     while True:
-        sleep(20)
-        nTasks = tq.enqueued
+        sleep(5)
+        ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
+        if not ret.ok:
+            raise RuntimeError("Cannot connect to rabbitmq management interface")
+        queue_status = ret.json()
+        nTasks = queue_status["messages"]
         print("Tasks left: {}".format(nTasks))
         if nTasks == 0:
             nTries -= 1
@@ -83,17 +83,19 @@ def check_queue(tq):
 
 
 def downsample_and_mesh(param):
+    import igneous.task_creation as tc
+    from igneous.tasks import MeshManifestTask
+    from airflow import configuration
+    from kombu import Connection
+    from chunk_iterator import ChunkIterator
+    from os.path import commonprefix
+
+    #Reuse the broker of celery
     if param["SKIP_DM"]:
         slack_message(":exclamation: Skip downsample and mesh as instructed")
         return
 
-    try:
-        os.environ['AWS_ACCESS_KEY_ID'] = BaseHook.get_connection(AWS_CONN_ID).login
-        os.environ['AWS_SECRET_ACCESS_KEY'] = BaseHook.get_connection(AWS_CONN_ID).password
-        url = BaseHook.get_connection(AWS_CONN_ID).host
-    except:
-        slack_message(":exclamation: Incorrect AWS SQS settings, cannot downsample or mesh")
-        return
+    broker = configuration.get('celery', 'BROKER_URL')
 
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
@@ -109,34 +111,55 @@ def downsample_and_mesh(param):
 
     seg_cloudpath = param["SEG_PATH"]
 
-    try:
-        mesh_mip = 3 - int(param["AFF_MIP"])
-        #cube_dim = 512//(2**(mesh_mip+1))
+    mesh_mip = 3 - int(param["AFF_MIP"])
+    #cube_dim = 512//(2**(mesh_mip+1))
 
-        with TaskQueue(url, queue_server='sqs') as tq:
-            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-            tq.insert_all(tasks)
-            check_queue(tq)
-            slack_message(":arrow_forward: Downsampled")
-            vol = CloudVolume(seg_cloudpath)
-            if mesh_mip not in vol.available_mips:
-                mesh_mip = max(vol.available_mips)
-            slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
-            tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, shape=Vec(256, 256, 256))
-            tq.insert_all(tasks)
-            check_queue(tq)
-            slack_message(":arrow_forward: Meshed")
-            tasks = tc.create_mesh_manifest_tasks(seg_cloudpath, magnitude=2)
-            tq.insert_all(tasks)
-            check_queue(tq)
-            slack_message(":arrow_forward: Manifest genrated")
-            #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
-            #check_queue(tq)
-    except:
-        slack_message(":exclamation: Incorrect AWS SQS settings, cannot downsample or mesh")
-        return
-    finally:
-        for k in mount_secrets:
-            os.remove(os.path.join(cv_secrets_path, k))
+    with Connection(broker) as conn:
+        queue = conn.SimpleQueue("igneous")
+        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+        for t in tasks:
+            queue.put(t.payload())
+        check_queue("igneous")
+        slack_message(":arrow_forward: Downsampled")
+        vol = CloudVolume(seg_cloudpath)
+        if mesh_mip not in vol.available_mips:
+            mesh_mip = max(vol.available_mips)
+        slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
+        tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, shape=Vec(256, 256, 256))
+        for t in tasks:
+            queue.put(t.payload())
+        check_queue("igneous")
+        slack_message(":arrow_forward: Meshed")
+
+        #FIXME: should reuse the function in segmentation scripts
+        layer = 1
+        bits_per_dim = 10
+        n_bits_for_layer_id = 8
+
+        layer_offset = 64 - n_bits_for_layer_id
+        x_offset = layer_offset - bits_per_dim
+        y_offset = x_offset - bits_per_dim
+        z_offset = y_offset - bits_per_dim
+
+        chunk_voxels = 1 << (64-n_bits_for_layer_id-bits_per_dim*3)
+
+        v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
+
+        for c in v:
+            if c.mip_level() == 0:
+                x, y, z = c.coordinate()
+                min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
+                max_id = min_id + chunk_voxels
+                prefix = commonprefix([str(min_id), str(max_id)])
+                if len(prefix) == 0:
+                    raise NotImplementedError("No common prefix, need to split the range")
+                t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(prefix))
+                queue.put(t.payload())
+
+        check_queue("igneous")
+        slack_message(":arrow_forward: Manifest genrated")
+        queue.close()
+        #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
+        #check_queue(tq)
 
 
