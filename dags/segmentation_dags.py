@@ -11,7 +11,7 @@ from slack_message import slack_message, task_start_alert, task_done_alert
 from segmentation_op import composite_chunks_batch_op, composite_chunks_wrap_op, remap_chunks_batch_op
 from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_op, reset_flags_op
 
-from param_default import param_default, batch_mip, high_mip, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
+from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, dataset_resolution
 import numpy as np
 import json
@@ -100,7 +100,7 @@ def confirm_dag_run(context, dag_run_obj):
         return dag_run_obj
 
 
-def process_composite_tasks(c, cm, top_mip):
+def process_composite_tasks(c, cm, top_mip, params):
     local_batch_mip = batch_mip
     if top_mip < batch_mip:
         local_batch_mip = top_mip
@@ -117,13 +117,13 @@ def process_composite_tasks(c, cm, top_mip):
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
     if c.mip_level() > local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
     elif c.mip_level() == local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-            remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op)
+            remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
             generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
             init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
@@ -303,7 +303,9 @@ mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
 v = ChunkIterator(data_bbox, chunk_size)
 top_mip = v.top_mip_level()
-local_batch_mip = batch_mip
+batch_mip = param["BATCH_MIP"]
+high_mip = param["HIGH_MIP"]
+local_batch_mip = param["BATCH_MIP"]
 
 cm = ["param"]
 if "MOUNT_SECRETES" in param:
@@ -325,7 +327,7 @@ for c in v:
                 if c.mip_level() == local_batch_mip:
                     slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
                     slack_ops[k]["remap"] >> mark_done[k]
-        process_composite_tasks(c, cm, top_mip)
+        process_composite_tasks(c, cm, top_mip, param)
 
 cluster1_size = len(remap_chunks["ws"])
 

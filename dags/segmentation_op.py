@@ -5,7 +5,7 @@ from param_default import default_args, cv_path, cmd_proto
 from slack_message import task_retry_alert
 
 
-def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op):
+def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op, params):
     cmdlist = "export STAGE={} && /root/seg/scripts/run_wrapper.sh . composite_chunk_{} {}".format(stage, op, tag)
 
     return DockerWithVariablesOperator(
@@ -17,13 +17,13 @@ def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op):
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=11520),
+        execution_timeout=timedelta(minutes=params.get("HIGH_MIP_TIMEOUT", 120)),
         queue=queue,
         dag=dag
     )
 
 
-def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op):
+def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op, params):
     cmdlist = "export STAGE={} && /root/seg/scripts/run_batch.sh {} {} {}".format(stage, op, mip, tag)
 
     return DockerWithVariablesOperator(
@@ -35,13 +35,13 @@ def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, o
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=180),
+        execution_timeout=timedelta(minutes=params.get("BATCH_MIP_TIMEOUT", 30)),
         queue=queue,
         dag=dag
     )
 
 
-def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op):
+def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op, params):
     cmdlist = "export STAGE={} && /root/seg/scripts/remap_batch.sh {} {} {}".format(stage, stage, mip, tag)
     return DockerWithVariablesOperator(
         config_mounts,
@@ -52,7 +52,7 @@ def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op):
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=180),
+        execution_timeout=timedelta(minutes=params.get("REMAP_TIMEOUT", 30)),
         queue=queue,
         dag=dag
     )

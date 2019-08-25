@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
-from param_default import param_default,high_mip,batch_mip
+from param_default import param_default
 import os
 
 from chunk_iterator import ChunkIterator
@@ -103,7 +103,7 @@ def print_summary(param):
     ntasks = 0
     nnodes = 0
     top_mip = v.top_mip_level()
-    local_batch_mip = batch_mip
+    local_batch_mip = param["BATCH_MIP"]
     if top_mip < local_batch_mip:
         local_batch_mip = top_mip
 
@@ -118,7 +118,7 @@ def print_summary(param):
             nnodes += 1
             if mip == local_batch_mip:
                 bchunks+=1
-            elif mip >= high_mip:
+            elif mip >= param["HIGH_MIP"]:
                 hchunks+=1
     ntasks += bchunks
     ntasks *= 2
@@ -158,7 +158,7 @@ Fundamental chunk size: {chunk_size}
         bchunks = bchunks,
         local_batch_mip = local_batch_mip,
         hchunks = hchunks,
-        high_mip = high_mip,
+        high_mip = param["HIGH_MIP"],
         ntasks = ntasks
     )
 
