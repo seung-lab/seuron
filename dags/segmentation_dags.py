@@ -8,7 +8,7 @@ from airflow.models import Variable
 from chunk_iterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert
-from segmentation_op import composite_chunks_batch_op, composite_chunks_wrap_op, remap_chunks_batch_op
+from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
 from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_op, reset_flags_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
@@ -122,6 +122,16 @@ def process_composite_tasks(c, cm, top_mip, params):
     elif c.mip_level() == local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me")]:
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
+            if params.get('OVERLAP', False) and stage == 'agg':
+                    overlap_chunks[tag] = composite_chunks_overlap_op(image, dag[stage], cm, short_queue, tag, params)
+                    for n in c.neighbours():
+                        n_tag = str(n.mip_level()) + "_" + "_".join([str(i) for i in n.coordinate()])
+                        if n_tag in generate_chunks[stage][c.mip_level()]:
+                            overlap_chunks[tag].set_upstream(generate_chunks[stage][n.mip_level()][n_tag])
+                            if n_tag != tag:
+                                overlap_chunks[n_tag].set_upstream(generate_chunks[stage][c.mip_level()][tag])
+                    #slack_ops[stage][c.mip_level()].set_downstream(overlap_chunks[tag])
+                    slack_ops[stage]['overlap'].set_upstream(overlap_chunks[tag])
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
             remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
@@ -132,7 +142,10 @@ def process_composite_tasks(c, cm, top_mip, params):
         parent_coord = [i//2 for i in c.coordinate()]
         parent_tag = str(c.mip_level()+1) + "_" + "_".join([str(i) for i in parent_coord])
         for stage in ["ws", "agg"]:
-            generate_chunks[stage][c.mip_level()][tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
+            if params.get("OVERLAP", False) and stage == "agg" and c.mip_level() == batch_mip:
+                overlap_chunks[tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
+            else:
+                generate_chunks[stage][c.mip_level()][tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
 
 
 def generate_batches(param):
@@ -245,6 +258,8 @@ generate_chunks = {
     "agg": {}
 }
 
+overlap_chunks = {}
+
 remap_chunks = {
     "ws": {},
     "agg": {}
@@ -313,6 +328,9 @@ if "MOUNT_SECRETES" in param:
 
 if top_mip < batch_mip:
     local_batch_mip = top_mip
+
+if param.get("OVERLAP", False):
+    slack_ops['agg']['overlap'] = slack_message_op(dag['agg'], "overlap_"+str(batch_mip), ":heavy_check_mark: {} MIP {} finished".format("overlapped agglomeration at", batch_mip))
 
 for c in v:
     if c.mip_level() < local_batch_mip:
