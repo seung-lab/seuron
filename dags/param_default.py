@@ -46,6 +46,5 @@ CLUSTER_2_CONN_ID = "InstanceGroup2"
 cv_path = "/root/.cloudvolume/secrets/"
 cmd_proto = '/bin/bash -c "mkdir $AIRFLOW_TMP_DIR/work && cd $AIRFLOW_TMP_DIR/work && {} && rm -rf $AIRFLOW_TMP_DIR/work || {{ rm -rf $AIRFLOW_TMP_DIR/work; exit 111; }}"'
 
-cv_chunk_size=[128,128,16]
 batch_mip = 3
 high_mip = 5

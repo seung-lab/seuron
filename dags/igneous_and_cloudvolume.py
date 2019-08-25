@@ -5,7 +5,6 @@ import os
 import requests
 from time import sleep, strftime
 
-from param_default import cv_chunk_size
 from slack_message import slack_message, slack_userinfo
 
 
@@ -28,6 +27,7 @@ def create_info(stage, param):
 
     bbox = param["BBOX"]
     resolution = dataset_resolution(param["AFF_PATH"], int(param["AFF_MIP"]))
+    cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
     metadata_seg = CloudVolume.create_new_info(
         num_channels    = 1,
         layer_type      = 'segmentation',
