@@ -12,7 +12,7 @@ from segmentation_op import composite_chunks_batch_op, composite_chunks_wrap_op,
 from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_op, reset_flags_op
 
 from param_default import param_default, batch_mip, high_mip, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
-from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job
+from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, dataset_resolution
 import numpy as np
 import json
 import urllib
@@ -22,11 +22,14 @@ from collections import OrderedDict
 def generate_link(param):
     ng_host = "https://neuromancer-seung-import.appspot.com"
     layers = OrderedDict()
+    ng_resolution = dataset_resolution(param["AFF_PATH"], int(param["AFF_MIP"]))
+    seg_resolution = ng_resolution
     if "IMAGE_PATH" in param:
         layers["img"] = {
             "source": "precomputed://"+param["IMAGE_PATH"],
             "type": "image"
         }
+        ng_resolution = dataset_resolution(param["IMAGE_PATH"])
 
     layers["aff"] = {
         "source": "precomputed://"+param["AFF_PATH"],
@@ -45,8 +48,6 @@ def generate_link(param):
         "type": "segmentation"
     }
 
-    ng_resolution = param.get('NG_RESOLUTION', [4,4,40])
-    seg_resolution = param["RESOLUTION"]
     bbox = param["BBOX"]
 
     scale = [seg_resolution[i]/ng_resolution[i] for i in range(3)]

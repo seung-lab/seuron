@@ -8,6 +8,12 @@ from time import sleep, strftime
 from param_default import cv_chunk_size
 from slack_message import slack_message, slack_userinfo
 
+
+def dataset_resolution(path, mip=0):
+    vol = CloudVolume(path, mip=mip)
+    return [int(x) for x in list(vol.resolution)]
+
+
 def create_info(stage, param):
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
@@ -21,12 +27,13 @@ def create_info(stage, param):
             value_file.write(v)
 
     bbox = param["BBOX"]
+    resolution = dataset_resolution(param["AFF_PATH"], int(param["AFF_MIP"]))
     metadata_seg = CloudVolume.create_new_info(
         num_channels    = 1,
         layer_type      = 'segmentation',
         data_type       = 'uint64',
         encoding        = 'raw',
-        resolution      = param["RESOLUTION"], # Pick scaling for your data!
+        resolution      = resolution, # Pick scaling for your data!
         voxel_offset    = bbox[0:3],
         chunk_size      = cv_chunk_size, # This must divide evenly into image length or you won't cover the #
         volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]

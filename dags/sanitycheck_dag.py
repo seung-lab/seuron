@@ -72,10 +72,6 @@ def check_affinitymap(param):
         slack_message("ERROR: Bounding box is outside of the affinity map")
         raise ValueError('Bounding box is outside of the affinity map')
 
-    if any(param["RESOLUTION"] != vol.resolution):
-        slack_message("Affinity map resolution does not much")
-        raise ValueError('Affinity map resolution does not much')
-
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
 
