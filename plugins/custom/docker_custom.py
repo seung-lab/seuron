@@ -147,7 +147,7 @@ class DockerConfigurableOperator(DockerOperator):
         cpu_percent = 0.0
         while True:
             try:
-                x = self.cli.stats(container=self.container['Id'], decode=True, stream=False)
+                x = self.cli.stats(container=self.container['Id'], decode=False, stream=False)
             except docker.errors.APIError:
                 sleep(60)
 
