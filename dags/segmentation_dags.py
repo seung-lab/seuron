@@ -94,7 +94,7 @@ for p in ["SCRATCH", "WS", "SEG"]:
 def confirm_dag_run(context, dag_run_obj):
     skip_flag = context['params']['skip_flag']
     op = context['params']['op']
-    if param[skip_flag]:
+    if param.get(skip_flag, False):
         slack_message(":exclamation: Skip {op}".format(op=op))
     else:
         return dag_run_obj
@@ -318,9 +318,9 @@ mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
 v = ChunkIterator(data_bbox, chunk_size)
 top_mip = v.top_mip_level()
-batch_mip = param["BATCH_MIP"]
-high_mip = param["HIGH_MIP"]
-local_batch_mip = param["BATCH_MIP"]
+batch_mip = param.get("BATCH_MIP", 3)
+high_mip = param.get("HIGH_MIP", 5)
+local_batch_mip = batch_mip
 
 cm = ["param"]
 if "MOUNT_SECRETES" in param:

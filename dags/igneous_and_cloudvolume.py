@@ -98,7 +98,7 @@ def downsample_and_mesh(param):
     from os.path import commonprefix
 
     #Reuse the broker of celery
-    if param["SKIP_DM"]:
+    if param.get("SKIP_DM", False):
         slack_message(":exclamation: Skip downsample and mesh as instructed")
         return
 

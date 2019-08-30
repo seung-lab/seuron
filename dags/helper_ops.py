@@ -41,11 +41,11 @@ def reset_flags_op(dag, param):
 
 
 def reset_flags(param):
-    if param["SKIP_WS"]:
+    if param.get("SKIP_WS", False):
         Variable.set("ws_done", "yes")
     else:
         Variable.set("ws_done", "no")
-    if param["SKIP_AGG"]:
+    if param.get("SKIP_AGG", False):
         Variable.set("agg_done", "yes")
     else:
         Variable.set("agg_done", "no")

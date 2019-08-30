@@ -103,7 +103,7 @@ def print_summary(param):
     ntasks = 0
     nnodes = 0
     top_mip = v.top_mip_level()
-    local_batch_mip = param["BATCH_MIP"]
+    local_batch_mip = param.get("BATCH_MIP", 3)
     if top_mip < local_batch_mip:
         local_batch_mip = top_mip
 
@@ -163,7 +163,7 @@ Fundamental chunk size: {chunk_size}
     )
 
     for skip_flag, op in [("SKIP_WS", "watershed"), ("SKIP_AGG", "agglomeration"), ("SKIP_DM", "downsample and mesh")]:
-        if param[skip_flag]:
+        if param.get(skip_flag, False):
             msg += ":exclamation:Skip {op}!\n".format(op=op)
 
     slack_message(msg)
@@ -177,7 +177,7 @@ for p in ["SCRATCH", "WS", "SEG"]:
 path_checks = [check_path_exists_op(dag, "SCRATCH_PATH", param["SCRATCH_PATH"])]
 
 for p in [("WS","WS"), ("AGG","SEG")]:
-    if param["SKIP_"+p[0]]:
+    if param.get("SKIP_"+p[0], False):
         path_checks.append(placeholder_op(dag, p[1]+"_PATH"))
     else:
         path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", param[p[1]+"_PATH"]))
