@@ -18,12 +18,9 @@ param_default = {
     "AGG_THRESHOLD":"0.25",
     "WORKER_IMAGE":"ranlu/segmentation:ranl_testing",
     "BBOX": [126280, 64280, 20826, 129020, 129020, 20993],
-    "RESOLUTION": [8,8,40],
     "CHUNK_SIZE": [512, 512, 128],
-    "SKIP_WS": False,
-    "SKIP_AGG": False,
-    "SKIP_DM": False
 }
+
 
 default_args = {
     'owner': 'airflow',
