@@ -12,6 +12,11 @@ resources:
           configURL: https://raw.githubusercontent.com/seung-lab/seuron_examples/ranl_testing/latest/metadata/google/export.ikt
           user: ranl
           #password:
+          slackToken: token_for_slack_bot
+          fernetKey: fernetKey_for_airflow
+          botID: slack_bot_id
+          remoteLogFolder: gs_bucket_for_the_logs
+          seuronImageTag: ranl_testing
           #slackToken:
           #workerID:
           project: segmentation
@@ -22,9 +27,10 @@ resources:
           managerIP4: 172.31.31.254
           databaseIP0: 172.31.31.253
           sizeManager: 1
-          sizeDatabase: 1
-          sizeWorker: 1
-          instanceTypeManager: n1-standard-64
-          instanceTypeDatabase: n1-standard-64
-          instanceTypeWorker: f1-micro
+          sizeDatabase: 0
+          sizeWorker: 0
+          instanceTypeManager: n1-standard-4
+          instanceTypeDatabase: n1-standard-4
+          instanceTypeAtomicWorker: n1-highmem-32
+          instanceTypeCompositeWorker: n1-highmem-96
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/ranl_testing/deploy/docker-compose-CeleryExecutor.yml
