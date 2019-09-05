@@ -14,7 +14,7 @@ resources:
           #password:
           slackToken: token_for_slack_bot
           fernetKey: fernetKey_for_airflow
-          botID: slack_bot_id
+          botUserID: slack_bot_id
           remoteLogFolder: gs_bucket_for_the_logs
           seuronImageTag: ranl_testing
           #slackToken:
