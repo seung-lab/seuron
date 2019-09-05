@@ -143,6 +143,14 @@ def print_summary(param):
     ntasks += bchunks
     ntasks *= 2
 
+    paths = {}
+
+    for p in ["SCRATCH", "WS", "SEG"]:
+        path = "{}_PATH".format(p)
+        if path not in param:
+            paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
+        else:
+            paths[path] = param["{}_PATH".format(p)]
 
     msg = '''
 :heavy_check_mark: *Sanity Check, everything looks OK*
@@ -158,9 +166,9 @@ Region graph and friends: `{scratch}`
         mip = param["AFF_MIP"],
         bbox = ", ".join(str(x) for x in data_bbox),
         size = ", ".join(str(data_bbox[i+3] - data_bbox[i]) for i in range(3)),
-        ws = param["WS_PATH"],
-        seg = param["SEG_PATH"],
-        scratch = param["SCRATCH_PATH"],
+        ws = paths["WS_PATH"],
+        seg = paths["SEG_PATH"],
+        scratch = paths["SCRATCH_PATH"],
     )
 
     if not param.get("SKIP_WS", False):
@@ -202,19 +210,22 @@ Fundamental chunk size: {chunk_size}
 
     slack_message(msg)
 
+paths = {}
 
 for p in ["SCRATCH", "WS", "SEG"]:
     path = "{}_PATH".format(p)
     if path not in param:
-        param[path] = param["{}_PREFIX".format(p)]+param["NAME"]
+        paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
+    else:
+        paths[path] = param["{}_PATH".format(p)]
 
-path_checks = [check_path_exists_op(dag, "SCRATCH_PATH", param["SCRATCH_PATH"])]
+path_checks = [check_path_exists_op(dag, "SCRATCH_PATH", paths["SCRATCH_PATH"])]
 
 for p in [("WS","WS"), ("AGG","SEG")]:
     if param.get("SKIP_"+p[0], False):
         path_checks.append(placeholder_op(dag, p[1]+"_PATH"))
     else:
-        path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", param[p[1]+"_PATH"]))
+        path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", paths[p[1]+"_PATH"]))
 
 
 affinity_check = PythonOperator(
