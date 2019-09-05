@@ -56,6 +56,8 @@ def check_affinitymap(param):
 
     mount_secrets = param.get("MOUNT_SECRETES", [])
 
+    supply_default_param(param)
+
     for k in mount_secrets:
         v = Variable.get(k)
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
@@ -67,10 +69,16 @@ def check_affinitymap(param):
 
     aff_bbox = vol.bounds
 
-    target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
-    if not aff_bbox.contains_bbox(target_bbox):
-        slack_message("ERROR: Bounding box is outside of the affinity map")
-        raise ValueError('Bounding box is outside of the affinity map')
+    if "BBOX" in param:
+        target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
+        if not aff_bbox.contains_bbox(target_bbox):
+            slack_message("ERROR: Bounding box is outside of the affinity map")
+            raise ValueError('Bounding box is outside of the affinity map')
+    else:
+        param["BBOX"] = [int(x) for x in aff_bbox.to_list()]
+        Variable.set("param", param, serialize_json=True)
+        slack_message(":exclamation:*Segment the whole affinity map by default*")
+
 
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
@@ -90,6 +98,18 @@ def check_path_exists_op(dag, tag, path):
         queue='manager',
         dag=dag
     )
+
+def supply_default_param(param):
+    if "CHUNK_SIZE" not in param:
+        param["CHUNK_SIZE"] = [512,512,64]
+        Variable.set("param", param, serialize_json=True)
+        slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
+
+    if "AFF_MIP" not in param:
+        param["AFF_MIP"] = 0
+        Variable.set("param", param, serialize_json=True)
+        slack_message(":exclamation:*Use MIP 0 affinity map by default*")
+
 
 def print_summary(param):
     data_bbox = param["BBOX"]
