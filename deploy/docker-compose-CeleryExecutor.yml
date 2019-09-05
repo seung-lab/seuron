@@ -252,6 +252,7 @@ services:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
             - SLACK_TOKEN
+            - BOTUSERID
             - DEPLOYMENT
         command: python slackbot/slack_bot.py
         deploy:
