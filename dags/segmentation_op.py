@@ -36,7 +36,7 @@ def composite_chunks_overlap_op(img, dag, config_mounts, queue, tag, params):
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=params.get("OVERLAP_TIMEOUT", 30)),
+        execution_timeout=timedelta(minutes=params.get("OVERLAP_TIMEOUT", 60)),
         queue=queue,
         dag=dag
     )
