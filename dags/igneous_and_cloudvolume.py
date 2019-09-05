@@ -98,8 +98,8 @@ def downsample_and_mesh(param):
     from os.path import commonprefix
 
     #Reuse the broker of celery
-    if param.get("SKIP_DM", False):
-        slack_message(":exclamation: Skip downsample and mesh as instructed")
+    if param.get("SKIP_DOWNSAMPLE", False):
+        slack_message(":exclamation: Skip downsample (and meshing) as instructed")
         return
 
     broker = configuration.get('celery', 'BROKER_URL')
@@ -128,6 +128,11 @@ def downsample_and_mesh(param):
             queue.put(t.payload())
         check_queue("igneous")
         slack_message(":arrow_forward: Downsampled")
+
+        if param.get("SKIP_MESHING", False):
+            slack_message(":exclamation: Skip meshing as instructed")
+            return
+
         vol = CloudVolume(seg_cloudpath)
         if mesh_mip not in vol.available_mips:
             mesh_mip = max(vol.available_mips)
