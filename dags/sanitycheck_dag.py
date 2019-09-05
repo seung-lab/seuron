@@ -182,7 +182,7 @@ Fundamental chunk size: {chunk_size}
         ntasks = ntasks
     )
 
-    for skip_flag, op in [("SKIP_WS", "watershed"), ("SKIP_AGG", "agglomeration"), ("SKIP_DM", "downsample and mesh")]:
+    for skip_flag, op in [("SKIP_WS", "watershed"), ("SKIP_AGG", "agglomeration"), ("SKIP_DOWNSAMPLE", "downsample"), ("SKIP_MESHING", "meshing")]:
         if param.get(skip_flag, False):
             msg += ":exclamation:Skip {op}!\n".format(op=op)
 
