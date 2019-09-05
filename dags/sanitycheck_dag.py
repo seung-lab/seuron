@@ -138,7 +138,7 @@ def print_summary(param):
             nnodes += 1
             if mip == local_batch_mip:
                 bchunks+=1
-            elif mip >= param["HIGH_MIP"]:
+            elif mip >= param.get("HIGH_MIP", 5):
                 hchunks+=1
     ntasks += bchunks
     ntasks *= 2
@@ -178,7 +178,7 @@ Fundamental chunk size: {chunk_size}
         bchunks = bchunks,
         local_batch_mip = local_batch_mip,
         hchunks = hchunks,
-        high_mip = param["HIGH_MIP"],
+        high_mip = param.get("HIGH_MIP", 5),
         ntasks = ntasks
     )
 
