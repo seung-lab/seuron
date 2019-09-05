@@ -330,6 +330,9 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
     if top_mip < batch_mip:
         local_batch_mip = top_mip
 
+    if top_mip == batch_mip:
+        param["OVERLAP"] = False
+
     if param.get("OVERLAP", False):
         slack_ops['agg']['overlap'] = slack_message_op(dag['agg'], "overlap_"+str(batch_mip), ":heavy_check_mark: {} MIP {} finished".format("overlapped agglomeration at", batch_mip))
 
