@@ -153,15 +153,6 @@ Size: [{size}]
 Watershed: `{ws}`
 Segmentation: `{seg}`
 Region graph and friends: `{scratch}`
-Watershed parameters: {ws_param}
-Agglomeration threshold: {agg_threshold}
-Worker image: {worker_image}
-Fundamental chunk size: {chunk_size}
-
-{nnodes} nodes in the octree
-{bchunks} bundle chunks at mip level {local_batch_mip}
-{hchunks} chunks at mip level {high_mip} and above
-{ntasks} tasks in total
 '''.format(
         aff = param["AFF_PATH"],
         mip = param["AFF_MIP"],
@@ -170,8 +161,31 @@ Fundamental chunk size: {chunk_size}
         ws = param["WS_PATH"],
         seg = param["SEG_PATH"],
         scratch = param["SCRATCH_PATH"],
-        ws_param = "(high: {}, low: {}, size: {})".format(param["WS_HIGH_THRESHOLD"], param["WS_LOW_THRESHOLD"], param["WS_SIZE_THRESHOLD"]),
-        agg_threshold = param["AGG_THRESHOLD"],
+    )
+
+    if not param.get("SKIP_WS", False):
+        msg += '''
+Watershed parameters: {ws_param}
+'''.format(
+            ws_param = "(high: {}, low: {}, size: {})".format(param["WS_HIGH_THRESHOLD"], param["WS_LOW_THRESHOLD"], param["WS_SIZE_THRESHOLD"]),
+        )
+
+    if not param.get("SKIP_AGG", False):
+        msg += '''
+Agglomeration threshold: {agg_threshold}
+'''.format(
+            agg_threshold = param["AGG_THRESHOLD"],
+        )
+
+    msg += '''
+Worker image: {worker_image}
+Fundamental chunk size: {chunk_size}
+
+{nnodes} nodes in the octree
+{bchunks} bundle chunks at mip level {local_batch_mip}
+{hchunks} chunks at mip level {high_mip} and above
+{ntasks} tasks in total
+'''.format(
         worker_image = param["WORKER_IMAGE"],
         chunk_size = param["CHUNK_SIZE"],
         nnodes = nnodes,
