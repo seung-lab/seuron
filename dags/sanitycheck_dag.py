@@ -33,8 +33,13 @@ dag = DAG(
     catchup=False,
 )
 
+def cv_check_alert(context):
+    msg = "*Sanity check failed* Cannot check the cloudvolume data"
+    slack_msg = slack_message_op(dag, "slack_message", msg)
+    return slack_msg.execute(context=context)
+
 def path_exist_alert(context):
-    msg = "Path already exist: {}".format(context.get('task_instance').task_id)
+    msg = "*Sanity check failed* Path already exist: {}".format(context.get('task_instance').task_id)
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
@@ -44,19 +49,17 @@ def task_done_alert(context):
     return slack_msg.execute(context=context)
 
 
-def affinity_check_alert(context):
-    msg = "Cannot check the affinity, do you have the correct secret files?"
-    slack_msg = slack_message_op(dag, "slack_message", msg)
-    return slack_msg.execute(context=context)
-
-def check_affinitymap(param):
+def check_cv_data(param):
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
     mount_secrets = param.get("MOUNT_SECRETES", [])
 
-    supply_default_param(param)
+    if "AFF_MIP" not in param:
+        param["AFF_MIP"] = 0
+        Variable.set("param", param, serialize_json=True)
+        slack_message(":exclamation:*Use MIP 0 affinity map by default*")
 
     for k in mount_secrets:
         v = Variable.get(k)
@@ -79,6 +82,47 @@ def check_affinitymap(param):
         Variable.set("param", param, serialize_json=True)
         slack_message(":exclamation:*Segment the whole affinity map by default*")
 
+    if param.get("SKIP_WS", False):
+        if "WS_PATH" not in param:
+            slack_message("ERROR: Must specify path for existing watershed when SKIP_WS is used")
+            raise ValueError('Must specify path for existing watershed when SKIP_WS is used')
+        try:
+            vol_ws = CloudVolume(param["WS_PATH"])
+        except:
+            raise
+
+        provenance = vol_ws.provenance
+        try:
+            ws_param = provenance['processing'][0]['method']
+            ws_chunk_size = ws_param["CHUNK_SIZE"]
+            ws_chunkmap_path = ws_param['SCRATCH_PATH']+"/chunkmap"
+        except:
+            raise
+
+        if "CHUNKMAP_PATH" not in param:
+            param['CHUNKMAP_PATH'] = ws_chunkmap_path
+            Variable.set("param", param, serialize_json=True)
+            slack_message(":exclamation:*Use chunkmap path derived from the watershed layer* `{}`".format(ws_chunkmap_path))
+
+        if "CHUNK_SIZE" not in param:
+            param["CHUNK_SIZE"] = ws_chunk_size
+            Variable.set("param", param, serialize_json=True)
+            slack_message(":exclamation:*Use chunk size* `{}` *to match the watershed layer*".format(ws_chunk_size))
+        else:
+            if any(i != j for i, j in zip(param["CHUNK_SIZE"], ws_chunk_size)):
+                slack_message("ERROR: CHUNK_SIZE has to match the watershed layer: {} != {}".format(param["CHUNK_SIZE"], ws_chunk_size))
+                raise ValueError('CHUNK_SIZE has to match the watershed layer')
+
+        if "CV_CHUNK_SIZE" in ws_param and "CV_CHUNK_SIZE" not in param:
+            param["CV_CHUNK_SIZE"] = ws_param["CV_CHUNK_SIZE"]
+            Variable.set("param", param, serialize_json=True)
+            slack_message(":exclamation:*Use cloudvolume chunk size `{}` to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
+
+
+    if "CHUNK_SIZE" not in param:
+        param["CHUNK_SIZE"] = [512,512,64]
+        Variable.set("param", param, serialize_json=True)
+        slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
 
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
@@ -87,7 +131,7 @@ def check_path_exists_op(dag, tag, path):
     cmdline = '/bin/bash -c ". /root/google-cloud-sdk/path.bash.inc && (gsutil ls {} >& /dev/null && exit 1 || echo OK)"'.format(path)
     return DockerWithVariablesOperator(
         [],
-        task_id='check_path_{}'.format(tag.replace("PREFIX", "PATH")),
+        task_id='check_path_{}'.format(tag.replace("PREFIX", "PATH").lower()),
         command=cmdline,
         default_args=default_args,
         image=param["WORKER_IMAGE"],
@@ -98,17 +142,6 @@ def check_path_exists_op(dag, tag, path):
         queue='manager',
         dag=dag
     )
-
-def supply_default_param(param):
-    if "CHUNK_SIZE" not in param:
-        param["CHUNK_SIZE"] = [512,512,64]
-        Variable.set("param", param, serialize_json=True)
-        slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
-
-    if "AFF_MIP" not in param:
-        param["AFF_MIP"] = 0
-        Variable.set("param", param, serialize_json=True)
-        slack_message(":exclamation:*Use MIP 0 affinity map by default*")
 
 
 def print_summary(param):
@@ -231,13 +264,14 @@ for p in [("WS","WS"), ("AGG","SEG")]:
 
 
 affinity_check = PythonOperator(
-    task_id="check_affinity_layer",
-    python_callable=check_affinitymap,
+    task_id="check_cloudvolume_data",
+    python_callable=check_cv_data,
     op_args = (param,),
-    on_failure_callback=affinity_check_alert,
+    on_failure_callback=cv_check_alert,
     on_success_callback=task_done_alert,
     queue="manager",
     dag=dag)
+
 
 summary = PythonOperator(
     task_id="summary",
