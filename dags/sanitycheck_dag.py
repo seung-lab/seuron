@@ -57,7 +57,7 @@ def check_cv_data(param):
     mount_secrets = param.get("MOUNT_SECRETES", [])
 
     if "AFF_MIP" not in param:
-        param["AFF_MIP"] = 0
+        param["AFF_MIP"] = "0"
         Variable.set("param", param, serialize_json=True)
         slack_message(":exclamation:*Use MIP 0 affinity map by default*")
 
