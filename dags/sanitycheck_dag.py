@@ -68,6 +68,7 @@ def check_cv_data(param):
     try:
         vol = CloudVolume(param["AFF_PATH"],mip=int(param["AFF_MIP"]))
     except:
+        slack_message(":exclamation:*ERROR: Cannot access the affinity map* `{}` at MIP {}".format(param["AFF_PATH"], param["AFF_MIP"]))
         raise
 
     aff_bbox = vol.bounds
@@ -89,6 +90,7 @@ def check_cv_data(param):
         try:
             vol_ws = CloudVolume(param["WS_PATH"])
         except:
+            slack_message(":exclamation:*ERROR: Cannot access the watershed layer* `{}`".format(param["WS_PATH"]))
             raise
 
         provenance = vol_ws.provenance
