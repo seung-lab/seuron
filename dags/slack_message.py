@@ -20,8 +20,7 @@ def slack_message(msg, channel=None):
 
     if channel is not None:
         slack_channel = channel
-        text="{botname}: {message}".format(
-            botname=slack_workername,
+        text="{message}".format(
             message=msg
         )
 
