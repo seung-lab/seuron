@@ -140,7 +140,6 @@ def check_path_exists_op(dag, tag, path):
         weight_rule=WeightRule.ABSOLUTE,
         execution_timeout=timedelta(minutes=5),
         on_failure_callback=path_exist_alert,
-        on_success_callback=task_done_alert,
         queue='manager',
         dag=dag
     )
@@ -270,7 +269,6 @@ affinity_check = PythonOperator(
     python_callable=check_cv_data,
     op_args = (param,),
     on_failure_callback=cv_check_alert,
-    on_success_callback=task_done_alert,
     queue="manager",
     dag=dag)
 
