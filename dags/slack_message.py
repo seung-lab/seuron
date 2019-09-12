@@ -1,6 +1,8 @@
 from airflow.hooks.base_hook import BaseHook
 from slack import WebClient
+from airflow.models import Variable
 from param_default import SLACK_CONN_ID
+
 
 def slack_message(msg, channel=None):
     try:
@@ -68,9 +70,18 @@ def task_start_alert(context):
 
 
 def task_retry_alert(context):
-    try_number = context.get('task_instance').try_number
-    if try_number > 4:
-        return slack_alert(":exclamation: Task up for retry: {}".format(try_number-1), "#seuron-alerts", context)
+    ti = context.get('task_instance')
+    last_try = ti.try_number - 1
+    if last_try > 0 and last_try % 5 == 0:
+        iso = ti.execution_date.isoformat()
+        webui_ip = Variable.get("webui_ip")
+        log_url = "https://"+webui_ip + (
+            "/airflow/admin/airflow/log"
+            "?dag_id={ti.dag_id}"
+            "&task_id={ti.task_id}"
+            "&execution_date={iso}"
+        ).format(**locals())
+        slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), None, context)
 
 
 def task_done_alert(context):
