@@ -59,7 +59,7 @@ def check_cv_data(param):
     if "AFF_MIP" not in param:
         param["AFF_MIP"] = "0"
         Variable.set("param", param, serialize_json=True)
-        slack_message(":exclamation:*Use MIP 0 affinity map by default*")
+        slack_message("*Use MIP 0 affinity map by default*")
 
     for k in mount_secrets:
         v = Variable.get(k)
@@ -76,16 +76,16 @@ def check_cv_data(param):
     if "BBOX" in param:
         target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
         if not aff_bbox.contains_bbox(target_bbox):
-            slack_message("ERROR: Bounding box is outside of the affinity map")
+            slack_message(":exclamation:*ERROR: Bounding box is outside of the affinity map, affinity map: {} vs bbox: {}*".format([int(x) for x in aff_bbox.to_list()], param["BBOX"]))
             raise ValueError('Bounding box is outside of the affinity map')
     else:
         param["BBOX"] = [int(x) for x in aff_bbox.to_list()]
         Variable.set("param", param, serialize_json=True)
-        slack_message(":exclamation:*Segment the whole affinity map by default*")
+        slack_message("*Segment the whole affinity map by default* {}".format(param["BBOX"]))
 
     if param.get("SKIP_WS", False):
         if "WS_PATH" not in param:
-            slack_message("ERROR: Must specify path for existing watershed when SKIP_WS is used")
+            slack_message(":exclamation:*ERROR: Must specify path for existing watershed when SKIP_WS is used*")
             raise ValueError('Must specify path for existing watershed when SKIP_WS is used')
         try:
             vol_ws = CloudVolume(param["WS_PATH"])
@@ -104,21 +104,21 @@ def check_cv_data(param):
         if "CHUNKMAP_PATH" not in param:
             param['CHUNKMAP_PATH'] = ws_chunkmap_path
             Variable.set("param", param, serialize_json=True)
-            slack_message(":exclamation:*Use chunkmap path derived from the watershed layer* `{}`".format(ws_chunkmap_path))
+            slack_message("*Use chunkmap path derived from the watershed layer* `{}`".format(ws_chunkmap_path))
 
         if "CHUNK_SIZE" not in param:
             param["CHUNK_SIZE"] = ws_chunk_size
             Variable.set("param", param, serialize_json=True)
-            slack_message(":exclamation:*Use chunk size* `{}` *to match the watershed layer*".format(ws_chunk_size))
+            slack_message("*Use chunk size* `{}` *to match the watershed layer*".format(ws_chunk_size))
         else:
             if any(i != j for i, j in zip(param["CHUNK_SIZE"], ws_chunk_size)):
-                slack_message("ERROR: CHUNK_SIZE has to match the watershed layer: {} != {}".format(param["CHUNK_SIZE"], ws_chunk_size))
+                slack_message(":exclamation:*ERROR: CHUNK_SIZE has to match the watershed layer: {} != {} *".format(param["CHUNK_SIZE"], ws_chunk_size))
                 raise ValueError('CHUNK_SIZE has to match the watershed layer')
 
         if "CV_CHUNK_SIZE" in ws_param and "CV_CHUNK_SIZE" not in param:
             param["CV_CHUNK_SIZE"] = ws_param["CV_CHUNK_SIZE"]
             Variable.set("param", param, serialize_json=True)
-            slack_message(":exclamation:*Use cloudvolume chunk size `{}` to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
+            slack_message("*Use cloudvolume chunk size `{}` to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
 
 
     if "CHUNK_SIZE" not in param:
