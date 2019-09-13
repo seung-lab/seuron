@@ -123,15 +123,15 @@ def process_composite_tasks(c, cm, top_mip, params):
         for stage, op in [("ws", "ws"), ("agg", "me")]:
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
             if params.get('OVERLAP', False) and stage == 'agg':
-                    overlap_chunks[tag] = composite_chunks_overlap_op(image, dag[stage], cm, short_queue, tag, params)
-                    for n in c.neighbours():
-                        n_tag = str(n.mip_level()) + "_" + "_".join([str(i) for i in n.coordinate()])
-                        if n_tag in generate_chunks[stage][c.mip_level()]:
-                            overlap_chunks[tag].set_upstream(generate_chunks[stage][n.mip_level()][n_tag])
-                            if n_tag != tag:
-                                overlap_chunks[n_tag].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-                    #slack_ops[stage][c.mip_level()].set_downstream(overlap_chunks[tag])
-                    slack_ops[stage]['overlap'].set_upstream(overlap_chunks[tag])
+                overlap_chunks[tag] = composite_chunks_overlap_op(image, dag[stage], cm, short_queue, tag, params)
+                for n in c.neighbours():
+                    n_tag = str(n.mip_level()) + "_" + "_".join([str(i) for i in n.coordinate()])
+                    if n_tag in generate_chunks[stage][c.mip_level()]:
+                        overlap_chunks[tag].set_upstream(generate_chunks[stage][n.mip_level()][n_tag])
+                        if n_tag != tag:
+                            overlap_chunks[n_tag].set_upstream(generate_chunks[stage][c.mip_level()][tag])
+                #slack_ops[stage][c.mip_level()].set_downstream(overlap_chunks[tag])
+                slack_ops[stage]['overlap'].set_upstream(overlap_chunks[tag])
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
             remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
             slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
