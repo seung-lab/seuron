@@ -51,6 +51,22 @@ def create_info(stage, param):
     })
     vol.commit_provenance()
 
+    if stage == "agg":
+        cv_path = param["SEG_PATH"]+"/size_map"
+        metadata_size = CloudVolume.create_new_info(
+            num_channels    = 1,
+            layer_type      = 'image',
+            data_type       = 'uint8',
+            encoding        = 'raw',
+            resolution      = resolution, # Pick scaling for your data!
+            voxel_offset    = bbox[0:3],
+            chunk_size      = cv_chunk_size, # This must divide evenly into image length or you won't cover the #
+            volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]
+            )
+        vol = CloudVolume(cv_path, mip=0, info=metadata_size)
+        vol.commit_info()
+
+
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
 

@@ -48,6 +48,11 @@ def generate_link(param):
         "type": "segmentation"
     }
 
+    layers["size"] = {
+        "source": "precomputed://"+param["SEG_PATH"]+"/size_map",
+        "type": "image"
+    }
+
     bbox = param["BBOX"]
 
     scale = [seg_resolution[i]/ng_resolution[i] for i in range(3)]
