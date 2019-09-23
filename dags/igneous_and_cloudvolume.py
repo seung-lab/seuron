@@ -135,6 +135,12 @@ def downsample_and_mesh(param):
     seg_cloudpath = param["SEG_PATH"]
 
     mesh_mip = 3 - int(param["AFF_MIP"])
+    simplification = True
+    max_simplification_error = 40
+    if param.get("MESH_QUALITY", "LOW") == "HIGH":
+        simplification = False
+        max_simplification_error = 0
+        mesh_mip = 0
     #cube_dim = 512//(2**(mesh_mip+1))
 
     with Connection(broker) as conn:
@@ -153,7 +159,8 @@ def downsample_and_mesh(param):
         if mesh_mip not in vol.available_mips:
             mesh_mip = max(vol.available_mips)
         slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
-        tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, shape=Vec(256, 256, 256))
+
+        tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
         for t in tasks:
             queue.put(t.payload())
         check_queue("igneous")
