@@ -133,6 +133,7 @@ def downsample_and_mesh(param):
 
 
     seg_cloudpath = param["SEG_PATH"]
+    ws_cloudpath = param["WS_PATH"]
 
     mesh_mip = 3 - int(param["AFF_MIP"])
     simplification = True
@@ -145,9 +146,19 @@ def downsample_and_mesh(param):
 
     with Connection(broker) as conn:
         queue = conn.SimpleQueue("igneous")
-        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-        for t in tasks:
-            queue.put(t.payload())
+        if not param.get("SKIP_WS", False):
+            tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                queue.put(t.payload())
+
+        if not param.get("SKIP_AGG", False):
+            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                queue.put(t.payload())
+            tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                queue.put(t.payload())
+
         check_queue("igneous")
         slack_message(":arrow_forward: Downsampled")
 
