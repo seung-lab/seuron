@@ -5,11 +5,11 @@
 # SOURCE: https://github.com/wongwill86/air-tasks
 
 # Compile AWS credential helper
-FROM golang:1.8.3 as aws_ecr_credential_helper
-WORKDIR /go/src/github.com/awslabs/
-RUN git clone https://github.com/awslabs/amazon-ecr-credential-helper.git
-WORKDIR /go/src/github.com/awslabs/amazon-ecr-credential-helper
-RUN make
+#FROM golang:1.8.3 as aws_ecr_credential_helper
+#WORKDIR /go/src/github.com/awslabs/
+#RUN git clone https://github.com/awslabs/amazon-ecr-credential-helper.git
+#WORKDIR /go/src/github.com/awslabs/amazon-ecr-credential-helper
+#RUN make
 
 FROM python:3.6-slim
 LABEL maintainer=ranlu
@@ -49,14 +49,14 @@ RUN apt-get update \
         /usr/share/doc-base
 
 # copy the built docker credentials module to this container
-COPY --from=aws_ecr_credential_helper \
-    /go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local/docker-credential-ecr-login \
-    /usr/local/bin
+#COPY --from=aws_ecr_credential_helper \
+#    /go/src/github.com/awslabs/amazon-ecr-credential-helper/bin/local/docker-credential-ecr-login \
+#    /usr/local/bin
 
 # this is to enable aws ecr credentials helpers to reauthorize docker
-RUN mkdir -p /.docker/ \
-    && echo '{\n    "credsStore": "ecr-login"\n}' > \
-        /.docker/config.json
+#RUN mkdir -p /.docker/ \
+#    && echo '{\n    "credsStore": "ecr-login"\n}' > \
+#        /.docker/config.json
 
 # Get commit hash and tags these three files need to be excluded from .dockerignore:
 # .git/refs/heads/
