@@ -20,11 +20,13 @@ import urllib
 from collections import OrderedDict
 
 
-def generate_link(param):
+def generate_link(param, **kwargs):
     ng_host = "https://neuromancer-seung-import.appspot.com"
     layers = OrderedDict()
     ng_resolution = dataset_resolution(param["AFF_PATH"], int(param["AFF_MIP"]))
     seg_resolution = ng_resolution
+    ti = kwargs['ti']
+    seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
     if "IMAGE_PATH" in param:
         layers["img"] = {
             "source": "precomputed://"+param["IMAGE_PATH"],
@@ -46,6 +48,7 @@ def generate_link(param):
 
     layers["seg"] = {
         "source": "precomputed://"+param["SEG_PATH"],
+        "hiddenSegments": [str(x) for x in seglist],
         "type": "segmentation"
     }
 
@@ -187,7 +190,8 @@ def get_infos(param):
 
     return content
 
-def process_infos(param):
+
+def process_infos(param, **kwargs):
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     content = get_infos(param)
     data = np.frombuffer(content, dtype=dt_count)
@@ -203,6 +207,10 @@ Largest segments:
     top20list="\n".join("id: {} ({})".format(data[order[i]][0], data[order[i]][1]) for i in range(ntops))
     )
     slack_message(msg)
+    ti = kwargs['ti']
+    ti.xcom_push(key='segcount', value=len(data))
+    ti.xcom_push(key='svcount', value=np.sum(data['count']))
+    ti.xcom_push(key='topsegs', value=[data[order[i]][0] for i in range(ntops)])
 
 
 if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
@@ -316,6 +324,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
     check_seg = PythonOperator(
         task_id = "Check_Segmentation",
         python_callable=process_infos,
+        provide_context=True,
         op_args = [param],
         default_args=default_args,
         dag=dag_manager,
@@ -381,6 +390,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
+        provide_context=True,
         python_callable=generate_link,
         op_args = [param,],
         default_args=default_args,
@@ -389,7 +399,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
     )
 
     starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> scaling_global_finish >> slack_scaling_global_finish >> nglink_task >> ending_op
-    wait["agg"] >> check_seg
+    wait["agg"] >> check_seg >> nglink_task
+
     if real_size > 0 and top_mip >= high_mip:
         for stage in ["ws", "agg"]:
             _, scaling_ops[stage]["down"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, 0)
