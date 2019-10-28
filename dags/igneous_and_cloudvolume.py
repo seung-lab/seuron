@@ -207,16 +207,39 @@ def downsample_and_mesh(param):
 
         v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
 
+        prefix_list = []
         for c in v:
             if c.mip_level() == 0:
                 x, y, z = c.coordinate()
                 min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
                 max_id = min_id + chunk_voxels
+                if len(str(min_id)) != len(str(max_id)):
+                    raise NotImplementedError("No common prefix, need to split the range")
                 prefix = commonprefix([str(min_id), str(max_id)])
                 if len(prefix) == 0:
                     raise NotImplementedError("No common prefix, need to split the range")
-                t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(prefix))
-                submit_task(queue, t.payload())
+                digits = len(str(min_id)) - len(prefix) - 1
+                mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
+                #print(int(mid),int(mid)-1)
+                prefix1 = commonprefix([str(min_id), str(mid-1)])
+                prefix2 = commonprefix([str(max_id), str(mid)])
+                if len(prefix1) <= len(prefix):
+                    #print("min_id {}, max_id {}, prefix {}".format(min_id, max_id, prefix))
+                    prefix_list.append(prefix)
+                else:
+                    #print("min_id {}, max_id {}, mid {}, prefix {}, {}".format(min_id, max_id, mid, prefix1, prefix2))
+                    prefix_list.append(prefix1)
+                    prefix_list.append(prefix2)
+
+        task_list = []
+        for p in sorted(prefix_list, key=len):
+            if any(p.startswith(s) for s in task_list):
+                print("Already considered, skip {}".format(p))
+                continue
+            task_list.append(p)
+            t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
+            submit_task(queue, t.payload())
+        print("total number of tasks: {}".format(len(task_list)))
 
         check_queue("igneous")
         slack_message(":arrow_forward: Manifest genrated")
