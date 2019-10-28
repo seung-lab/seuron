@@ -8,6 +8,18 @@ from time import sleep, strftime
 from slack_message import slack_message, slack_userinfo
 
 
+import tenacity
+
+retry = tenacity.retry(
+  reraise=True,
+  stop=tenacity.stop_after_attempt(10),
+  wait=tenacity.wait_random_exponential(multiplier=0.5, max=60.0),
+)
+
+@retry
+def submit_task(queue, payload):
+    queue.put(payload)
+
 def dataset_resolution(path, mip=0):
     vol = CloudVolume(path, mip=mip)
     return [int(x) for x in list(vol.resolution)]
@@ -144,20 +156,20 @@ def downsample_and_mesh(param):
         mesh_mip = 0
     #cube_dim = 512//(2**(mesh_mip+1))
 
-    with Connection(broker) as conn:
+    with Connection(broker, connect_timeout=60) as conn:
         queue = conn.SimpleQueue("igneous")
         if not param.get("SKIP_WS", False):
             tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
-                queue.put(t.payload())
+                submit_task(queue, t.payload())
 
         if not param.get("SKIP_AGG", False):
             tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
-                queue.put(t.payload())
+                submit_task(queue, t.payload())
             tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
-                queue.put(t.payload())
+                submit_task(queue, t.payload())
 
         check_queue("igneous")
         slack_message(":arrow_forward: Downsampled")
@@ -177,7 +189,7 @@ def downsample_and_mesh(param):
 
         tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
         for t in tasks:
-            queue.put(t.payload())
+            submit_task(queue, t.payload())
         check_queue("igneous")
         slack_message(":arrow_forward: Meshed")
 
@@ -204,7 +216,7 @@ def downsample_and_mesh(param):
                 if len(prefix) == 0:
                     raise NotImplementedError("No common prefix, need to split the range")
                 t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(prefix))
-                queue.put(t.payload())
+                submit_task(queue, t.payload())
 
         check_queue("igneous")
         slack_message(":arrow_forward: Manifest genrated")
