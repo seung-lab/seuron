@@ -52,6 +52,12 @@ def generate_link(param, **kwargs):
         "type": "segmentation"
     }
 
+    if "GT_PATH" in param:
+        layers["gt"] = {
+            "source": "precomputed://"+param["GT_PATH"],
+            "type": "segmentation"
+        }
+
     layers["size"] = {
         "source": "precomputed://"+param["SEG_PATH"]+"/size_map",
         "type": "image"
