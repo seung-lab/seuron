@@ -3,6 +3,7 @@ from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 
 from airflow.operators.dagrun_operator import TriggerDagRunOperator
+from airflow.utils.weight_rule import WeightRule
 from airflow.models import Variable
 
 from chunk_iterator import ChunkIterator
@@ -244,6 +245,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         op_args = ["ws", param],
         default_args=default_args,
         on_success_callback=task_start_alert,
+        weight_rule=WeightRule.ABSOLUTE,
         dag=dag["ws"],
         queue = "manager"
     )
@@ -254,6 +256,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         op_args = ["agg", param],
         default_args=default_args,
         on_success_callback=task_start_alert,
+        weight_rule=WeightRule.ABSOLUTE,
         dag=dag["agg"],
         queue = "manager"
     )

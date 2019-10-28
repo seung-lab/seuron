@@ -15,6 +15,7 @@ def slack_message_op(dag, tid, msg):
         python_callable=slack_message,
         op_args = (msg,),
         queue="manager",
+        weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         dag=dag
     )
@@ -25,6 +26,7 @@ def placeholder_op(dag, tid):
         task_id = "dummy_{}".format(tid),
         dag=dag,
         priority_weight=1000,
+        weight_rule=WeightRule.ABSOLUTE,
         queue = "manager"
     )
 
@@ -35,6 +37,7 @@ def reset_flags_op(dag, param):
         python_callable=reset_flags,
         op_args=[param,],
         dag=dag,
+        weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         queue="manager"
     )
@@ -61,6 +64,7 @@ def mark_done_op(dag, var):
         python_callable=set_variable,
         op_args=(var, "yes"),
         dag=dag,
+        weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         queue="manager"
     )
@@ -83,6 +87,7 @@ def wait_op(dag, var):
         python_callable=wait,
         op_args=(var,),
         dag=dag,
+        weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         queue="manager"
     )
