@@ -74,12 +74,14 @@ def get_num_task_instances(session):
 
 latest = LatestOnlyOperator(
     task_id='latest_only',
+    priority_weight=1000,
     queue='manager',
     dag=dag)
 
 queue_sizes_task = PythonOperator(
     task_id="check_task_status",
     python_callable=get_num_task_instances,
+    priority_weight=1000,
     queue="manager",
     dag=dag)
 
