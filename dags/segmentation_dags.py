@@ -407,18 +407,22 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
     starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> scaling_global_finish >> slack_scaling_global_finish >> nglink_task >> ending_op
     wait["agg"] >> check_seg >> nglink_task
 
+    if real_size > 0 and min(high_mip, top_mip) - batch_mip >= 2:
+        for stage in ["ws", "agg"]:
+            dsize = len(generate_chunks[stage][batch_mip+2])*2
+            _, scaling_ops[stage]["extra_down"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, dsize)
+            slack_ops[stage]["extra_down"]= slack_message_op(dag[stage], "scaling_down_{}".format(stage), rescale_message.format(1,dsize))
+            scaling_ops[stage]["extra_down"].set_downstream(slack_ops[stage]["extra_down"])
+            scaling_ops[stage]["extra_down"].set_upstream(slack_ops[stage][batch_mip+1])
+
     if real_size > 0 and top_mip >= high_mip:
         for stage in ["ws", "agg"]:
             _, scaling_ops[stage]["down"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, 0)
             slack_ops[stage]["down"]= slack_message_op(dag[stage], "scaling_down_{}".format(stage), rescale_message.format(1,0))
             scaling_ops[stage]["down"].set_downstream(slack_ops[stage]["down"])
 
-            _, scaling_ops[stage]["up"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, cluster1_size)
-            slack_ops[stage]["up"]= slack_message_op(dag[stage], "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
-            scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
-
             scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
-            scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
+
 
             cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
 
@@ -439,3 +443,12 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
                 slack_ops[stage]["down_long"] = slack_message_op(dag[stage], "scaling_down_{}_long".format(stage), rescale_message.format(2, 0))
                 scaling_ops[stage]["down_long"].set_downstream(slack_ops[stage]["down_long"])
                 scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
+
+    if real_size > 0 and (min(high_mip, top_mip) - batch_mip >= 2 or top_mip >= high_mip):
+        for stage in ["ws", "agg"]:
+            _, scaling_ops[stage]["up"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, cluster1_size)
+            slack_ops[stage]["up"]= slack_message_op(dag[stage], "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
+            scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
+
+            scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
+
