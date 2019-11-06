@@ -10,7 +10,7 @@ from chunk_iterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert
 from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
-from helper_ops import slack_message_op, resize_cluster_op, wait_op, mark_done_op, reset_flags_op
+from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, dataset_resolution
@@ -377,12 +377,9 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
 
     cluster1_size = len(remap_chunks["ws"])
 
-    real_size, scaling_global_start = resize_cluster_op(image, dag_manager, cm, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
+    scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
 
-    slack_scaling_global_start = slack_message_op(dag_manager, "scaling_up_global_start", no_rescale_msg) if real_size == -1 else slack_message_op(dag_manager, "scaling_up_global_start", rescale_message.format(1, real_size))
-
-    _, scaling_global_finish = resize_cluster_op(image, dag_manager, cm, "global_finish", CLUSTER_1_CONN_ID, 0)
-    slack_scaling_global_finish = slack_message_op(dag_manager, "scaling_down_global_finish", rescale_message.format(1, 0))
+    scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0)
 
     igneous_task = PythonOperator(
         task_id = "Downsample_and_Mesh",
@@ -404,51 +401,34 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         queue = "manager"
     )
 
-    starting_op >> reset_flags >> scaling_global_start >> slack_scaling_global_start >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> scaling_global_finish >> slack_scaling_global_finish >> nglink_task >> ending_op
+    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> nglink_task >> ending_op
+    reset_flags >> scaling_global_start
+    igneous_task >> scaling_global_finish
     wait["agg"] >> check_seg >> nglink_task
 
-    if real_size > 0 and min(high_mip, top_mip) - batch_mip >= 2:
+    if min(high_mip, top_mip) - batch_mip >= 2:
         for stage in ["ws", "agg"]:
             dsize = len(generate_chunks[stage][batch_mip+2])*2
-            _, scaling_ops[stage]["extra_down"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, dsize)
-            slack_ops[stage]["extra_down"]= slack_message_op(dag[stage], "scaling_down_{}".format(stage), rescale_message.format(1,dsize))
-            scaling_ops[stage]["extra_down"].set_downstream(slack_ops[stage]["extra_down"])
+            scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize)
             scaling_ops[stage]["extra_down"].set_upstream(slack_ops[stage][batch_mip+1])
 
-    if real_size > 0 and top_mip >= high_mip:
+    if top_mip >= high_mip:
         for stage in ["ws", "agg"]:
-            _, scaling_ops[stage]["down"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, 0)
-            slack_ops[stage]["down"]= slack_message_op(dag[stage], "scaling_down_{}".format(stage), rescale_message.format(1,0))
-            scaling_ops[stage]["down"].set_downstream(slack_ops[stage]["down"])
-
+            scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0)
             scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
 
 
             cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
-
-            real_size2, scaling_ops[stage]["up_long"] = resize_cluster_op(image, dag[stage], cm, stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
+            scaling_ops[stage]["up_long"] = scale_up_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
 
             for k in generate_chunks[stage][high_mip-1]:
                 scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
 
-            if real_size2 == -1:
-                slack_ops[stage]["up_long"] = slack_message_op(dag[stage], "scaling_up_{}_long".format(stage), no_rescale_msg)
-            else:
-                slack_ops[stage]["up_long"] = slack_message_op(dag[stage], "scaling_up_{}_long".format(stage), rescale_message.format(2, real_size2))
+            scaling_ops[stage]["down_long"] = scale_down_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0)
+            scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
 
-            scaling_ops[stage]["up_long"].set_downstream(slack_ops[stage]["up_long"])
-
-            if real_size2 != -1:
-                real_size2, scaling_ops[stage]["down_long"] = resize_cluster_op(image, dag[stage], cm, stage+"_long", CLUSTER_2_CONN_ID, 0)
-                slack_ops[stage]["down_long"] = slack_message_op(dag[stage], "scaling_down_{}_long".format(stage), rescale_message.format(2, 0))
-                scaling_ops[stage]["down_long"].set_downstream(slack_ops[stage]["down_long"])
-                scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
-
-    if real_size > 0 and (min(high_mip, top_mip) - batch_mip >= 2 or top_mip >= high_mip):
+    if min(high_mip, top_mip) - batch_mip >= 2 or top_mip >= high_mip:
         for stage in ["ws", "agg"]:
-            _, scaling_ops[stage]["up"] = resize_cluster_op(image, dag[stage], cm, stage, CLUSTER_1_CONN_ID, cluster1_size)
-            slack_ops[stage]["up"]= slack_message_op(dag[stage], "scaling_up_{}".format(stage), rescale_message.format(1, real_size))
-            scaling_ops[stage]["up"].set_downstream(slack_ops[stage]["up"])
-
+            scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, cluster1_size)
             scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
 

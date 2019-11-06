@@ -8,6 +8,7 @@ from datetime import timedelta
 from time import sleep
 from slack_message import slack_message
 from param_default import default_args, cv_path
+from google_api_helper import increase_instance_group_size, reduce_instance_group_size
 
 def slack_message_op(dag, tid, msg):
     return PythonOperator(
@@ -93,29 +94,29 @@ def wait_op(dag, var):
     )
 
 
-def resize_cluster_op(img, dag, config_mounts, stage, connection, size):
-    try:
-        zone = BaseHook.get_connection(connection).login
-        cluster = BaseHook.get_connection(connection).host
-        max_size = int(BaseHook.get_connection(connection).extra)
-    except:
-        tid = "{}_{}".format(stage, size)
-        return -1, placeholder_op(dag, tid)
-
-    trigger_rule = "one_success" if size > 0 else "all_success"
-    real_size = size if size < max_size else max_size
-    cmdline = '/bin/bash -c ". /root/google-cloud-sdk/path.bash.inc && gcloud compute instance-groups managed resize {cluster} --size {size} --zone {zone}" && sleep 120'.format(cluster=cluster, size=real_size, zone=zone)
-    return real_size, DockerWithVariablesOperator(
-        config_mounts,
-        mount_point=cv_path,
+def scale_up_cluster_op(dag, stage, connection, size):
+    return PythonOperator(
         task_id='resize_{}_{}'.format(stage, size),
-        command=cmdline,
+        python_callable=increase_instance_group_size,
+        op_args = [connection, size],
         default_args=default_args,
-        image=img,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
-        execution_timeout=timedelta(minutes=5),
-        trigger_rule=trigger_rule,
+        trigger_rule="one_success",
+        queue='manager',
+        dag=dag
+    )
+
+
+def scale_down_cluster_op(dag, stage, connection, size):
+    return PythonOperator(
+        task_id='resize_{}_{}'.format(stage, size),
+        python_callable=reduce_instance_group_size,
+        op_args = [connection, size],
+        default_args=default_args,
+        weight_rule=WeightRule.ABSOLUTE,
+        priority_weight=1000,
+        trigger_rule="all_success",
         queue='manager',
         dag=dag
     )
