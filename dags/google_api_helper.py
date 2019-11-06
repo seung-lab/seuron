@@ -33,33 +33,44 @@ def resize_instance_group(connection, size):
     except:
         return
 
+    if size > max_size:
+        slack_message(":information_source:Limit the number of instances to {} instead of {}".format(max_size, size))
     credentials = GoogleCredentials.get_application_default()
     service = discovery.build('compute', 'v1', credentials=credentials)
     request = service.instanceGroupManagers().resize(project=project_id, zone=zone, instanceGroupManager=instance_group, size=min(size,max_size))
 
     response = request.execute()
     print(json.dumps(response, indent=2))
+    return min(size, max_size)
 
 
 def increase_instance_group_size(connection, size):
     info = instance_group_info(connection)
     if not info:
+        slack_message(":exclamation:Failed to load the cluster information from connection {}".format(connection))
+        slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
     targetSize = info['targetSize']
     if targetSize > size:
+        slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, targetSize))
         return
     else:
-        resize_instance_group(connection, size)
+        real_size = resize_instance_group(connection, size)
+        slack_message(":arrow_up: Scale up cluster {} to {} instances".format(connection, real_size))
 
 
 def reduce_instance_group_size(connection, size):
     info = instance_group_info(connection)
     if not info:
+        slack_message(":exclamation:Failed to load the cluster information fron connection {}".format(connection))
+        slack_message(":exclamation:Cannot decrease the size of the cluster to {} instances".format(size))
         return
 
     targetSize = info['targetSize']
     if targetSize < size:
+        slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, targetSize))
         return
     else:
-        resize_instance_group(connection, size)
+        real_size = resize_instance_group(connection, size)
+        slack_message(":arrow_down: Scale down cluster {} to {} instances".format(connection, real_size))
