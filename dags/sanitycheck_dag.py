@@ -66,7 +66,7 @@ def check_cv_data(param):
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
     try:
-        vol = CloudVolume(param["AFF_PATH"],mip=int(param["AFF_MIP"]))
+        vol = CloudVolume(param["AFF_PATH"],mip=param["AFF_MIP"])
     except:
         slack_message(":exclamation:*ERROR: Cannot access the affinity map* `{}` at MIP {}".format(param["AFF_PATH"], param["AFF_MIP"]))
         raise
