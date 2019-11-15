@@ -2,45 +2,55 @@ from airflow.hooks.base_hook import BaseHook
 from slack import WebClient
 from airflow.models import Variable
 from param_default import SLACK_CONN_ID
+import json
 
 
-def slack_message(msg, channel=None):
+def slack_message(msg, channel=None, broadcast=False):
     try:
-        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).host
-        slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
+        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
-        slack_channel = BaseHook.get_connection(SLACK_CONN_ID).extra
+        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
     except:
         return
 
     sc = WebClient(slack_token, timeout=300)
-
-    text="<@{username}>, {message}".format(
-        username=slack_username,
-        message=msg
-    )
+    slack_username = slack_extra['user']
+    slack_channel = slack_extra['channel']
+    slack_thread = slack_extra['thread_ts']
 
     if channel is not None:
         slack_channel = channel
         text="{message}".format(
             message=msg
         )
+        sc.chat_postMessage(
+            username=slack_workername,
+            channel=channel,
+            text=text
+        )
+    else:
+        text="<@{username}>, {message}".format(
+            username=slack_username,
+            message=msg
+        )
 
-    rc = sc.chat_postMessage(
-        username=slack_workername,
-        channel=slack_channel,
-        text=text
-    )
+        sc.chat_postMessage(
+            username=slack_workername,
+            channel=slack_channel,
+            thread_ts=slack_thread,
+            reply_broadcast=broadcast,
+            text=text
+        )
 
-    if not rc["ok"]:
-        print("Failed to send slack message")
 
 def slack_userinfo():
     try:
-        slack_username = BaseHook.get_connection(SLACK_CONN_ID).login
+        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
     except:
         return None
+
+    slack_username = slack_extra['user']
 
     sc = WebClient(slack_token, timeout=600)
     rc = sc.users_info(
