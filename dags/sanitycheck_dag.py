@@ -68,7 +68,7 @@ def check_cv_data(param):
     try:
         vol = CloudVolume(param["AFF_PATH"],mip=param["AFF_MIP"])
     except:
-        slack_message(":exclamation:*ERROR: Cannot access the affinity map* `{}` at MIP {}".format(param["AFF_PATH"], param["AFF_MIP"]))
+        slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` at MIP {}".format(param["AFF_PATH"], param["AFF_MIP"]))
         raise
 
     aff_bbox = vol.bounds
@@ -76,7 +76,7 @@ def check_cv_data(param):
     if "BBOX" in param:
         target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
         if not aff_bbox.contains_bbox(target_bbox):
-            slack_message(":exclamation:*ERROR: Bounding box is outside of the affinity map, affinity map: {} vs bbox: {}*".format([int(x) for x in aff_bbox.to_list()], param["BBOX"]))
+            slack_message(":u7981:*ERROR: Bounding box is outside of the affinity map, affinity map: {} vs bbox: {}*".format([int(x) for x in aff_bbox.to_list()], param["BBOX"]))
             raise ValueError('Bounding box is outside of the affinity map')
     else:
         param["BBOX"] = [int(x) for x in aff_bbox.to_list()]
@@ -85,12 +85,12 @@ def check_cv_data(param):
 
     if param.get("SKIP_WS", False):
         if "WS_PATH" not in param:
-            slack_message(":exclamation:*ERROR: Must specify path for existing watershed when SKIP_WS is used*")
+            slack_message(":u7981:*ERROR: Must specify path for existing watershed when SKIP_WS is used*")
             raise ValueError('Must specify path for existing watershed when SKIP_WS is used')
         try:
             vol_ws = CloudVolume(param["WS_PATH"])
         except:
-            slack_message(":exclamation:*ERROR: Cannot access the watershed layer* `{}`".format(param["WS_PATH"]))
+            slack_message(":u7981:*ERROR: Cannot access the watershed layer* `{}`".format(param["WS_PATH"]))
             raise
 
         provenance = vol_ws.provenance
@@ -112,7 +112,7 @@ def check_cv_data(param):
             slack_message("*Use chunk size* `{}` *to match the watershed layer*".format(ws_chunk_size))
         else:
             if any(i != j for i, j in zip(param["CHUNK_SIZE"], ws_chunk_size)):
-                slack_message(":exclamation:*ERROR: CHUNK_SIZE has to match the watershed layer: {} != {} *".format(param["CHUNK_SIZE"], ws_chunk_size))
+                slack_message(":u7981:*ERROR: CHUNK_SIZE has to match the watershed layer: {} != {} *".format(param["CHUNK_SIZE"], ws_chunk_size))
                 raise ValueError('CHUNK_SIZE has to match the watershed layer')
 
         if "CV_CHUNK_SIZE" in ws_param and "CV_CHUNK_SIZE" not in param:
