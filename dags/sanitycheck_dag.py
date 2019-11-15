@@ -244,6 +244,9 @@ Fundamental chunk size: {chunk_size}
         if param.get(skip_flag, False):
             msg += ":exclamation:Skip {op}!\n".format(op=op)
 
+    if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
+        msg += ":exclamation:Meshing without any simplification requires significantly more time and resources!\n"
+
     slack_message(msg)
 
 paths = {}

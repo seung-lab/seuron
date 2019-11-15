@@ -152,7 +152,7 @@ def downsample_and_mesh(param):
     mesh_mip = 3 - int(param["AFF_MIP"])
     simplification = True
     max_simplification_error = 40
-    if param.get("MESH_QUALITY", "LOW") == "HIGH":
+    if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
         simplification = False
         max_simplification_error = 0
         mesh_mip = 0
