@@ -91,7 +91,7 @@ def task_retry_alert(context):
             "&task_id={ti.task_id}"
             "&execution_date={iso}"
         ).format(**locals())
-        slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), None, context)
+        slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), "#seuron-alerts", context)
 
 
 def task_done_alert(context):
