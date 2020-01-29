@@ -100,6 +100,20 @@ def check_cv_data():
             Variable.set("param", param, serialize_json=True)
             slack_message("*Segment the whole affinity map by default* {}".format(param["BBOX"]))
 
+    if "GT_PATH" in param:
+        if param.get("SKIP_AGG", False):
+            slack_message(":u7981:*ERROR: Cannot compare ground truth with existing segmentation, you have to run agglomeration at least!")
+        else:
+            try:
+                gt_vol = CloudVolume(param["GT_PATH"],mip=0)
+            except:
+                slack_message(":u7981:*ERROR: Cannot access the ground truth layer* `{}` at MIP 0")
+                raise ValueError('Ground truth layer does not exist')
+            gt_bbox = gt_vol.bounds
+            if not gt_bbox.contains_bbox(target_bbox):
+                slack_message(":u7981:*ERROR: Bounding box is outside of the ground truth volume, gt: {} vs bbox: {}*".format([int(x) for x in gt_bbox.to_list()], param["BBOX"]))
+                raise ValueError('Bounding box is outside of the ground truth volume')
+
     if param.get("SKIP_AGG", False):
         if "SEG_PATH" not in param:
             slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
@@ -274,6 +288,9 @@ Fundamental chunk size: {chunk_size}
 
     if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
         msg += ":exclamation:Meshing without any simplification requires significantly more time and resources!\n"
+
+    if "GT_PATH" in param:
+        msg += """:vs: Evaluate the output against ground truth `{}`\n""".format(param["GT_PATH"])
 
     slack_message(msg)
 
