@@ -262,6 +262,12 @@ def get_infos(param):
 
 
 def process_infos(param, **kwargs):
+    if param.get("SKIP_AGG", False):
+        ti = kwargs['ti']
+        ti.xcom_push(key='segcount', value=0)
+        ti.xcom_push(key='svcount', value=0)
+        ti.xcom_push(key='topsegs', value=[])
+        return
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     content = get_infos(param)
     data = np.frombuffer(content, dtype=dt_count)
