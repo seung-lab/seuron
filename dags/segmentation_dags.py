@@ -87,7 +87,7 @@ def generate_link(param, broadcast, **kwargs):
     url = "neuroglancer link: {host}/#!{payload}".format(
         host=ng_host,
         payload=urllib.parse.quote(json.dumps(payload)))
-    slack_message(url)
+    slack_message(url, broadcast=broadcast)
 
 
 dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None)

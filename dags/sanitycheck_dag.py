@@ -292,7 +292,7 @@ Fundamental chunk size: {chunk_size}
     if "GT_PATH" in param:
         msg += """:vs: Evaluate the output against ground truth `{}`\n""".format(param["GT_PATH"])
 
-    slack_message(msg)
+    slack_message(msg, broadcast=True)
 
 paths = {}
 
