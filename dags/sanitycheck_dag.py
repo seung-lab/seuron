@@ -49,12 +49,24 @@ def task_done_alert(context):
     return slack_msg.execute(context=context)
 
 
-def check_cv_data(param):
+def check_cv_data():
+    param = Variable.get("param", deserialize_json=True)
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
     mount_secrets = param.get("MOUNT_SECRETES", [])
+
+    if "AFF_RESOLUTION" in param:
+        try:
+            vol = CloudVolume(param["AFF_PATH"], mip=param["AFF_RESOLUTION"])
+        except:
+            slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` at resolution {}".format(param["AFF_PATH"], param["AFF_RESOLUTION"]))
+            raise ValueError('Resolution does not exist')
+        if "AFF_MIP" in param:
+            slack_message(":exclamation:*AFF_RESOLUTION and AFF_MIP are both specified, Perfer AFF_RESOLUTION*")
+        param["AFF_MIP"] = vol.mip
+        Variable.set("param", param, serialize_json=True)
 
     if "AFF_MIP" not in param:
         param["AFF_MIP"] = 0
@@ -72,6 +84,8 @@ def check_cv_data(param):
         raise
 
     aff_bbox = vol.bounds
+    if "AFF_RESOLUTION" not in param:
+        param["AFF_RESOLUTION"] = [int(x) for x in vol.resolution]
 
     if "BBOX" in param:
         target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
@@ -145,7 +159,8 @@ def check_path_exists_op(dag, tag, path):
     )
 
 
-def print_summary(param):
+def print_summary():
+    param = Variable.get("param", deserialize_json=True)
     data_bbox = param["BBOX"]
 
     chunk_size = param["CHUNK_SIZE"]
@@ -189,7 +204,7 @@ def print_summary(param):
     msg = '''
 :heavy_check_mark: *Sanity Check, everything looks OK*
 Affinity map: `{aff}`
-Affinity mip level: {mip}
+Affinity resolution: [{resolution}]
 Bounding box: [{bbox}]
 Size: [{size}]
 Watershed: `{ws}`
@@ -197,7 +212,7 @@ Segmentation: `{seg}`
 Region graph and friends: `{scratch}`
 '''.format(
         aff = param["AFF_PATH"],
-        mip = param["AFF_MIP"],
+        resolution = ", ".join(str(x) for x in param["AFF_RESOLUTION"]),
         bbox = ", ".join(str(x) for x in data_bbox),
         size = ", ".join(str(data_bbox[i+3] - data_bbox[i]) for i in range(3)),
         ws = paths["WS_PATH"],
@@ -270,7 +285,6 @@ for p in [("WS","WS"), ("AGG","SEG")]:
 affinity_check = PythonOperator(
     task_id="check_cloudvolume_data",
     python_callable=check_cv_data,
-    op_args = (param,),
     on_failure_callback=cv_check_alert,
     queue="manager",
     dag=dag)
@@ -279,7 +293,6 @@ affinity_check = PythonOperator(
 summary = PythonOperator(
     task_id="summary",
     python_callable=print_summary,
-    op_args = (param,),
     queue="manager",
     dag=dag)
 
