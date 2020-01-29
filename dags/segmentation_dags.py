@@ -391,16 +391,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         dag=dag_manager
     )
 
-    check_seg = PythonOperator(
-        task_id = "Check_Segmentation",
-        python_callable=process_infos,
-        provide_context=True,
-        op_args = [param],
-        default_args=default_args,
-        dag=dag_manager,
-        queue = "manager"
-    )
-
     wait["agg"] = wait_op(dag_manager, "agg_done")
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
@@ -410,6 +400,18 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
     batch_mip = param.get("BATCH_MIP", 3)
     high_mip = param.get("HIGH_MIP", 5)
     local_batch_mip = batch_mip
+
+
+    check_seg = PythonOperator(
+        task_id="Check_Segmentation",
+        python_callable=process_infos,
+        provide_context=True,
+        op_args=[param],
+        default_args=default_args,
+        dag=dag_manager,
+        queue="manager"
+    )
+
 
     cm = ["param"]
     if "MOUNT_SECRETES" in param:
