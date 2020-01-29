@@ -19,14 +19,10 @@ import json
 import urllib
 from collections import OrderedDict
 
-
-def generate_link(param, **kwargs):
-    ng_host = "https://neuromancer-seung-import.appspot.com"
-    layers = OrderedDict()
+def generate_ng_payload(param):
     ng_resolution = dataset_resolution(param["AFF_PATH"], int(param["AFF_MIP"]))
     seg_resolution = ng_resolution
-    ti = kwargs['ti']
-    seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
+    layers = OrderedDict()
     if "IMAGE_PATH" in param:
         layers["img"] = {
             "source": "precomputed://"+param["IMAGE_PATH"],
@@ -49,7 +45,6 @@ def generate_link(param, **kwargs):
 
     layers["seg"] = {
         "source": "precomputed://"+param["SEG_PATH"],
-        "hiddenSegments": [str(x) for x in seglist],
         "type": "segmentation"
     }
 
@@ -80,6 +75,14 @@ def generate_link(param, **kwargs):
     }
 
     payload = OrderedDict([("layers", layers),("navigation", navigation),("showSlices", False),("layout", "xy-3d")])
+    return payload
+
+def generate_link(param, broadcast, **kwargs):
+    ng_host = "https://neuromancer-seung-import.appspot.com"
+    payload = generate_ng_payload(param)
+    ti = kwargs['ti']
+    seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
+    payload["layers"]["seg"]["hiddenSegments"] = [str(x) for x in seglist]
 
     url = "neuroglancer link: {host}/#!{payload}".format(
         host=ng_host,
