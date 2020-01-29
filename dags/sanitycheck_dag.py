@@ -7,6 +7,7 @@ from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
 from param_default import param_default
+from igneous_and_cloudvolume import check_cloud_path_empty
 import os
 
 from chunk_iterator import ChunkIterator
@@ -171,17 +172,13 @@ def check_cv_data():
         os.remove(os.path.join(cv_secrets_path, k))
 
 def check_path_exists_op(dag, tag, path):
-    cmdline = '/bin/bash -c ". /root/google-cloud-sdk/path.bash.inc && (gsutil ls {} >& /dev/null && exit 1 || echo OK)"'.format(path)
-    return DockerWithVariablesOperator(
-        [],
+    return PythonOperator(
         task_id='check_path_{}'.format(tag.replace("PREFIX", "PATH").lower()),
-        command=cmdline,
-        default_args=default_args,
-        image=param["WORKER_IMAGE"],
+        python_callable=check_cloud_path_empty,
+        op_args = (path,),
+        on_failure_callback=cv_check_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=5),
-        on_failure_callback=path_exist_alert,
-        queue='manager',
+        queue="manager",
         dag=dag
     )
 

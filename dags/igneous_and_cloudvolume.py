@@ -26,6 +26,11 @@ def dataset_resolution(path, mip=0):
     vol = CloudVolume(path, mip=mip)
     return [int(x) for x in list(vol.resolution)]
 
+def check_cloud_path_empty(path):
+    s = Storage(path)
+    if next(s.list_files(), None) is not None:
+        slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
+        raise RuntimeError('Path already exist')
 
 def create_info(stage, param):
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
