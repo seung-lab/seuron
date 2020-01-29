@@ -34,7 +34,7 @@ dag = DAG(
 )
 
 def cv_check_alert(context):
-    msg = "*Sanity check failed* Cannot check the cloudvolume data"
+    msg = "*Sanity check failed* Errors in the input cloudvolume data"
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
