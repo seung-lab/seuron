@@ -166,10 +166,11 @@ def downsample_and_mesh(param):
             for t in tasks:
                 submit_task(queue, t.payload())
 
+        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+        for t in tasks:
+            submit_task(queue, t.payload())
+
         if not param.get("SKIP_AGG", False):
-            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-            for t in tasks:
-                submit_task(queue, t.payload())
             tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
                 submit_task(queue, t.payload())
@@ -181,9 +182,9 @@ def downsample_and_mesh(param):
             slack_message(":exclamation: Skip meshing as instructed")
             return
 
-        if param.get("SKIP_AGG", False):
-            slack_message(":exclamation: No segmentation generated, skip meshing")
-            return
+        #if param.get("SKIP_AGG", False):
+        #    slack_message(":exclamation: No segmentation generated, skip meshing")
+        #    return
 
         vol = CloudVolume(seg_cloudpath)
         if mesh_mip not in vol.available_mips:
