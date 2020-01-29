@@ -13,7 +13,7 @@ from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
-from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, dataset_resolution
+from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, get_eval_job, dataset_resolution
 import numpy as np
 import json
 import urllib
@@ -186,6 +186,66 @@ def generate_batches(param):
         batch_chunks=[v]
 
     return high_mip_chunks, batch_chunks
+
+
+def get_evals(param):
+    from joblib import Parallel, delayed
+
+    high_mip_chunks, batch_chunks = generate_batches(param)
+    contents = Parallel(n_jobs=-2)(delayed(get_eval_job)(sv, param) for sv in batch_chunks)
+
+    content = b''
+    for c in contents:
+        content+=c
+
+    return content
+
+def evaluate_results(param):
+    from io import BytesIO
+    import os
+    from collections import defaultdict
+    from evaluate_segmentation import read_chunk, evaluate_rand, evaluate_voi, find_large_diff
+    from igneous_and_cloudvolume import upload_json
+    from airflow import configuration as conf
+    content = get_evals(param)
+    f = BytesIO(content)
+    s_i = defaultdict(int)
+    t_j = defaultdict(int)
+    p_ij = defaultdict(lambda: defaultdict(int))
+    payload = generate_ng_payload(param)
+    payload['layers']['size']['visible'] = False
+    while True:
+        if not read_chunk(f, s_i, t_j, p_ij):
+            break
+    rand_split, rand_merge = evaluate_rand(s_i, t_j, p_ij)
+    voi_split, voi_merge = evaluate_voi(s_i, t_j, p_ij)
+    seg_pairs = find_large_diff(s_i, t_j, p_ij, payload)
+    output = {
+        "ng_payload": payload,
+        "seg_pairs": seg_pairs
+    }
+
+
+    gs_log_path = conf.get('core', 'remote_log_folder')
+    bucket_name = gs_log_path[5:].split('/')[0]
+
+    upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
+
+    msg = '''*Evaluation against ground truth* `{gt_path}`:
+rand split: *{rand_split}*
+rand merge: *{rand_merge}*
+voi split : *{voi_split}*
+voi merge : *{voi_merge}*
+seg diff: {url}
+'''.format(
+    gt_path=param["GT_PATH"],
+    rand_split=round(abs(rand_split),3),
+    rand_merge=round(abs(rand_merge),3),
+    voi_split=round(abs(voi_split),3),
+    voi_merge=round(abs(voi_merge),3),
+    url="https://diff-dot-neuromancer-seung-import.appspot.com/{}".format(param["NAME"])
+    )
+    slack_message(msg, broadcast=True)
 
 
 def get_infos(param):
@@ -395,20 +455,43 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         queue = "manager"
     )
 
-    nglink_task = PythonOperator(
-        task_id = "Generate_neuroglancer_link",
-        provide_context=True,
-        python_callable=generate_link,
-        op_args = [param,],
-        default_args=default_args,
-        dag=dag_manager,
-        queue = "manager"
-    )
-
-    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> nglink_task >> ending_op
+    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> ending_op
     reset_flags >> scaling_global_start
     igneous_task >> scaling_global_finish
-    wait["agg"] >> check_seg >> nglink_task
+    wait["agg"] >> check_seg
+
+    if "GT_PATH" in param:
+        evaluation_task = PythonOperator(
+            task_id = "Evaluate_Segmentation",
+            python_callable=evaluate_results,
+            op_args = [param,],
+            default_args=default_args,
+            dag=dag_manager,
+            queue = "manager"
+        )
+        nglink_task = PythonOperator(
+            task_id = "Generate_neuroglancer_link",
+            provide_context=True,
+            python_callable=generate_link,
+            op_args = [param, False],
+            default_args=default_args,
+            dag=dag_manager,
+            queue = "manager"
+        )
+        [check_seg, igneous_task] >> nglink_task >> ending_op
+        igneous_task >> evaluation_task >> ending_op
+    else:
+        nglink_task = PythonOperator(
+            task_id = "Generate_neuroglancer_link",
+            provide_context=True,
+            python_callable=generate_link,
+            op_args = [param, True],
+            default_args=default_args,
+            dag=dag_manager,
+            queue = "manager"
+        )
+        [check_seg, igneous_task] >> nglink_task >> ending_op
+
 
     if min(high_mip, top_mip) - batch_mip >= 2:
         for stage in ["ws", "agg"]:

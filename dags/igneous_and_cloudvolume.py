@@ -85,6 +85,23 @@ def create_info(stage, param):
         os.remove(os.path.join(cv_secrets_path, k))
 
 
+def upload_json(path, filename, content):
+    with Storage(path) as storage:
+        storage.put_json(filename, content)
+
+
+def get_eval_job(v, param):
+    content = b''
+    with Storage(param["SCRATCH_PATH"]) as storage:
+        for c in v:
+            if c.mip_level() != 0:
+                continue
+            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+            content += storage.get_file('agg/evaluation/evaluation_{}.data'.format(tag))
+
+    return content
+
+
 def get_info_job(v, param):
 #    try:
     content = b''
