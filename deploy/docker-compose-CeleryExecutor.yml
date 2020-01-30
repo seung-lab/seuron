@@ -1,9 +1,9 @@
 version: '3.3'
 services:
     rabbitmq:
-        image: rabbitmq:3.6.12-management-alpine
+        image: rabbitmq:3.8-management
         volumes:
-            - /var/lib:/var/lib
+            - /var/lib/rabbitmq:/var/lib/rabbitmq
         ports:
             - "5672:5672"
         deploy:
@@ -11,7 +11,7 @@ services:
                 constraints: [ engine.labels.infrakit-role == manager ]
 
     postgres:
-        image: mariadb:10.3
+        image: mariadb:10.4
         environment:
             - MYSQL_USER
             - MYSQL_PASSWORD
