@@ -1,8 +1,7 @@
 from airflow import DAG
-from airflow.operators.docker_plugin import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
-from datetime import datetime, timedelta
+from datetime import datetime
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
