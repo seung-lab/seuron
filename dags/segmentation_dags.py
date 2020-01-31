@@ -110,6 +110,7 @@ for p in ["SCRATCH", "WS", "SEG"]:
     if path not in param:
         param[path] = param["{}_PREFIX".format(p)]+param["NAME"]
 
+
 def confirm_dag_run(context, dag_run_obj):
     skip_flag = context['params']['skip_flag']
     op = context['params']['op']

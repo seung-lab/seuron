@@ -6,6 +6,7 @@ from slack_message import slack_message
 import requests
 import json
 
+
 def get_project_id():
     apiurl = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
     response = requests.get(apiurl, headers={"Metadata-Flavor": "Google"})
