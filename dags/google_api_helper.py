@@ -1,3 +1,4 @@
+from time import sleep
 from airflow.hooks.base_hook import BaseHook
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
@@ -25,6 +26,29 @@ def get_cluster_size(project_id, instance_groups):
         info = instance_group_info(project_id, ig)
         total_size += info['targetSize']
     return total_size
+
+
+def reset_cluster(key):
+    try:
+        project_id = get_project_id()
+        instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    except:
+        slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
+        slack_message(":exclamation:Cannot reset cluster {}".format(key))
+        return
+
+    if key not in instance_group_info:
+        slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
+        slack_message(":exclamation:Cannot reset cluster {}".format(key))
+        return
+
+    total_size = get_cluster_size(project_id, instance_group_info[key])
+    slack_message(":information_source:Start reseting {} instances in cluster {}".format(total_size, key))
+    resize_instance_group(project_id, instance_group_info[key], 0)
+    slack_message(":information_source:Reduce the number of instances to 0, wait 5 min to spin them up again")
+    sleep(300)
+    resize_instance_group(project_id, instance_group_info[key], total_size)
+    slack_message(":information_source:{} instances in cluster {} restarted".format(total_size, key))
 
 
 def resize_instance_group(project_id, instance_group, size):

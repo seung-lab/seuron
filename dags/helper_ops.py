@@ -8,7 +8,7 @@ from datetime import timedelta
 from time import sleep
 from slack_message import slack_message
 from param_default import default_args, cv_path
-from google_api_helper import increase_instance_group_size, reduce_instance_group_size
+from google_api_helper import increase_instance_group_size, reduce_instance_group_size, reset_cluster
 
 def slack_message_op(dag, tid, msg):
     return PythonOperator(
@@ -113,6 +113,20 @@ def scale_down_cluster_op(dag, stage, key, size):
         task_id='resize_{}_{}'.format(stage, size),
         python_callable=reduce_instance_group_size,
         op_args = [key, size],
+        default_args=default_args,
+        weight_rule=WeightRule.ABSOLUTE,
+        priority_weight=1000,
+        trigger_rule="all_success",
+        queue='manager',
+        dag=dag
+    )
+
+
+def reset_cluster_op(dag, stage, key):
+    return PythonOperator(
+        task_id='reset_{}_{}'.format(stage, key),
+        python_callable=reset_cluster,
+        op_args = [key],
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,

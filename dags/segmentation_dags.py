@@ -10,7 +10,7 @@ from chunk_iterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert
 from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
-from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op
+from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, get_eval_job, dataset_resolution
@@ -448,6 +448,12 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
             process_composite_tasks(c, cm, top_mip, param)
 
     cluster1_size = len(remap_chunks["ws"])
+
+
+    if cluster1_size >= 100:
+        reset_cluster_after_ws = reset_cluster_op(dag['ws'], "ws", CLUSTER_1_CONN_ID)
+        slack_ops['ws']['remap'] >> reset_cluster_after_ws
+
 
     scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
 
