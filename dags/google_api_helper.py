@@ -85,6 +85,7 @@ def increase_instance_group_size(key, size):
 
     if key not in instance_group_info:
         slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
+        slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
     total_size = get_cluster_size(project_id, instance_group_info[key])
@@ -102,11 +103,12 @@ def reduce_instance_group_size(key, size):
         instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
-        slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
+        slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
         return
 
     if key not in instance_group_info:
         slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
+        slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
         return
 
     total_size = get_cluster_size(project_id, instance_group_info[key])
