@@ -90,15 +90,16 @@ def check_cv_data():
         if "AFF_RESOLUTION" not in param:
             param["AFF_RESOLUTION"] = [int(x) for x in vol.resolution]
 
-        if "BBOX" in param:
-            target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
-            if not aff_bbox.contains_bbox(target_bbox):
-                slack_message(":u7981:*ERROR: Bounding box is outside of the affinity map, affinity map: {} vs bbox: {}*".format([int(x) for x in aff_bbox.to_list()], param["BBOX"]))
-                raise ValueError('Bounding box is outside of the affinity map')
-        else:
+        if "BBOX" not in param:
             param["BBOX"] = [int(x) for x in aff_bbox.to_list()]
             Variable.set("param", param, serialize_json=True)
             slack_message("*Segment the whole affinity map by default* {}".format(param["BBOX"]))
+
+        target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
+        if not aff_bbox.contains_bbox(target_bbox):
+            slack_message(":u7981:*ERROR: Bounding box is outside of the affinity map, affinity map: {} vs bbox: {}*".format([int(x) for x in aff_bbox.to_list()], param["BBOX"]))
+            raise ValueError('Bounding box is outside of the affinity map')
+
 
     if "GT_PATH" in param:
         if param.get("SKIP_AGG", False):
