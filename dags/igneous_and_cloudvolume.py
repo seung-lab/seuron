@@ -258,7 +258,7 @@ def downsample_and_mesh(param):
                     prefix_list.append(prefix2)
 
         task_list = []
-        reduce_instance_group_size("igneous", 5)
+        reduce_instance_group_size("igneous", 10)
         for p in sorted(prefix_list, key=len):
             if any(p.startswith(s) for s in task_list):
                 print("Already considered, skip {}".format(p))
