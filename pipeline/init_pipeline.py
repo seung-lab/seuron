@@ -2,6 +2,7 @@ from airflow.utils import db as db_utils
 from airflow import models
 import os
 import requests
+import json
 
 
 def gcloud_metadata(key):
@@ -27,6 +28,25 @@ if host_ip is None:
 
 atomic_worker_group = "{deployment}-atomic-workers-{zone}".format(deployment=deployment, zone=zone)
 composite_worker_group = "{deployment}-composite-workers-{zone}".format(deployment=deployment, zone=zone)
+igneous_worker_group = "{deployment}-igneous-workers-{zone}".format(deployment=deployment, zone=zone)
+
+instance_groups = {
+    'atomic': [{
+        'name': atomic_worker_group,
+        'zone': zone,
+        'max_size': 100
+    }],
+    'composite': [{
+        'name': composite_worker_group,
+        'zone': zone,
+        'max_size': 1
+    }],
+    'igneous': [{
+        'name': igneous_worker_group,
+        'zone': zone,
+        'max_size': 50
+    }]
+}
 
 db_utils.merge_conn(
         models.Connection(
@@ -34,12 +54,8 @@ db_utils.merge_conn(
             schema='default',))
 db_utils.merge_conn(
         models.Connection(
-            conn_id='InstanceGroup1', conn_type='http',
-            host=atomic_worker_group, login=zone, extra='100'))
-db_utils.merge_conn(
-        models.Connection(
-            conn_id='InstanceGroup2', conn_type='http',
-            host=composite_worker_group, login=zone, extra='1'))
+            conn_id='InstanceGroups', conn_type='http',
+            host=deployment, login=zone, extra=json.dumps(instance_groups)))
 db_utils.merge_conn(
         models.Connection(
             conn_id='Slack', conn_type='http',

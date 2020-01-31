@@ -7,7 +7,7 @@ from time import sleep, strftime
 
 from slack_message import slack_message, slack_userinfo
 from param_default import CLUSTER_1_CONN_ID
-from google_api_helper import reduce_instance_group_size
+from google_api_helper import reduce_instance_group_size, increase_instance_group_size
 
 
 import tenacity
@@ -182,7 +182,7 @@ def downsample_and_mesh(param):
 
     with Connection(broker, connect_timeout=60) as conn:
         queue = conn.SimpleQueue("igneous")
-        reduce_instance_group_size(CLUSTER_1_CONN_ID, 10)
+        increase_instance_group_size("igneous", 50)
         if not param.get("SKIP_WS", False):
             tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
@@ -258,7 +258,7 @@ def downsample_and_mesh(param):
                     prefix_list.append(prefix2)
 
         task_list = []
-        reduce_instance_group_size(CLUSTER_1_CONN_ID, 5)
+        reduce_instance_group_size("igneous", 5)
         for p in sorted(prefix_list, key=len):
             if any(p.startswith(s) for s in task_list):
                 print("Already considered, skip {}".format(p))

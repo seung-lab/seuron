@@ -94,11 +94,11 @@ def wait_op(dag, var):
     )
 
 
-def scale_up_cluster_op(dag, stage, connection, size):
+def scale_up_cluster_op(dag, stage, key, size):
     return PythonOperator(
         task_id='resize_{}_{}'.format(stage, size),
         python_callable=increase_instance_group_size,
-        op_args = [connection, size],
+        op_args = [key, size],
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
@@ -108,11 +108,11 @@ def scale_up_cluster_op(dag, stage, connection, size):
     )
 
 
-def scale_down_cluster_op(dag, stage, connection, size):
+def scale_down_cluster_op(dag, stage, key, size):
     return PythonOperator(
         task_id='resize_{}_{}'.format(stage, size),
         python_callable=reduce_instance_group_size,
-        op_args = [connection, size],
+        op_args = [key, size],
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,

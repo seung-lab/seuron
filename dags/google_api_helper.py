@@ -12,66 +12,83 @@ def get_project_id():
     return response.text
 
 
-def instance_group_info(connection):
-    try:
-        zone = BaseHook.get_connection(connection).login
-        instance_group = BaseHook.get_connection(connection).host
-        project_id = get_project_id()
-    except:
-        return None
+def instance_group_info(project_id, instance_group):
     credentials = GoogleCredentials.get_application_default()
     service = discovery.build('compute', 'v1', credentials=credentials)
-    request = service.instanceGroupManagers().get(project=project_id, zone=zone, instanceGroupManager=instance_group)
+    request = service.instanceGroupManagers().get(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'])
     return request.execute()
 
 
-def resize_instance_group(connection, size):
-    try:
-        zone = BaseHook.get_connection(connection).login
-        instance_group = BaseHook.get_connection(connection).host
-        max_size = int(BaseHook.get_connection(connection).extra)
-        project_id = get_project_id()
-    except:
-        return
+def get_cluster_size(project_id, instance_groups):
+    total_size = 0
+    for ig in instance_groups:
+        info = instance_group_info(project_id, ig)
+        total_size += info['targetSize']
+    return total_size
+
+
+def resize_instance_group(project_id, instance_group, size):
+    max_size = 0
+    for ig in instance_group:
+        max_size += ig['max_size']
 
     if size > max_size:
         slack_message(":information_source:Limit the number of instances to {} instead of {}".format(max_size, size))
-    credentials = GoogleCredentials.get_application_default()
-    service = discovery.build('compute', 'v1', credentials=credentials)
-    request = service.instanceGroupManagers().resize(project=project_id, zone=zone, instanceGroupManager=instance_group, size=min(size,max_size))
 
-    response = request.execute()
-    print(json.dumps(response, indent=2))
+    target_size = size
+    for ig in instance_group:
+        ig_size = min(size, ig['max_size'])
+        credentials = GoogleCredentials.get_application_default()
+        service = discovery.build('compute', 'v1', credentials=credentials)
+        request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=ig_size)
+        target_size -= ig_size
+        response = request.execute()
+        print(json.dumps(response, indent=2))
+        if target_size == 0:
+            break
+
     return min(size, max_size)
 
 
-def increase_instance_group_size(connection, size):
-    info = instance_group_info(connection)
-    if not info:
-        slack_message(":exclamation:Failed to load the cluster information from connection {}".format(connection))
+def increase_instance_group_size(key, size):
+    try:
+        project_id = get_project_id()
+        instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    except:
+        slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
-    targetSize = info['targetSize']
-    if targetSize > size:
-        slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, targetSize))
+    if key not in instance_group_info:
+        slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
+        return
+
+    total_size = get_cluster_size(project_id, instance_group_info[key])
+    if total_size > size:
+        slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(connection, size)
-        slack_message(":arrow_up: Scale up cluster {} to {} instances".format(connection, real_size))
+        real_size = resize_instance_group(project_id, instance_group_info[key], size)
+        slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
 
-def reduce_instance_group_size(connection, size):
-    info = instance_group_info(connection)
-    if not info:
-        slack_message(":exclamation:Failed to load the cluster information fron connection {}".format(connection))
-        slack_message(":exclamation:Cannot decrease the size of the cluster to {} instances".format(size))
+def reduce_instance_group_size(key, size):
+    try:
+        project_id = get_project_id()
+        instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    except:
+        slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
+        slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
-    targetSize = info['targetSize']
-    if targetSize < size:
-        slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, targetSize))
+    if key not in instance_group_info:
+        slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
+        return
+
+    total_size = get_cluster_size(project_id, instance_group_info[key])
+    if total_size < size:
+        slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(connection, size)
-        slack_message(":arrow_down: Scale down cluster {} to {} instances".format(connection, real_size))
+        real_size = resize_instance_group(project_id, instance_group_info[key], size)
+        slack_message(":arrow_down: Scale down cluster {} to {} instances".format(key, real_size))
