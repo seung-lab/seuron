@@ -53,6 +53,9 @@ def reset_cluster(key):
 
 
 def resize_instance_group(project_id, instance_group, size):
+
+    total_size = get_cluster_size(project_id, instance_group)
+
     max_size = 0
     for ig in instance_group:
         max_size += ig['max_size']
@@ -60,17 +63,24 @@ def resize_instance_group(project_id, instance_group, size):
     if size > max_size:
         slack_message(":information_source:Limit the number of instances to {} instead of {}".format(max_size, size))
 
+    downsize = False
+    if size < total_size:
+        downsize = True
+
     target_size = size
     for ig in instance_group:
-        ig_size = min(size, ig['max_size'])
+        ig_size = min(target_size, ig['max_size'])
         credentials = GoogleCredentials.get_application_default()
         service = discovery.build('compute', 'v1', credentials=credentials)
         request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=ig_size)
-        target_size -= ig_size
         response = request.execute()
         print(json.dumps(response, indent=2))
-        if target_size == 0:
+        slack_message(":information_source: resize instance group {} to {} instances".format(ig['name'], ig_size))
+        target_size -= ig_size
+        if not downsize and target_size == 0:
             break
+        if downsize and target_size <= 0:
+            target_size = 0
 
     return min(size, max_size)
 
