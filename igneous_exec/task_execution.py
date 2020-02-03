@@ -34,7 +34,7 @@ signal.signal(signal.SIGINT, int_handler)
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
 @click.option('--loop/--no-loop', default=LOOP, help='run execution in infinite loop or not', is_flag=True)
 def command(tag, queue, qurl, timeout, loop):
-    conn = Connection(qurl, heartbeat=180)
+    conn = Connection(qurl, heartbeat=300)
     qos_monitor = threading.Thread(target=handle_idle, args=(q_state, timeout, conn, ))
     qos_monitor.start()
     execute(conn, tag, queue, qurl, timeout, loop)
@@ -75,7 +75,7 @@ def execute(conn, tag, queue, qurl, timeout, loop):
             message.ack(task)
             tries = 0
         except SimpleQueue.Empty:
-            time.sleep(random_exponential_window_backoff(tries))
+            time.sleep(30)
             conn.heartbeat_check()
             continue
         except KeyboardInterrupt:
