@@ -42,15 +42,6 @@ def command(tag, queue, qurl, timeout, loop):
     conn.close()
     return
 
-def random_exponential_window_backoff(n):
-    n = min(n, 30)
-    # 120 sec max b/c on avg a request every ~250msec if 500 containers
-    # in contention which seems like a quite reasonable volume of traffic
-    # to handle
-    high = min(2 ** n, 120)
-    return random.uniform(0, high)
-
-
 def execute(conn, tag, queue, qurl, timeout, loop):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue)
