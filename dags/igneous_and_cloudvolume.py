@@ -28,7 +28,13 @@ def dataset_resolution(path, mip=0):
 
 def check_cloud_path_empty(path):
     s = Storage(path)
-    if next(s.list_files(), None) is not None:
+    try:
+        obj = next(s.list_files(), None)
+    except:
+        slack_message(""":exclamation:*Error*: Check cloud path failed: {}, does the bucket exist?""".format(path))
+        raise
+
+    if obj is not None:
         slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
         raise RuntimeError('Path already exist')
 
