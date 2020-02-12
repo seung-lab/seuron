@@ -188,13 +188,13 @@ def downsample_and_mesh(param):
 
     with Connection(broker, connect_timeout=60) as conn:
         queue = conn.SimpleQueue("igneous")
-        increase_instance_group_size("igneous", 50)
         if not param.get("SKIP_WS", False):
             tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
                 submit_task(queue, t.payload())
 
         tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+        increase_instance_group_size("igneous", min(50, len(tasks)//32))
         for t in tasks:
             submit_task(queue, t.payload())
 
