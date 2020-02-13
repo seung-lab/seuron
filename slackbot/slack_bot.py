@@ -254,7 +254,8 @@ def handle_batch(q_payload, q_cmd):
         for i, p in enumerate(json_obj):
             param = deepcopy(default_param)
             if i > 0:
-                del param['NAME']
+                if 'NAME' in param:
+                    del param['NAME']
                 for k in p:
                     param[k] = p[k]
                 supply_default_param(param)
