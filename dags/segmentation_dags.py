@@ -232,6 +232,7 @@ def evaluate_results(param):
 
     gs_log_path = conf.get('core', 'remote_log_folder')
     bucket_name = gs_log_path[5:].split('/')[0]
+    diff_server = param.get("DIFF_SERVER", "https://diff-dot-neuromancer-seung-import.appspot.com")
 
     upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
 
@@ -247,7 +248,7 @@ seg diff: {url}
     rand_merge=round(abs(rand_merge),3),
     voi_split=round(abs(voi_split),3),
     voi_merge=round(abs(voi_merge),3),
-    url="https://diff-dot-neuromancer-seung-import.appspot.com/{}".format(param["NAME"])
+    url="{}/{}".format(diff_server, param["NAME"])
     )
     slack_message(msg, broadcast=True)
 
