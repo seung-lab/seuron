@@ -4,6 +4,7 @@ from cloudvolume.lib import Vec
 import os
 import requests
 from time import sleep, strftime
+from math import log2
 
 from slack_message import slack_message, slack_userinfo
 from param_default import CLUSTER_1_CONN_ID
@@ -177,13 +178,6 @@ def downsample_and_mesh(param):
     seg_cloudpath = param["SEG_PATH"]
     ws_cloudpath = param["WS_PATH"]
 
-    mesh_mip = 3 - int(param["AFF_MIP"])
-    simplification = True
-    max_simplification_error = 40
-    if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
-        simplification = False
-        max_simplification_error = 0
-        mesh_mip = 0
     #cube_dim = 512//(2**(mesh_mip+1))
 
     with Connection(broker, connect_timeout=60) as conn:
@@ -215,8 +209,18 @@ def downsample_and_mesh(param):
         #    return
 
         vol = CloudVolume(seg_cloudpath)
+        mesh_mip = int(log2(vol.resolution[2]/vol.resolution[0]))
+
         if mesh_mip not in vol.available_mips:
             mesh_mip = max(vol.available_mips)
+
+        simplification = True
+        max_simplification_error = 40
+        if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
+            simplification = False
+            max_simplification_error = 0
+            mesh_mip = 0
+
         slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
 
         tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
