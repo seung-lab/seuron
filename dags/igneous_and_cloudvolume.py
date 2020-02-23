@@ -187,7 +187,7 @@ def downsample_and_mesh(param):
                 submit_task(queue, t.payload())
 
         tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-        increase_instance_group_size("igneous", min(50, len(tasks)//32))
+        increase_instance_group_size("igneous", min(50, 1+len(tasks)//32))
         for t in tasks:
             submit_task(queue, t.payload())
 
