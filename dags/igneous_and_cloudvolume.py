@@ -7,7 +7,6 @@ from time import sleep, strftime
 from math import log2
 
 from slack_message import slack_message, slack_userinfo
-from param_default import CLUSTER_1_CONN_ID
 from google_api_helper import reduce_instance_group_size, increase_instance_group_size
 
 
