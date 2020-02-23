@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 from time import sleep
 from docker import APIClient as Client
@@ -306,6 +307,10 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
 
     def execute(self, context):
         with TemporaryDirectory(prefix='dockervariables') as tmp_var_dir:
+            try:
+                shutil.copy('/tmp/sysinfo.txt', tmp_var_dir)
+            except FileNotFoundError:
+                self.log.info('No sysinfo file found, skip')
             for key in self.variables:
                 value = Variable.get(key)
                 with open(os.path.join(tmp_var_dir, key), 'w') as value_file:
