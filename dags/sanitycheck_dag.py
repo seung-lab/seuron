@@ -1,7 +1,8 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
+from airflow.operators.docker_plugin import DockerWithVariablesOperator
 from airflow.utils.weight_rule import WeightRule
-from datetime import datetime
+from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
@@ -40,6 +41,11 @@ def cv_check_alert(context):
 
 def path_exist_alert(context):
     msg = "*Sanity check failed* Path already exist: {}".format(context.get('task_instance').task_id)
+    slack_msg = slack_message_op(dag, "slack_message", msg)
+    return slack_msg.execute(context=context)
+
+def worker_image_alert(context):
+    msg = "*Sanity check failed* Check worker image failed: {}".format(param["WORKER_IMAGE"])
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
@@ -183,6 +189,20 @@ def check_path_exists_op(dag, tag, path):
         dag=dag
     )
 
+def check_worker_image_op(dag):
+    cmdline = '/bin/bash -c "ls /root/seg/scripts/init.sh"'
+    return DockerWithVariablesOperator(
+        [],
+        task_id='check_worker_image',
+        command=cmdline,
+        default_args=default_args,
+        image=param["WORKER_IMAGE"],
+        weight_rule=WeightRule.ABSOLUTE,
+        execution_timeout=timedelta(minutes=5),
+        on_failure_callback=worker_image_alert,
+        queue='manager',
+        dag=dag
+)
 
 def print_summary():
     param = Variable.get("param", deserialize_json=True)
@@ -302,6 +322,7 @@ for p in ["SCRATCH", "WS", "SEG"]:
         paths[path] = param["{}_PATH".format(p)]
 
 path_checks = [check_path_exists_op(dag, "SCRATCH_PATH", paths["SCRATCH_PATH"])]
+image_check = check_worker_image_op(dag)
 
 for p in [("WS","WS"), ("AGG","SEG")]:
     if param.get("SKIP_"+p[0], False):
@@ -324,4 +345,4 @@ summary = PythonOperator(
     queue="manager",
     dag=dag)
 
-path_checks >> affinity_check >> summary
+image_check >> path_checks >> affinity_check >> summary
