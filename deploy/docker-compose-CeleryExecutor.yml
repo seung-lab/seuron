@@ -8,6 +8,10 @@ services:
             - /var/lib/rabbitmq:/var/lib/rabbitmq
         ports:
             - "5672:5672"
+        sysctls:
+            - net.ipv4.tcp_keepalive_intvl=45
+            - net.ipv4.tcp_keepalive_probes=15
+            - net.ipv4.tcp_keepalive_time=120
         deploy:
             placement:
                 constraints: [ engine.labels.infrakit-role == manager ]
