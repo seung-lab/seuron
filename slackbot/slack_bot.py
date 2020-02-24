@@ -15,6 +15,8 @@ import threading
 import queue
 from queue import Empty
 
+param_updated = False
+
 def gcloud_ip():
     metadata_url = "http://169.254.169.254/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip"
     response = requests.get(metadata_url, headers={"Metadata-Flavor": "Google"})
@@ -124,6 +126,7 @@ def download_file(msg):
             return None
 
 def update_param(msg):
+    global param_updated
     payload = download_file(msg)
     if payload:
         try:
@@ -148,6 +151,7 @@ def update_param(msg):
             replyto(msg, "Running sanity check, please wait")
             update_metadata(msg)
             set_param(json_obj)
+            param_updated = True
         else:
             replyto(msg, "Busy right now")
 
@@ -166,6 +170,7 @@ def supply_default_param(json_obj):
 
 
 def dispatch_command(cmd, payload):
+    global param_updated
     msg = payload['data']
     print(cmd)
     if cmd == "parameters":
@@ -176,11 +181,14 @@ def dispatch_command(cmd, payload):
         state, _ = dag_state("sanity_check")
         if check_running():
             replyto(msg, "I am busy right now")
+        elif not param_updated:
+            replyto(msg, "You have to update the parameters before starting the segmentation")
         elif state != "success":
             replyto(msg, "Sanity check failed, try again")
         else:
             replyto(msg, "Start segmentation")
             update_metadata(msg)
+            param_updated = False
             if q_payload.qsize() == 0:
                 run_segmentation()
             else:
