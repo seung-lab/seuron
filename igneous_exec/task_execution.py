@@ -1,9 +1,8 @@
-import random
-import signal
 import time
 import traceback
 import threading
 import queue
+import socket
 
 import click
 from taskqueue import totask
@@ -12,61 +11,43 @@ from kombu import Connection
 from kombu.simple import SimpleQueue
 import psutil
 
-LOOP = True
-
-def int_handler(signum, frame):
-    global LOOP
-    print("Interrupted. Exiting.")
-    LOOP = False
-
-def timeout_handler(signum, frame):
-    print("Task timeout")
-    raise Exception("end of time")
-
-signal.signal(signal.SIGALRM, timeout_handler)
-
-signal.signal(signal.SIGINT, int_handler)
-
 @click.command()
 @click.option('--tag', default='',  help='kind of task to execute')
 @click.option('--queue', default="",  help='Name of pull queue to use.')
 @click.option('--qurl', default="",  help='SQS Queue URL if using SQS')
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
-@click.option('--loop/--no-loop', default=LOOP, help='run execution in infinite loop or not', is_flag=True)
+@click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
 def command(tag, queue, qurl, timeout, loop):
-    conn = Connection(qurl, heartbeat=300)
-    qos_monitor = threading.Thread(target=handle_idle, args=(q_state, timeout, conn, ))
-    qos_monitor.start()
+    conn = Connection(qurl, heartbeat=30)
+    worker = threading.Thread(target=handle_task, args=(q_task, q_state,))
+    worker.daemon = True
+    worker.start()
     execute(conn, tag, queue, qurl, timeout, loop)
-    qos_monitor.join()
-    conn.close()
+    conn.release()
     return
 
 def execute(conn, tag, queue, qurl, timeout, loop):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue)
 
-    tries = 0
     while True:
         task = 'unknown'
         try:
             message = queue.get_nowait()
-            task = totask({'payload': message.payload, 'id': -1})
-            tries += 1
-            print(task)
-            q_state.put("busy")
-            task.execute()
-            print("delete task in queue...")
-            message.ack()
-            q_state.put("idle")
-            print('INFO', task , "succesfully executed")
-            tries = 0
+            print("put message into queue: {}".format(message.payload))
+            q_task.put(message.payload)
+            if wait_for_task(q_state, conn):
+                print("delete task in queue...")
+                message.ack()
+                print('INFO', task , "succesfully executed")
+            else:
+                break
         except EmptyVolumeException:
             print('WARNING', task, "raised an EmptyVolumeException")
             message.ack(task)
-            tries = 0
         except SimpleQueue.Empty:
-            time.sleep(30)
+            time.sleep(10)
+            print("heart beat")
             conn.heartbeat_check()
             continue
         except KeyboardInterrupt:
@@ -74,38 +55,40 @@ def execute(conn, tag, queue, qurl, timeout, loop):
             break
         except Exception as e:
             print('ERROR', task, "raised {}\n {}".format(e , traceback.format_exc()))
-            q_state.put("died")
             conn.release()
             raise #this will restart the container in kubernetes
-        if (not loop) or (not LOOP):
-            q_state.put("died")
+        if not loop:
             print("not in loop mode, will break the loop and exit")
             break
 
-def handle_idle(q_state, timeout, conn):
-    busy = False
-    idle_count = 0
+
+def handle_task(q_task, q_state):
     while True:
-        #logger.debug("check queue")
-        if not busy and q_state.qsize() == 0:
+        if q_task.qsize() == 0:
             time.sleep(1)
             continue
+        if q_task.qsize() > 0:
+            msg = q_task.get()
+            print("run task: {}".format(msg))
+            task = totask({'payload': msg, 'id': -1})
+            task.execute()
+            q_state.put("done")
+
+
+def wait_for_task(q_state, conn):
+    idle_count = 0
+    while True:
         if q_state.qsize() > 0:
             msg = q_state.get()
             while q_state.qsize() > 0:
                 msg = q_state.get()
-            if msg == "died":
-                print("parent died")
-                return
-            elif msg == "busy":
-                print("task started")
-                busy = True
-            elif msg == "idle":
-                print("task finished")
-                idle_count = 0
-                busy = False
-                signal.alarm(0)
-        if busy:
+            if msg == "done":
+                print("task done")
+                return True
+            else:
+                print("message unknown: {}".format(msg))
+                return False
+        else: #busy
             cpu_usage = psutil.Process().cpu_percent(interval=1)
             if cpu_usage < 5:
                 print("task stalled: {}".format(cpu_usage))
@@ -115,12 +98,15 @@ def handle_idle(q_state, timeout, conn):
                 idle_count = 0
 
             if idle_count > 6:
-                signal.alarm(1)
+                return False
 
-            time.sleep(10)
-            conn.heartbeat_check()
+            try:
+                conn.drain_events(timeout=2)
+            except socket.timeout:
+                conn.heartbeat_check()
 
 
 if __name__ == '__main__':
     q_state = queue.Queue()
+    q_task = queue.Queue()
     command()
