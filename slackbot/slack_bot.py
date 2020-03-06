@@ -177,7 +177,7 @@ def dispatch_command(cmd, payload):
         upload_param(msg)
     elif cmd == "updateparameters":
         update_param(msg)
-    elif cmd == "runsegmentation" or "runsegmentations":
+    elif cmd == "runsegmentation" or cmd == "runsegmentations":
         state, _ = dag_state("sanity_check")
         if check_running():
             replyto(msg, "I am busy right now")
