@@ -14,20 +14,31 @@ def get_project_id():
     return response.text
 
 
-def instance_group_info(project_id, instance_group):
+def instance_group_manager_info(project_id, instance_group):
     credentials = GoogleCredentials.get_application_default()
     service = discovery.build('compute', 'v1', credentials=credentials)
     request = service.instanceGroupManagers().get(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'])
     return request.execute()
 
+def instance_group_info(project_id, instance_group):
+    credentials = GoogleCredentials.get_application_default()
+    service = discovery.build('compute', 'v1', credentials=credentials)
+    request = service.instanceGroups().get(project=project_id, zone=instance_group['zone'], instanceGroup=instance_group['name'])
+    return request.execute()
+
+def get_cluster_target_size(project_id, instance_groups):
+    total_size = 0
+    for ig in instance_groups:
+        info = instance_group_manager_info(project_id, ig)
+        total_size += info['targetSize']
+    return total_size
 
 def get_cluster_size(project_id, instance_groups):
     total_size = 0
     for ig in instance_groups:
         info = instance_group_info(project_id, ig)
-        total_size += info['targetSize']
+        total_size += info['size']
     return total_size
-
 
 def reset_cluster(key):
     try:
@@ -43,7 +54,7 @@ def reset_cluster(key):
         slack_message(":exclamation:Cannot reset cluster {}".format(key))
         return
 
-    total_size = get_cluster_size(project_id, cluster_info[key])
+    total_size = get_cluster_target_size(project_id, cluster_info[key])
     slack_message(":information_source:Start reseting {} instances in cluster {}".format(total_size, key))
     resize_instance_group(project_id, cluster_info[key], 0)
     slack_message(":information_source:Reduce the number of instances to 0, wait 5 min to spin them up again")
@@ -54,7 +65,7 @@ def reset_cluster(key):
 
 def resize_instance_group(project_id, instance_group, size):
 
-    total_size = get_cluster_size(project_id, instance_group)
+    total_size = get_cluster_target_size(project_id, instance_group)
 
     max_size = 0
     for ig in instance_group:
@@ -99,7 +110,7 @@ def increase_instance_group_size(key, size):
         slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
-    total_size = get_cluster_size(project_id, cluster_info[key])
+    total_size = get_cluster_target_size(project_id, cluster_info[key])
     if total_size > size:
         slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
@@ -122,7 +133,7 @@ def reduce_instance_group_size(key, size):
         slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
         return
 
-    total_size = get_cluster_size(project_id, cluster_info[key])
+    total_size = get_cluster_target_size(project_id, cluster_info[key])
     if total_size < size:
         slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
