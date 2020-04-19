@@ -40,6 +40,13 @@ def generate_ng_payload(param):
         "visible": False
     }
 
+    if "SEM_PATH" in param:
+        layers["sem"] = {
+            "source": "precomputed://"+param["SEM_PATH"],
+            "type": "segmentation",
+            "visible": False
+        }
+
     layers["ws"] = {
         "source": "precomputed://"+param["WS_PATH"],
         "type": "segmentation",
