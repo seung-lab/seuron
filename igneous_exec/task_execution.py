@@ -18,7 +18,7 @@ import psutil
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
 @click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
 def command(tag, queue, qurl, timeout, loop):
-    conn = Connection(qurl, heartbeat=30)
+    conn = Connection(qurl, heartbeat=120)
     worker = threading.Thread(target=handle_task, args=(q_task, q_state,))
     worker.daemon = True
     worker.start()
@@ -101,7 +101,7 @@ def wait_for_task(q_state, conn):
                 return False
 
             try:
-                conn.drain_events(timeout=2)
+                conn.drain_events(timeout=10)
             except socket.timeout:
                 conn.heartbeat_check()
 
