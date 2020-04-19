@@ -35,7 +35,7 @@ def generate_ng_payload(param):
 
     layers["aff"] = {
         "source": "precomputed://"+param["AFF_PATH"],
-        "shader": "void main() {\n  float r = toNormalized(getDataValue(0));\n  float g = toNormalized(getDataValue(1));\n  float b = toNormalized(getDataValue(2)); \n  emitRGB(vec3(r,g,b));\n}",
+        "shader": param.get("AFF_SHADER", "void main() {\n  float r = toNormalized(getDataValue(0));\n  float g = toNormalized(getDataValue(1));\n  float b = toNormalized(getDataValue(2)); \n  emitRGB(vec3(r,g,b));\n}"),
         "type": "image",
         "visible": False
     }
