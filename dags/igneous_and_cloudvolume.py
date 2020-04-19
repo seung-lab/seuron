@@ -185,6 +185,10 @@ def downsample_and_mesh(param):
             tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
             for t in tasks:
                 submit_task(queue, t.payload())
+        if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
+            tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                submit_task(queue, t.payload())
 
         tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
         target_size = (1+len(tasks)//32)
