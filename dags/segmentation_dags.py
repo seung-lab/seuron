@@ -456,11 +456,11 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
 
 
     if cluster1_size >= 100:
-        reset_cluster_after_ws = reset_cluster_op(dag['ws'], "ws", CLUSTER_1_CONN_ID)
+        reset_cluster_after_ws = reset_cluster_op(dag['ws'], "ws", CLUSTER_1_CONN_ID, 20)
         slack_ops['ws']['remap'] >> reset_cluster_after_ws
 
 
-    scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, cluster1_size)
+    scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size)
 
     scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0)
 
@@ -528,7 +528,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
 
 
             cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
-            scaling_ops[stage]["up_long"] = scale_up_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, cluster2_size)
+            scaling_ops[stage]["up_long"] = scale_up_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 2, cluster2_size)
 
             for k in generate_chunks[stage][high_mip-1]:
                 scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
@@ -538,6 +538,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
 
     if min(high_mip, top_mip) - batch_mip >= 2 or top_mip >= high_mip:
         for stage in ["ws", "agg"]:
-            scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, cluster1_size)
+            scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 20, cluster1_size)
             scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
 

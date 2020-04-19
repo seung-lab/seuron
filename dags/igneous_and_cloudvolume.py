@@ -7,7 +7,7 @@ from time import sleep, strftime
 from math import log2
 
 from slack_message import slack_message, slack_userinfo
-from google_api_helper import reduce_instance_group_size, increase_instance_group_size
+from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster
 
 
 import tenacity
@@ -187,7 +187,8 @@ def downsample_and_mesh(param):
                 submit_task(queue, t.payload())
 
         tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-        increase_instance_group_size("igneous", min(50, 1+len(tasks)//32))
+        target_size = (1+len(tasks)//32)
+        ramp_up_cluster("igneous", 20, min(50, target_size))
         for t in tasks:
             submit_task(queue, t.payload())
 
@@ -221,6 +222,8 @@ def downsample_and_mesh(param):
             mesh_mip = 0
 
         slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
+        if (target_size > 20):
+            reset_cluster("igneous", 20)
 
         tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
         for t in tasks:
@@ -267,7 +270,8 @@ def downsample_and_mesh(param):
                     prefix_list.append(prefix2)
 
         task_list = []
-        reduce_instance_group_size("igneous", 10)
+        if (target_size > 10):
+            reset_cluster("igneous", 10)
         for p in sorted(prefix_list, key=len):
             if any(p.startswith(s) for s in task_list):
                 print("Already considered, skip {}".format(p))

@@ -1,4 +1,5 @@
 from airflow.utils import db as db_utils
+from airflow.models import Variable
 from airflow import models
 import os
 import requests
@@ -47,6 +48,14 @@ instance_groups = {
         'max_size': 50
     }]
 }
+
+target_sizes = {
+    'atomic': 0,
+    'composite': 0,
+    'igneous': 0
+}
+
+Variable.setdefault("cluster_target_size", target_sizes, deserialize_json=True)
 
 db_utils.merge_conn(
         models.Connection(

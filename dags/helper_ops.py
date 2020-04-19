@@ -8,7 +8,7 @@ from datetime import timedelta
 from time import sleep
 from slack_message import slack_message
 from param_default import default_args, cv_path
-from google_api_helper import increase_instance_group_size, reduce_instance_group_size, reset_cluster
+from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster
 
 def slack_message_op(dag, tid, msg):
     return PythonOperator(
@@ -53,6 +53,13 @@ def reset_flags(param):
         Variable.set("agg_done", "yes")
     else:
         Variable.set("agg_done", "no")
+    try:
+        target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+        for key in target_sizes:
+            target_sizes[key] = 0
+        Variable.set("cluster_target_size", target_sizes, serialize_json=True)
+    except:
+        slack_message(":exclamation:Cannot reset the sizes of the clusters")
 
 
 def set_variable(key, value):
@@ -94,11 +101,11 @@ def wait_op(dag, var):
     )
 
 
-def scale_up_cluster_op(dag, stage, key, size):
+def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue):
     return PythonOperator(
-        task_id='resize_{}_{}'.format(stage, size),
-        python_callable=increase_instance_group_size,
-        op_args = [key, size],
+        task_id='resize_{}_{}'.format(stage, total_size),
+        python_callable=ramp_up_cluster,
+        op_args = [key, initial_size, total_size],
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
@@ -108,10 +115,10 @@ def scale_up_cluster_op(dag, stage, key, size):
     )
 
 
-def scale_down_cluster_op(dag, stage, key, size):
+def scale_down_cluster_op(dag, stage, key, size, queue):
     return PythonOperator(
         task_id='resize_{}_{}'.format(stage, size),
-        python_callable=reduce_instance_group_size,
+        python_callable=ramp_down_cluster,
         op_args = [key, size],
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
@@ -122,11 +129,11 @@ def scale_down_cluster_op(dag, stage, key, size):
     )
 
 
-def reset_cluster_op(dag, stage, key):
+def reset_cluster_op(dag, stage, key, initial_size):
     return PythonOperator(
         task_id='reset_{}_{}'.format(stage, key),
         python_callable=reset_cluster,
-        op_args = [key],
+        op_args = [key, initial_size],
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,

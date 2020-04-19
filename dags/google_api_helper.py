@@ -1,4 +1,5 @@
 from time import sleep
+from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
@@ -40,7 +41,7 @@ def get_cluster_size(project_id, instance_groups):
         total_size += info['size']
     return total_size
 
-def reset_cluster(key):
+def reset_cluster(key, initial_size):
     try:
         project_id = get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
@@ -55,11 +56,19 @@ def reset_cluster(key):
         return
 
     total_size = get_cluster_target_size(project_id, cluster_info[key])
+
+    try:
+        target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+        target_size = target_sizes[key]
+        total_size = target_size
+    except:
+        slack_message(":information_source: Cannot obtain the target size of cluster {}".format(key))
+
     slack_message(":information_source:Start reseting {} instances in cluster {}".format(total_size, key))
-    resize_instance_group(project_id, cluster_info[key], 0)
+    ramp_down_cluster(key, 0)
     slack_message(":information_source:Reduce the number of instances to 0, wait 5 min to spin them up again")
     sleep(300)
-    resize_instance_group(project_id, cluster_info[key], total_size)
+    ramp_up_cluster(key, initial_size, total_size)
     slack_message(":information_source:{} instances in cluster {} restarted".format(total_size, key))
 
 
@@ -94,6 +103,27 @@ def resize_instance_group(project_id, instance_group, size):
             target_size = 0
 
     return min(size, max_size)
+
+
+def ramp_up_cluster(key, initial_size, total_size):
+    try:
+        target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+        target_sizes[key] = total_size
+        Variable.set("cluster_target_size", target_sizes, serialize_json=True)
+        slack_message(":information_source: ramping up cluster {} to {} instances, starting from {} instances".format(key, total_size, min(initial_size, total_size)))
+        increase_instance_group_size(key, min(initial_size, total_size))
+    except:
+        increase_instance_group_size(key, total_size)
+
+
+def ramp_down_cluster(key, total_size):
+    try:
+        target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+        target_sizes[key] = total_size
+        Variable.set("cluster_target_size", target_sizes, serialize_json=True)
+        reduce_instance_group_size(key, total_size)
+    except:
+        reduce_instance_group_size(key, total_size)
 
 
 def increase_instance_group_size(key, size):
