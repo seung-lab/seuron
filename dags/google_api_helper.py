@@ -32,23 +32,23 @@ def get_cluster_size(project_id, instance_groups):
 def reset_cluster(key):
     try:
         project_id = get_project_id()
-        instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot reset cluster {}".format(key))
         return
 
-    if key not in instance_group_info:
+    if key not in cluster_info:
         slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
         slack_message(":exclamation:Cannot reset cluster {}".format(key))
         return
 
-    total_size = get_cluster_size(project_id, instance_group_info[key])
+    total_size = get_cluster_size(project_id, cluster_info[key])
     slack_message(":information_source:Start reseting {} instances in cluster {}".format(total_size, key))
-    resize_instance_group(project_id, instance_group_info[key], 0)
+    resize_instance_group(project_id, cluster_info[key], 0)
     slack_message(":information_source:Reduce the number of instances to 0, wait 5 min to spin them up again")
     sleep(300)
-    resize_instance_group(project_id, instance_group_info[key], total_size)
+    resize_instance_group(project_id, cluster_info[key], total_size)
     slack_message(":information_source:{} instances in cluster {} restarted".format(total_size, key))
 
 
@@ -88,44 +88,44 @@ def resize_instance_group(project_id, instance_group, size):
 def increase_instance_group_size(key, size):
     try:
         project_id = get_project_id()
-        instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
-    if key not in instance_group_info:
+    if key not in cluster_info:
         slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
         slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
         return
 
-    total_size = get_cluster_size(project_id, instance_group_info[key])
+    total_size = get_cluster_size(project_id, cluster_info[key])
     if total_size > size:
         slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(project_id, instance_group_info[key], size)
+        real_size = resize_instance_group(project_id, cluster_info[key], size)
         slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
 
 def reduce_instance_group_size(key, size):
     try:
         project_id = get_project_id()
-        instance_group_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
         return
 
-    if key not in instance_group_info:
+    if key not in cluster_info:
         slack_message(":exclamation:Cannot find the cluster information for key {}".format(key))
         slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
         return
 
-    total_size = get_cluster_size(project_id, instance_group_info[key])
+    total_size = get_cluster_size(project_id, cluster_info[key])
     if total_size < size:
         slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(project_id, instance_group_info[key], size)
+        real_size = resize_instance_group(project_id, cluster_info[key], size)
         slack_message(":arrow_down: Scale down cluster {} to {} instances".format(key, real_size))
