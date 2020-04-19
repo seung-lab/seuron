@@ -113,14 +113,30 @@ def check_cv_data():
             slack_message(":u7981:*ERROR: Cannot compare ground truth with existing segmentation, you have to run agglomeration at least!")
         else:
             try:
-                gt_vol = CloudVolume(param["GT_PATH"],mip=0)
+                gt_vol = CloudVolume(param["GT_PATH"],mip=param["AFF_RESOLUTION"])
             except:
-                slack_message(":u7981:*ERROR: Cannot access the ground truth layer* `{}` at MIP 0")
+                slack_message(":u7981:*ERROR: Cannot access the ground truth layer* `{}` at resolution {}".format(param["GT_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Ground truth layer does not exist')
             gt_bbox = gt_vol.bounds
             if not gt_bbox.contains_bbox(target_bbox):
                 slack_message(":u7981:*ERROR: Bounding box is outside of the ground truth volume, gt: {} vs bbox: {}*".format([int(x) for x in gt_bbox.to_list()], param["BBOX"]))
                 raise ValueError('Bounding box is outside of the ground truth volume')
+
+    if "SEM_PATH" in param:
+        if param.get("SKIP_AGG", False):
+            slack_message(":u7981:*WARNING: Semantic labels will be ignored without doing agglomeration!")
+        else:
+            try:
+                sem_vol = CloudVolume(param["SEM_PATH"], mip=param["AFF_RESOLUTION"])
+            except:
+                slack_message(":u7981:*ERROR: Cannot access the semantic layer* `{}` at resolution {}".format(param["SEM_PATH"], param["AFF_RESOLUTION"]))
+                raise ValueError('Semantic layer does not exist')
+            sem_bbox = sem_vol.bounds
+            if not sem_bbox.contains_bbox(target_bbox):
+                slack_message(":u7981:*ERROR: Bounding box is outside of the semantic label volume, sem: {} vs bbox: {}*".format([int(x) for x in sem_bbox.to_list()], param["BBOX"]))
+                raise ValueError('Bounding box is outside of the semantic label volume')
+
+            slack_message("""*Use semantic labels in* `{}`""".format(param["SEM_PATH"]))
 
     if param.get("SKIP_AGG", False):
         if "SEG_PATH" not in param:
