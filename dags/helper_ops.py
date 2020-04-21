@@ -110,7 +110,7 @@ def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue):
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         trigger_rule="one_success",
-        queue='manager',
+        queue=queue,
         dag=dag
     )
 
@@ -124,7 +124,7 @@ def scale_down_cluster_op(dag, stage, key, size, queue):
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         trigger_rule="all_success",
-        queue='manager',
+        queue=queue,
         dag=dag
     )
 
