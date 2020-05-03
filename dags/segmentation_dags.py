@@ -184,15 +184,23 @@ def generate_batches(param):
     batch_mip = 3
     batch_chunks = []
     high_mip_chunks = []
+    current_mip = top_mip
+    mip_tasks = 0
     if top_mip > batch_mip:
         for c in v:
-            if c.mip_level() < batch_mip:
+            if c.mip_level() > batch_mip:
+                if current_mip != c.mip_level():
+                    if current_mip > batch_mip and mip_tasks > 50:
+                        batch_mip = c.mip_level()
+                    current_mip = c.mip_level()
+                    mip_tasks = 1
+                else:
+                    mip_tasks += 1
+                high_mip_chunks.append(c)
+            elif c.mip_level() < batch_mip:
                 break
             elif c.mip_level() == batch_mip:
                 batch_chunks.append(ChunkIterator(param["BBOX"], param["CHUNK_SIZE"], start_from = [batch_mip]+c.coordinate()))
-            else:
-                high_mip_chunks.append(c)
-
     else:
         batch_chunks=[v]
 
