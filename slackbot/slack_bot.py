@@ -1,5 +1,5 @@
 import slack
-import json
+import json5
 from collections import OrderedDict
 import string
 from airflow_calls import get_param, set_param, run_segmentation, \
@@ -130,7 +130,7 @@ def update_param(msg):
     payload = download_file(msg)
     if payload:
         try:
-            json_obj = json.loads(payload, object_pairs_hook=OrderedDict)
+            json_obj = json5.loads(payload, object_pairs_hook=OrderedDict)
         except (ValueError, TypeError) as e:
             replyto(msg, "Cannot load the json file: {}".format(str(e)))
             print(payload)
@@ -248,7 +248,7 @@ def handle_batch(q_payload, q_cmd):
         if payload is None:
             continue
         try:
-            json_obj = json.loads(payload, object_pairs_hook=OrderedDict)
+            json_obj = json5.loads(payload, object_pairs_hook=OrderedDict)
         except (ValueError, TypeError) as e:
             replyto(msg, "Cannot load the json file: {}".format(str(e)))
 
