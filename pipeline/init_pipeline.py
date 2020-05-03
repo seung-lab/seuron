@@ -64,7 +64,7 @@ db_utils.merge_conn(
 db_utils.merge_conn(
         models.Connection(
             conn_id='InstanceGroups', conn_type='http',
-            host=deployment, login=zone, extra=json.dumps(instance_groups)))
+            host=deployment, login=zone, extra=json.dumps(instance_groups, indent=4)))
 db_utils.merge_conn(
         models.Connection(
             conn_id='Slack', conn_type='http',
