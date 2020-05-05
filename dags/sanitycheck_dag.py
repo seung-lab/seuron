@@ -191,8 +191,9 @@ def check_cv_data():
         Variable.set("param", param, serialize_json=True)
         slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
 
-    if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], param["CV_CHUNK_SIZE"]) ):
-        slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], param["CV_CHUNK_SIZE"]))
+    cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
+    if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
+        slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
         raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
 
     for k in mount_secrets:
