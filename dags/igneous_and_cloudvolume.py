@@ -181,25 +181,12 @@ def downsample_and_mesh(param):
 
     with Connection(broker, connect_timeout=60) as conn:
         queue = conn.SimpleQueue("igneous")
-        if not param.get("SKIP_WS", False):
-            tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-            for t in tasks:
-                submit_task(queue, t.payload())
-        if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
-            tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, preserve_chunk_size=True)
-            for t in tasks:
-                submit_task(queue, t.payload())
 
-        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), preserve_chunk_size=True)
         target_size = (1+len(tasks)//32)
         ramp_up_cluster("igneous", 20, min(50, target_size))
         for t in tasks:
             submit_task(queue, t.payload())
-
-        if not param.get("SKIP_AGG", False):
-            tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
-            for t in tasks:
-                submit_task(queue, t.payload())
 
         check_queue("igneous")
         slack_message(":arrow_forward: Downsampled")
@@ -284,6 +271,26 @@ def downsample_and_mesh(param):
             t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
             submit_task(queue, t.payload())
         print("total number of tasks: {}".format(len(task_list)))
+
+        if not param.get("SKIP_WS", False):
+            tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                submit_task(queue, t.payload())
+        if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
+            tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                submit_task(queue, t.payload())
+
+        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
+        target_size = (1+len(tasks)//32)
+        ramp_up_cluster("igneous", 20, min(50, target_size))
+        for t in tasks:
+            submit_task(queue, t.payload())
+
+        if not param.get("SKIP_AGG", False):
+            tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
+            for t in tasks:
+                submit_task(queue, t.payload())
 
         check_queue("igneous")
         slack_message(":arrow_forward: Manifest genrated")

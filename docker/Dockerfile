@@ -20,7 +20,7 @@ ENV AIRFLOW_USER ${AIRFLOW_USER}
 
 WORKDIR ${AIRFLOW_HOME}
 
-COPY ./setup_airflow.py ./celery.patch ./
+COPY ./setup_airflow.py ./celery.patch ./igneous.patch ./
 
 RUN savedAptMark="$(apt-mark showmanual)" \
     && apt-get -y update \
@@ -41,6 +41,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && pip install -U networkx \
     && cd /usr/local/lib/python3.6/site-packages \
     && patch -p1 < ${AIRFLOW_HOME}/celery.patch \
+    && patch -p1 < ${AIRFLOW_HOME}/igneous.patch \
     && apt-mark auto '.*' > /dev/null \
     && apt-mark manual libmariadb3 libxml2 libxslt1.1 sudo \
     && apt-mark manual $savedAptMark \
