@@ -530,7 +530,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         [check_seg, igneous_task] >> nglink_task >> ending_op
 
 
-    if min(high_mip, top_mip) - batch_mip >= 2:
+    if min(high_mip, top_mip) - batch_mip > 2:
         for stage in ["ws", "agg"]:
             dsize = len(generate_chunks[stage][batch_mip+2])*2
             scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize, "manager")
