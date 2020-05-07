@@ -52,12 +52,12 @@ def create_info(stage, param):
 
     bbox = param["BBOX"]
     resolution = param["AFF_RESOLUTION"]
-    cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
+    cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,32])
     metadata_seg = CloudVolume.create_new_info(
         num_channels    = 1,
         layer_type      = 'segmentation',
         data_type       = 'uint64',
-        encoding        = 'raw',
+        encoding        = 'compressed_segmentation',
         resolution      = resolution, # Pick scaling for your data!
         voxel_offset    = bbox[0:3],
         chunk_size      = cv_chunk_size, # This must divide evenly into image length or you won't cover the #
