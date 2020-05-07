@@ -95,7 +95,7 @@ def resize_instance_group(project_id, instance_group, size):
         request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=ig_size)
         response = request.execute()
         print(json.dumps(response, indent=2))
-        slack_message(":information_source: resize instance group {} to {} instances".format(ig['name'], ig_size))
+        slack_message(":information_source: resize instance group {} to {} instances".format(ig['name'], ig_size), channel="#seuron-alerts")
         target_size -= ig_size
         if not downsize and target_size == 0:
             break
