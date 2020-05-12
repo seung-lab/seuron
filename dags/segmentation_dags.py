@@ -268,6 +268,19 @@ seg diff: {url}
     slack_message(msg, broadcast=True)
 
 
+def plot_histogram(data):
+    import math
+    import matplotlib.pyplot as plt
+    max_bin = math.ceil(math.log10(max(data)))
+    plt.hist(data, bins=np.logspace(0, max_bin, max_bin+1))
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.title('Distribution of the segment sizes')
+    plt.xlabel('number of supervoxels in the segments')
+    plt.ylabel('number of segments')
+    plt.savefig('/tmp/hist.png')
+
+
 def get_infos(param):
     from joblib import Parallel, delayed
 
@@ -291,6 +304,7 @@ def process_infos(param, **kwargs):
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     content = get_infos(param)
     data = np.frombuffer(content, dtype=dt_count)
+    plot_histogram(data['count'])
     order = np.argsort(data['count'])[::-1]
     ntops = min(20,len(data))
     msg = '''*Agglomeration Finished*
@@ -302,7 +316,7 @@ Largest segments:
     nsv=np.sum(data['count']),
     top20list="\n".join("id: {} ({})".format(data[order[i]][0], data[order[i]][1]) for i in range(ntops))
     )
-    slack_message(msg)
+    slack_message(msg, attachment='/tmp/hist.png')
     ti = kwargs['ti']
     ti.xcom_push(key='segcount', value=len(data))
     ti.xcom_push(key='svcount', value=np.sum(data['count']))

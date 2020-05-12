@@ -27,8 +27,8 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && buildDeps='git build-essential libmariadb-dev libxml2-dev libxslt1-dev' \
     && apt-get -y install --no-install-recommends $buildDeps sudo \
     && pip install -U pip \
-    && pip install -U numpy joblib psutil \
-    && pip install -U cloud-volume json5\
+    && pip install -U numpy joblib psutil matplotlib \
+    && pip install -U cloud-volume json5 \
     && git clone https://github.com/seung-lab/airflow --depth 1 -b v1-9-stable-3-ranl_cherrypick \
     && git clone https://github.com/seung-lab/igneous --depth 1 \
     # Deleting this symlink not handled correctly by shutil.copy

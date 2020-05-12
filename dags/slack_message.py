@@ -5,7 +5,7 @@ from param_default import SLACK_CONN_ID
 import json
 
 
-def slack_message(msg, channel=None, broadcast=False):
+def slack_message(msg, channel=None, broadcast=False, attachment=None):
     try:
         slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
@@ -34,13 +34,23 @@ def slack_message(msg, channel=None, broadcast=False):
             message=msg
         )
 
-        sc.chat_postMessage(
-            username=slack_workername,
-            channel=slack_channel,
-            thread_ts=slack_thread,
-            reply_broadcast=broadcast,
-            text=text
-        )
+        if attachment is None:
+            sc.chat_postMessage(
+                username=slack_workername,
+                channel=slack_channel,
+                thread_ts=slack_thread,
+                reply_broadcast=broadcast,
+                text=text
+            )
+        else:
+            response = sc.files_upload(
+                username=slack_workername,
+                channels=slack_channel,
+                thread_ts=slack_thread,
+                file=attachment,
+                initial_comment=text
+            )
+            print(response)
 
 
 def slack_userinfo():
