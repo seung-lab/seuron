@@ -30,7 +30,7 @@ def gcloud_ip():
 def filter_msg(msg):
     if 'subtype' in msg and msg['subtype'] != "thread_broadcast":
         return False
-    text = msg["text"]
+    text = msg["text"].strip('''_*~"'`''')
 
     if text.startswith(botid):
         cmd = extract_command(msg)
