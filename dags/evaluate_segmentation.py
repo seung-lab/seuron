@@ -76,6 +76,7 @@ def find_large_diff(s_i, t_j, p_ji, param):
 
     seg_pairs = []
     threshold = 0.01 if len(t_j) < 10000 else 0.3
+    max_entry = 1000
     for item in sorted_p:
         j, i, v = item
         v_i = s_i[i]
@@ -87,8 +88,7 @@ def find_large_diff(s_i, t_j, p_ji, param):
                 'seg_size': s_i[i],
                 'gt_size': t_j[j]
             })
-
-    if len(seg_pairs) > 1000:
-        return seg_pairs[0:1000]
+            if len(seg_pairs) >= max_entry:
+                break
 
     return seg_pairs
