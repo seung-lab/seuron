@@ -3,7 +3,7 @@ import json
 import json5
 from collections import OrderedDict
 import string
-from airflow_calls import get_param, set_param, run_segmentation, \
+from airflow_api import get_param, set_param, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable
 from bot_info import slack_token, botid, workerid
 from copy import deepcopy
