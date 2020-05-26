@@ -3,8 +3,9 @@ import json
 import json5
 from collections import OrderedDict
 import string
-from airflow_api import get_param, set_param, run_segmentation, \
-    update_slack_connection, check_running, dag_state, set_variable
+from airflow_api import get_variable, run_segmentation, \
+    update_slack_connection, check_running, dag_state, set_variable, \
+    sanity_check, chunkflow_set_env, run_inference
 from bot_info import slack_token, botid, workerid
 from copy import deepcopy
 import requests
@@ -82,7 +83,7 @@ def replyto(msg, reply, username=workerid, broadcast=False):
 
 def upload_param(msg):
     sc = slack.WebClient(slack_token, timeout=300)
-    param = get_param()
+    param = get_variable("param", deserialize_json=True)
     channel = msg['channel']
     userid = msg['user']
     sc.files_upload(
@@ -126,6 +127,41 @@ def download_file(msg):
         else:
             return None
 
+
+def update_inference_param(msg):
+    global param_updated
+    payload = download_file(msg)
+    if payload:
+        try:
+            json_obj = json.loads(payload, object_pairs_hook=OrderedDict)
+        except (ValueError, TypeError) as e:
+            replyto(msg, "Cannot load the json file: {}".format(str(e)))
+            print(payload)
+            return
+
+        if not check_running():
+            #try:
+            #    q_payload.get_nowait()
+            #except Empty:
+            #    pass
+
+            #if isinstance(json_obj, list):
+            #    replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+            #    json_obj = json_obj[0]
+            #    q_payload.put(msg)
+
+            supply_default_param(json_obj)
+            replyto(msg, "Running chunkflow setup_env, please wait")
+            update_metadata(msg)
+            set_variable('inference_param', json_obj, serialize_json=True)
+            chunkflow_set_env()
+            param_updated = True
+        else:
+            replyto(msg, "Busy right now")
+
+    return
+
+
 def update_param(msg):
     global param_updated
     payload = download_file(msg)
@@ -151,7 +187,8 @@ def update_param(msg):
             supply_default_param(json_obj)
             replyto(msg, "Running sanity check, please wait")
             update_metadata(msg)
-            set_param(json_obj)
+            set_variable('param', json_obj, serialize_json=True)
+            sanity_check()
             param_updated = True
         else:
             replyto(msg, "Busy right now")
@@ -178,6 +215,8 @@ def dispatch_command(cmd, payload):
         upload_param(msg)
     elif cmd == "updateparameters":
         update_param(msg)
+    elif cmd == "updateinferenceparameters":
+        update_inference_param(msg)
     elif cmd == "runsegmentation" or cmd == "runsegmentations":
         state, _ = dag_state("sanity_check")
         if check_running():
@@ -195,6 +234,19 @@ def dispatch_command(cmd, payload):
             else:
                 q_payload.put(msg)
                 q_cmd.put("run")
+    elif cmd == "runinference":
+        state, _ = dag_state("chunkflow_generator")
+        if check_running():
+            replyto(msg, "I am busy right now")
+        elif not param_updated:
+            replyto(msg, "You have to update the parameters before starting the inference")
+        elif state != "success":
+            replyto(msg, "Chunkflow set_env failed, try again")
+        else:
+            replyto(msg, "Start inference")
+            update_metadata(msg)
+            param_updated = False
+            run_inference()
     else:
         replyto(msg, "Sorry I do not understand, please try again.")
 
@@ -270,7 +322,8 @@ def handle_batch(q_payload, q_cmd):
                 supply_default_param(param)
                 update_metadata(msg)
                 replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
-                set_param(param)
+                set_variable('param', param, serialize_json=True)
+                sanity_check()
                 wait_for_airflow()
                 state, _ = dag_state("sanity_check")
                 if state != "success":

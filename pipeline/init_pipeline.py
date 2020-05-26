@@ -27,11 +27,17 @@ host_ip = gcloud_metadata("instance/network-interfaces/0/access-configs/0/extern
 if host_ip is None:
     host_ip = "unknown"
 
+gpu_worker_group = "{deployment}-gpu-workers-{zone}".format(deployment=deployment, zone=zone)
 atomic_worker_group = "{deployment}-atomic-workers-{zone}".format(deployment=deployment, zone=zone)
 composite_worker_group = "{deployment}-composite-workers-{zone}".format(deployment=deployment, zone=zone)
 igneous_worker_group = "{deployment}-igneous-workers-{zone}".format(deployment=deployment, zone=zone)
 
 instance_groups = {
+    'gpu': [{
+        'name': gpu_worker_group,
+        'zone': zone,
+        'max_size': 100
+    }],
     'atomic': [{
         'name': atomic_worker_group,
         'zone': zone,
@@ -50,6 +56,7 @@ instance_groups = {
 }
 
 target_sizes = {
+    'gpu': 0,
     'atomic': 0,
     'composite': 0,
     'igneous': 0

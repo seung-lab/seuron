@@ -85,8 +85,49 @@ def sanity_check():
         return False
 
 
+def chunkflow_set_env():
+    dag_id = "chunkflow_generator"
+    state, exec_date = dag_state(dag_id)
+    if state == "success" or state == "unknown":
+        output = subprocess.check_output(
+            "{airflow_cmd} trigger_dag {dag_id}".format(
+                airflow_cmd=airflow_cmd,
+                dag_id=dag_id),
+            shell=True)
+        print(output.decode("ascii", "ignore"))
+        return True
+    elif state == "failed":
+        print(exec_date)
+        output = subprocess.check_output(
+            "{airflow_cmd} clear -c -s {exec_date} {dag_id}".format(
+                airflow_cmd=airflow_cmd,
+                exec_date=exec_date,
+                dag_id=dag_id),
+            shell=True)
+        print(output.decode("ascii", "ignore"))
+        return True
+    else:
+        print("do not understand {} state".format(state))
+        return False
+
+
 def run_segmentation():
     dag_id = "segmentation"
+
+    if check_running():
+        return False
+
+    output = subprocess.check_output(
+        "{airflow_cmd} trigger_dag {dag_id}".format(
+            airflow_cmd=airflow_cmd,
+            dag_id=dag_id),
+        shell=True)
+    print(output.decode("ascii", "ignore"))
+    return True
+
+
+def run_inference():
+    dag_id = "chunkflow_worker"
 
     if check_running():
         return False
@@ -126,11 +167,10 @@ def set_variable(key, value):
     print(output.decode("ascii", "ignore"))
 
 
-def set_param(param):
+def set_param(key, param):
     value = json.dumps(param)
-    set_variable("param", value)
-    return sanity_check()
-
+    set_variable(key, value)
+    return
 
 def dag_state(dag_id):
     output = subprocess.check_output(

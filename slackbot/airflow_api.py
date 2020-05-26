@@ -58,8 +58,7 @@ def check_running():
     return False
 
 
-def sanity_check():
-    dag_id = "sanity_check"
+def trigger_or_clear_dag(dag_id):
     state, exec_date = dag_state(dag_id)
     if state == "success" or state == "unknown":
         run_dag(dag_id)
@@ -73,6 +72,16 @@ def sanity_check():
     else:
         print("do not understand {} state".format(state))
         return False
+
+
+def sanity_check():
+    dag_id = "sanity_check"
+    trigger_or_clear_dag(dag_id)
+
+
+def chunkflow_set_env():
+    dag_id = "chunkflow_generator"
+    trigger_or_clear_dag(dag_id)
 
 
 def run_dag(dag_id):
@@ -103,17 +112,22 @@ def run_segmentation():
     return True
 
 
-def get_param():
-    return Variable.get('param', deserialize_json=True)
+def run_inference():
+    dag_id = "chunkflow_worker"
+
+    if check_running():
+        return False
+
+    run_dag(dag_id)
+    return True
+
+
+def get_variable(key, deserialize_json=False):
+    return Variable.get('param', deserialize_json=deserialize_json)
 
 
 def set_variable(key, value, serialize_json=False):
     Variable.set(key, value, serialize_json=serialize_json)
-
-
-def set_param(param):
-    set_variable("param", param, serialize_json=True)
-    return sanity_check()
 
 
 def dag_state(dag_id):

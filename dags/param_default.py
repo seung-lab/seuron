@@ -21,6 +21,16 @@ param_default = {
     "CHUNK_SIZE": [512, 512, 128],
 }
 
+inference_param_default = {
+    "NAME":"test_affinity",
+
+    "IMAGE_PATH":"gs://zetta_lee_fly_vnc_001_cutouts/010/image",
+
+    "CHUNKFLOW_IMAGE":"ranlu/chunkflow:test",
+
+    "BBOX": [7168, 20480, 1500, 8608, 21920, 1764],
+}
+
 
 default_args = {
     'owner': 'airflow',
