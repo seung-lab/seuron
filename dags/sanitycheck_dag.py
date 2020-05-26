@@ -63,6 +63,12 @@ def check_cv_data():
 
     mount_secrets = param.get("MOUNT_SECRETES", [])
 
+    for k in mount_secrets:
+        v = Variable.get(k)
+        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
+            value_file.write(v)
+
+
     # We need affinity map for watershed and agglomeration, not for meshing
     if (not param.get("SKIP_AGG", False)) or (not param.get("SKIP_AGG", False)):
         if "AFF_RESOLUTION" in param:
@@ -80,11 +86,6 @@ def check_cv_data():
             param["AFF_MIP"] = 0
             Variable.set("param", param, serialize_json=True)
             slack_message("*Use MIP 0 affinity map by default*")
-
-        for k in mount_secrets:
-            v = Variable.get(k)
-            with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
-                value_file.write(v)
 
         try:
             vol = CloudVolume(param["AFF_PATH"],mip=param["AFF_MIP"])
