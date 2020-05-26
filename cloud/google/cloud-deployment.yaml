@@ -31,6 +31,7 @@ resources:
           sizeWorker: 0
           instanceTypeManager: n1-standard-4
           instanceTypeDatabase: n1-standard-4
+          instanceTypeGPUWorker: n1-highmem-4
           instanceTypeAtomicWorker: n1-highmem-32
           instanceTypeCompositeWorker: n1-highmem-96
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/ranl_testing/deploy/docker-compose-CeleryExecutor.yml
