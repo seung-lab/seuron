@@ -103,6 +103,18 @@ def task_retry_alert(context):
         ).format(**locals())
         slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), "#seuron-alerts", context)
 
+def task_failure_alert(context):
+    ti = context.get('task_instance')
+    iso = ti.execution_date.isoformat()
+    webui_ip = Variable.get("webui_ip")
+    log_url = "https://"+webui_ip + (
+        "/airflow/admin/airflow/log"
+        "?dag_id={ti.dag_id}"
+        "&task_id={ti.task_id}"
+        "&execution_date={iso}"
+    ).format(**locals())
+    slack_alert(":exclamation: Task failed already, check the latest error log: `{}`".format(log_url), context)
+
 
 def task_done_alert(context):
     return slack_alert(":heavy_check_mark: Task Finished", None, context)
