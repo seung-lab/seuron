@@ -49,12 +49,13 @@ def update_user_info(userid):
 
 
 def check_running():
-    state, exec_date = dag_state("sanity_check")
-    if state == "running":
-        return True
-    state, exec_date = dag_state("segmentation")
-    if state == "running":
-        return True
+    dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator']
+
+    for d in dags:
+        state, exec_date = dag_state(d)
+        if state == "running":
+            return True
+
     return False
 
 
