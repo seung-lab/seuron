@@ -5,7 +5,7 @@ from collections import OrderedDict
 import string
 from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
-    sanity_check, chunkflow_set_env, run_inference
+    sanity_check, chunkflow_set_env, run_inference, mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid
 from copy import deepcopy
 import requests
@@ -26,6 +26,21 @@ def clear_queues():
 
     with q_cmd.mutex:
         q_cmd.queue.clear()
+
+
+def create_run_token(msg):
+    token = token_hex(16)
+    set_variable("run_token", token)
+    sc = slack.WebClient(slack_token, timeout=300)
+    userid = msg['user']
+    reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
+    rc = sc.chat_postMessage(
+        channel=userid,
+        text=reply_msg
+    )
+    if not rc["ok"]:
+        print("Failed to send direct message")
+        print(rc)
 
 
 def gcloud_ip():
@@ -88,6 +103,25 @@ def replyto(msg, reply, username=workerid, broadcast=False):
     if not rc["ok"]:
         print("Failed to send slack message")
         print(rc)
+
+
+def cancel_run(msg):
+    replyto(msg, "Marking all DAG states to success...")
+    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator']
+    mark_dags_success(dags)
+    time.sleep(10)
+    #try again because some tasks might already been scheduled
+    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator']
+    mark_dags_success(dags)
+
+    replyto(msg, "Shutting down clusters...")
+    cluster_size = get_variable('cluster_target_size', deserialize_json=True)
+    for k in cluster_size:
+        cluster_size[k] = 0
+    set_variable("cluster_target_size", cluster_size, serialize_json=True)
+    run_dag("cluster_management")
+
+    replyto(msg, "*Current run cancelled*", broadcast=True)
 
 
 def upload_param(msg):
@@ -223,6 +257,18 @@ def dispatch_command(cmd, payload):
         update_param(msg)
     elif cmd == "updateinferenceparameters":
         update_inference_param(msg)
+    elif cmd.startswith("cancelrun"):
+        token = get_variable("run_token")
+        if cmd != "cancelrun"+token:
+            replyto(msg, "Wrong token")
+        else:
+            if check_running():
+                clear_queues()
+                q_cmd.put("cancel")
+                cancel_run(msg)
+            else:
+                replyto(msg, "The bot is idle, nothing to cancel")
+
     elif cmd == "runsegmentation" or cmd == "runsegmentations":
         state, _ = dag_state("sanity_check")
         if check_running():
@@ -233,6 +279,7 @@ def dispatch_command(cmd, payload):
             replyto(msg, "Sanity check failed, try again")
         else:
             replyto(msg, "Start segmentation")
+            create_run_token(msg)
             update_metadata(msg)
             param_updated = False
             if q_payload.qsize() == 0:
@@ -250,6 +297,7 @@ def dispatch_command(cmd, payload):
             replyto(msg, "Chunkflow set_env failed, try again")
         else:
             replyto(msg, "Start inference")
+            create_run_token(msg)
             update_metadata(msg)
             param_updated = False
             run_inference()
@@ -319,6 +367,11 @@ def handle_batch(q_payload, q_cmd):
 
         default_param = json_obj[0]
         for i, p in enumerate(json_obj):
+            if q_cmd.qsize() != 0:
+                cmd = q_cmd.get()
+                if cmd == "cancel":
+                    replyto(msg, "Cancel batch process")
+                    break
             param = deepcopy(default_param)
             if i > 0:
                 if 'NAME' in param:
