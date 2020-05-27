@@ -90,6 +90,11 @@ def cluster_control():
                         if (total_target_size != 0):
                             slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, total_size, total_target_size))
 
+            else:
+                total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
+                if total_target_size != 0:
+                    gapi.resize_instance_group(project_id, cluster_info[key], 0)
+
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
 latest = LatestOnlyOperator(
