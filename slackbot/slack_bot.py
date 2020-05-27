@@ -19,6 +19,15 @@ from queue import Empty
 
 param_updated = False
 
+
+def clear_queues():
+    with q_payload.mutex:
+        q_payload.queue.clear()
+
+    with q_cmd.mutex:
+        q_cmd.queue.clear()
+
+
 def gcloud_ip():
     metadata_url = "http://169.254.169.254/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip"
     response = requests.get(metadata_url, headers={"Metadata-Flavor": "Google"})
@@ -174,10 +183,7 @@ def update_param(msg):
             return
 
         if not check_running():
-            try:
-                q_payload.get_nowait()
-            except Empty:
-                pass
+            clear_queues()
 
             if isinstance(json_obj, list):
                 replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
