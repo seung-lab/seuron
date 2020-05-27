@@ -124,7 +124,7 @@ def run_inference():
 
 
 def get_variable(key, deserialize_json=False):
-    return Variable.get('param', deserialize_json=deserialize_json)
+    return Variable.get(key, deserialize_json=deserialize_json)
 
 
 def set_variable(key, value, serialize_json=False):
