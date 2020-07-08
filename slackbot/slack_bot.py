@@ -5,7 +5,8 @@ from collections import OrderedDict
 import string
 from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
-    sanity_check, chunkflow_set_env, run_inference, mark_dags_success, run_dag
+    sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
+    mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid
 from copy import deepcopy
 import requests
@@ -301,6 +302,18 @@ def dispatch_command(cmd, payload):
             update_metadata(msg)
             param_updated = False
             run_inference()
+    elif cmd == "extractcontactsurfaces":
+        state, _ = dag_state("sanity_check")
+        if check_running():
+            replyto(msg, "I am busy right now")
+        elif state != "success":
+            replyto(msg, "Sanity check failed, try again")
+        else:
+            replyto(msg, "Extract contact surfaces")
+            create_run_token(msg)
+            update_metadata(msg)
+            param_updated = False
+            run_contact_surface()
     else:
         replyto(msg, "Sorry I do not understand, please try again.")
 

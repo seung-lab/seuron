@@ -58,7 +58,7 @@ def update_user_info(userid):
 
 
 def check_running():
-    dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator']
+    dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface']
 
     for d in dags:
         state, exec_date = dag_state(d)
@@ -124,6 +124,16 @@ def run_segmentation():
 
 def run_inference():
     dag_id = "chunkflow_worker"
+
+    if check_running():
+        return False
+
+    run_dag(dag_id)
+    return True
+
+
+def run_contact_surface():
+    dag_id = "contact_surface"
 
     if check_running():
         return False
