@@ -144,10 +144,22 @@ def check_cv_data():
             slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
             raise ValueError('Must specify path for existing watershed when SKIP_AGG is used')
         try:
-            vol_ws = CloudVolume(param["SEG_PATH"])
+            vol_seg = CloudVolume(param["SEG_PATH"])
         except:
             slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
             raise
+
+        param["AFF_PATH"] = "unspecified"
+        param["WS_PATH"] = "unspecified"
+        param["AFF_MIP"] = 0
+        param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
+        Variable.set("param", param, serialize_json=True)
+        if "BBOX" not in param:
+            seg_bbox = vol_seg.bounds
+            param["BBOX"] = [int(x) for x in seg_bbox.to_list()]
+            Variable.set("param", param, serialize_json=True)
+            slack_message("*Process the whole segmentation by default* {}".format(param["BBOX"]))
+
     else:
         if param.get("SKIP_WS", False):
             if "WS_PATH" not in param:
@@ -186,16 +198,16 @@ def check_cv_data():
                 Variable.set("param", param, serialize_json=True)
                 slack_message("*Use cloudvolume chunk size `{}` to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
 
+        else:
+            if "CHUNK_SIZE" not in param:
+                param["CHUNK_SIZE"] = [512,512,64]
+                Variable.set("param", param, serialize_json=True)
+                slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
 
-    if "CHUNK_SIZE" not in param:
-        param["CHUNK_SIZE"] = [512,512,64]
-        Variable.set("param", param, serialize_json=True)
-        slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
-
-    cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
-    if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
-        slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
-        raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
+            cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
+            if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
+                slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
+                raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
 
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
