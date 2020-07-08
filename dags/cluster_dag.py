@@ -88,7 +88,7 @@ def cluster_control():
                             slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, total_target_size, new_target_size))
                     else:
                         if (total_target_size != 0):
-                            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, total_size, total_target_size))
+                            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, total_size, total_target_size), channel="#seuron-alerts")
 
             else:
                 total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
