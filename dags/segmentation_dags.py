@@ -20,7 +20,7 @@ import urllib
 from collections import OrderedDict
 
 def generate_ng_payload(param):
-    ng_resolution = dataset_resolution(param["AFF_PATH"], int(param["AFF_MIP"]))
+    ng_resolution = dataset_resolution(param["AFF_PATH"], int(param.get("AFF_MIP", 0)))
     seg_resolution = ng_resolution
     layers = OrderedDict()
     if "IMAGE_PATH" in param:
@@ -323,7 +323,7 @@ Largest segments:
     ti.xcom_push(key='topsegs', value=[data[order[i]][0] for i in range(ntops)])
 
 
-if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
+if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     data_bbox = param["BBOX"]
 
     chunk_size = param["CHUNK_SIZE"]
@@ -337,7 +337,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         name = param["NAME"],
         aff = param["AFF_PATH"],
         bbox = ", ".join(str(x) for x in param["BBOX"]),
-        mip = param["AFF_MIP"]
+        mip = param.get("AFF_MIP",0)
     )
 
     ending_msg = '''*Finish Segmenting {name}*
