@@ -8,7 +8,7 @@ from airflow.models import Variable
 
 from chunk_iterator import ChunkIterator
 
-from slack_message import slack_message, task_start_alert, task_done_alert
+from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
 from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op
 
@@ -364,6 +364,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         op_args = ["ws", param],
         default_args=default_args,
         on_success_callback=task_start_alert,
+        on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
         dag=dag["ws"],
         queue = "manager"
@@ -375,6 +376,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         op_args = ["agg", param],
         default_args=default_args,
         on_success_callback=task_start_alert,
+        on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
         dag=dag["agg"],
         queue = "manager"
@@ -499,6 +501,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param and "AFF_MIP" in param:
         op_args = [param,],
         default_args=default_args,
         on_success_callback=task_done_alert,
+        on_retry_callback=task_retry_alert,
         dag=dag_manager,
         queue = "manager"
     )
