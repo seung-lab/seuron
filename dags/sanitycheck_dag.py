@@ -283,7 +283,7 @@ def print_summary():
     msg = '''
 :heavy_check_mark: *Sanity Check, everything looks OK*
 Affinity map: `{aff}`
-Affinity resolution: [{resolution}]
+Resolution: [{resolution}]
 Bounding box: [{bbox}]
 Size: [{size}]
 Watershed: `{ws}`
