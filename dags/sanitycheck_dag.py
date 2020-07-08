@@ -95,7 +95,7 @@ def check_cv_data():
 
         aff_bbox = vol.bounds
         if "AFF_RESOLUTION" not in param:
-            param["AFF_RESOLUTION"] = list(vol.resolution)
+            param["AFF_RESOLUTION"] = vol.resolution.tolist()
             Variable.set("param", param, serialize_json=True)
 
         if "BBOX" not in param:

@@ -24,7 +24,7 @@ def submit_task(queue, payload):
 
 def dataset_resolution(path, mip=0):
     vol = CloudVolume(path, mip=mip)
-    return [int(x) for x in list(vol.resolution)]
+    return vol.resolution.tolist()
 
 def check_cloud_path_empty(path):
     s = Storage(path)
