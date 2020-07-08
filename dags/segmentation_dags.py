@@ -10,7 +10,7 @@ from chunk_iterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
 from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
-from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op
+from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_files_job, get_atomic_files_job, dataset_resolution
@@ -108,8 +108,11 @@ dag["ws"] = DAG("watershed", default_args=default_args, schedule_interval=None)
 
 dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=None)
 
+dag["cs"] = DAG("contact_surface", default_args=default_args, schedule_interval=None)
+
 dag_ws = dag["ws"]
 dag_agg = dag["agg"]
+dag_cs = dag["cs"]
 
 Variable.setdefault("param", param_default, deserialize_json=True)
 param = Variable.get("param", deserialize_json=True)
@@ -146,11 +149,11 @@ def process_composite_tasks(c, cm, top_mip, params):
     top_tag = str(top_mip)+"_0_0_0"
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
     if c.mip_level() > local_batch_mip:
-        for stage, op in [("ws", "ws"), ("agg", "me")]:
+        for stage, op in [("ws", "ws"), ("agg", "me"), ("cs", "cs")]:
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
     elif c.mip_level() == local_batch_mip:
-        for stage, op in [("ws", "ws"), ("agg", "me")]:
+        for stage, op in [("ws", "ws"), ("agg", "me"), ("cs", "cs")]:
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
             if params.get('OVERLAP', False) and stage == 'agg':
                 overlap_chunks[tag] = composite_chunks_overlap_op(image, dag[stage], cm, short_queue, tag, params)
@@ -163,15 +166,16 @@ def process_composite_tasks(c, cm, top_mip, params):
                 #slack_ops[stage][c.mip_level()].set_downstream(overlap_chunks[tag])
                 slack_ops[stage]['overlap'].set_upstream(overlap_chunks[tag])
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-            remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
-            slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
-            generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
+            if stage != "cs":
+                remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
+                slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
+                generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
             init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
 
     if c.mip_level() < top_mip:
         parent_coord = [i//2 for i in c.coordinate()]
         parent_tag = str(c.mip_level()+1) + "_" + "_".join([str(i) for i in parent_coord])
-        for stage in ["ws", "agg"]:
+        for stage in ["ws", "agg", "cs"]:
             if params.get("OVERLAP", False) and stage == "agg" and c.mip_level() == batch_mip:
                 overlap_chunks[tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
             else:
@@ -283,6 +287,46 @@ def plot_histogram(data, title, xlabel, ylabel, fn):
     plt.savefig(fn)
 
 
+def contact_surfaces(param):
+    prefix = "cs/cs/complete_cs"
+    content = get_files(param, prefix)
+    cs_type = [('s1', np.uint64), ('s2', np.uint64), ('sumx', np.uint64), ('sumy', np.uint64),('sumz', np.uint64), ('size', np.uint64), ('sizex', np.uint64), ('sizey', np.uint64),('sizez', np.uint64),
+    ('minx', np.int64),('miny', np.int64),('minz', np.int64),('maxx', np.int64),('maxy', np.int64),('maxz', np.int64)]
+
+    data = np.frombuffer(content, dtype=cs_type)
+
+    title = "Distribution of the contact sizes"
+    xlabel = "Number of voxels in the contact surface"
+    ylabel = "Number of contact surfaces"
+    plot_histogram(data['size'], title, xlabel, ylabel, '/tmp/hist.png')
+
+    order = np.argsort(data['size'])[::-1]
+
+    msg = '''*Finished extracting contact surfaces in* `{seg_path}`:
+number of contact surfaces: *{size_cs}*
+average contact area: *{mean_cs}*
+maximal contact area: *{max_cs}*
+output location: `{url}`
+'''.format(
+    seg_path=param["SEG_PATH"],
+    size_cs=len(data),
+    mean_cs=int(np.mean(data['size'])),
+    max_cs=data[order[0]]['size'],
+    url="{}/{}".format(param["SCRATCH_PATH"], "cs/cs")
+    )
+    slack_message(msg, attachment='/tmp/hist.png')
+
+    xlabel = "Number of boundary voxels in the x direction"
+    plot_histogram(data['sizex'], title, xlabel, ylabel, '/tmp/histx.png')
+    slack_message("", attachment='/tmp/histx.png')
+    xlabel = "Number of boundary voxels in the y direction"
+    plot_histogram(data['sizey'], title, xlabel, ylabel, '/tmp/histy.png')
+    slack_message("", attachment='/tmp/histy.png')
+    xlabel = "Number of boundary voxels in the z direction"
+    plot_histogram(data['sizez'], title, xlabel, ylabel, '/tmp/histz.png')
+    slack_message("", attachment='/tmp/histz.png')
+
+
 def get_files(param, prefix):
     from joblib import Parallel, delayed
 
@@ -390,10 +434,12 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         queue = "manager"
     )
 
+    init['cs'] = slack_message_op(dag['cs'], "init_cs", ":arrow_forward: Start extracting contact surfaces")
 
     generate_chunks = {
         "ws": {},
-        "agg": {}
+        "agg": {},
+        "cs": {}
     }
 
     overlap_chunks = {}
@@ -405,12 +451,14 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     slack_ops = {
         "ws": {},
-        "agg": {}
+        "agg": {},
+        "cs": {}
     }
 
     scaling_ops = {
         "ws": {},
-        "agg": {}
+        "agg": {},
+        "cs": {}
     }
 
     triggers = dict()
@@ -450,6 +498,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     batch_mip = param.get("BATCH_MIP", 3)
     high_mip = param.get("HIGH_MIP", 5)
     local_batch_mip = batch_mip
+    aux_queue = "atomic" if top_mip < high_mip else "composite_"+str(top_mip)
 
 
     check_seg = PythonOperator(
@@ -462,6 +511,14 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         queue="manager"
     )
 
+    summary_cs = PythonOperator(
+        task_id="CS_Summary",
+        python_callable=contact_surfaces,
+        op_args=[param],
+        default_args=default_args,
+        dag=dag_cs,
+        queue=aux_queue
+    )
 
     cm = ["param"]
     if "MOUNT_SECRETES" in param:
@@ -480,13 +537,13 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         if c.mip_level() < local_batch_mip:
             break
         else:
-            for k in ["ws","agg"]:
+            for k in ["ws","agg","cs"]:
                 if c.mip_level() not in generate_chunks[k]:
                     generate_chunks[k][c.mip_level()] = {}
 
                 if c.mip_level() not in slack_ops[k]:
                     slack_ops[k][c.mip_level()] = slack_message_op(dag[k], k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
-                    if c.mip_level() == local_batch_mip:
+                    if c.mip_level() == local_batch_mip and k != "cs":
                         slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
                         slack_ops[k]["remap"] >> mark_done[k]
             process_composite_tasks(c, cm, top_mip, param)
@@ -502,6 +559,14 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "manager")
 
     scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0, "manager")
+
+    scaling_cs_start = scale_up_cluster_op(dag_cs, "cs_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "manager")
+
+    scaling_cs_finish = scale_down_cluster_op(dag_cs, "cs_finish", CLUSTER_1_CONN_ID, 0, "manager")
+
+    scaling_cs_start >> init['cs']
+    slack_ops['cs'][top_mip] >> summary_cs >> scaling_cs_finish
+
 
     igneous_task = PythonOperator(
         task_id = "Downsample_and_Mesh",
@@ -556,13 +621,13 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
 
     if min(high_mip, top_mip) - batch_mip > 2:
-        for stage in ["ws", "agg"]:
+        for stage in ["ws", "agg", "cs"]:
             dsize = len(generate_chunks[stage][batch_mip+2])*2
             scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize, "manager")
             scaling_ops[stage]["extra_down"].set_upstream(slack_ops[stage][batch_mip+1])
 
     if top_mip >= high_mip:
-        for stage in ["ws", "agg"]:
+        for stage in ["ws", "agg", "cs"]:
             scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0, "manager")
             scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
 
@@ -574,7 +639,10 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
                 scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
 
             scaling_ops[stage]["down_long"] = scale_down_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0, "manager")
-            scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
+            if stage == "cs":
+                scaling_ops[stage]["down_long"].set_upstream(summary_cs)
+            else:
+                scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
 
     if min(high_mip, top_mip) - batch_mip >= 2 or top_mip >= high_mip:
         for stage in ["ws", "agg"]:
