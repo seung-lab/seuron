@@ -269,17 +269,18 @@ seg diff: {url}
     slack_message(msg, broadcast=True)
 
 
-def plot_histogram(data):
+def plot_histogram(data, title, xlabel, ylabel, fn):
     import math
     import matplotlib.pyplot as plt
+    plt.clf()
     max_bin = math.ceil(math.log10(max(data)))
     plt.hist(data, bins=np.logspace(0, max_bin, max_bin+1))
     plt.xscale('log')
     plt.yscale('log')
-    plt.title('Distribution of the segment sizes')
-    plt.xlabel('number of supervoxels in the segments')
-    plt.ylabel('number of segments')
-    plt.savefig('/tmp/hist.png')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.savefig(fn)
 
 
 def get_files(param, prefix):
@@ -308,7 +309,10 @@ def process_infos(param, **kwargs):
     prefix = "agg/info/info"
     content = get_files(param, prefix)
     data = np.frombuffer(content, dtype=dt_count)
-    plot_histogram(data['count'])
+    title = "Distribution of the segment sizes"
+    xlabel = "Number of supervoxels in the segments"
+    ylabel = "Number of segments"
+    plot_histogram(data['count'], title, xlabel, ylabel, '/tmp/hist.png')
     order = np.argsort(data['count'])[::-1]
     ntops = min(20,len(data))
     msg = '''*Agglomeration Finished*
