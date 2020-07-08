@@ -33,7 +33,7 @@ inference_param_default = {
 
 
 default_args = {
-    'owner': 'airflow',
+    'owner': 'seuronbot',
     'depends_on_past': False,
     'start_date': datetime(2019, 2, 28),
     'cactchup_by_default': False,

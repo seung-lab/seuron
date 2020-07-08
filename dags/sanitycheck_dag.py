@@ -20,7 +20,7 @@ param = Variable.get("param", deserialize_json=True)
 DAG_ID = 'sanity_check'
 
 default_args = {
-    'owner': 'airflow',
+    'owner': 'seuronbot',
     'depends_on_past': False,
     'start_date': datetime(2019, 2, 8),
     'catchup': False,
