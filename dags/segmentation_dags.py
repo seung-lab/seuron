@@ -13,7 +13,7 @@ from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
-from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_info_job, get_eval_job, dataset_resolution
+from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_files_job, get_atomic_files_job, dataset_resolution
 import numpy as np
 import json
 import urllib
@@ -207,11 +207,11 @@ def generate_batches(param):
     return high_mip_chunks, batch_chunks
 
 
-def get_evals(param):
+def get_atomic_files(param, prefix):
     from joblib import Parallel, delayed
 
     high_mip_chunks, batch_chunks = generate_batches(param)
-    contents = Parallel(n_jobs=-2)(delayed(get_eval_job)(sv, param) for sv in batch_chunks)
+    contents = Parallel(n_jobs=-2)(delayed(get_atomic_files_job)(sv, param, prefix) for sv in batch_chunks)
 
     content = b''
     for c in contents:
@@ -226,7 +226,8 @@ def evaluate_results(param):
     from evaluate_segmentation import read_chunk, evaluate_rand, evaluate_voi, find_large_diff
     from igneous_and_cloudvolume import upload_json
     from airflow import configuration as conf
-    content = get_evals(param)
+    prefix = "agg/evaluation/evaluation"
+    content = get_atomic_files(param, prefix)
     f = BytesIO(content)
     s_i = defaultdict(int)
     t_j = defaultdict(int)
@@ -281,12 +282,14 @@ def plot_histogram(data):
     plt.savefig('/tmp/hist.png')
 
 
-def get_infos(param):
+def get_files(param, prefix):
     from joblib import Parallel, delayed
 
     high_mip_chunks, batch_chunks = generate_batches(param)
-    content = get_info_job(high_mip_chunks, param)
-    contents = Parallel(n_jobs=-2)(delayed(get_info_job)(sv, param) for sv in batch_chunks)
+    print("get {} high mip files".format(len(high_mip_chunks)))
+    content = get_files_job(high_mip_chunks, param, prefix)
+    print("get lower mip files")
+    contents = Parallel(n_jobs=-2)(delayed(get_files_job)(sv, param, prefix) for sv in batch_chunks)
 
     for c in contents:
         content+=c
@@ -302,7 +305,8 @@ def process_infos(param, **kwargs):
         ti.xcom_push(key='topsegs', value=[])
         return
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
-    content = get_infos(param)
+    prefix = "agg/info/info"
+    content = get_files(param, prefix)
     data = np.frombuffer(content, dtype=dt_count)
     plot_histogram(data['count'])
     order = np.argsort(data['count'])[::-1]

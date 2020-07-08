@@ -107,25 +107,25 @@ def upload_json(path, filename, content):
         storage.put_json(filename, content)
 
 
-def get_eval_job(v, param):
+def get_atomic_files_job(v, param, prefix):
     content = b''
     with Storage(param["SCRATCH_PATH"]) as storage:
         for c in v:
             if c.mip_level() != 0:
                 continue
             tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-            content += storage.get_file('agg/evaluation/evaluation_{}.data'.format(tag))
+            content += storage.get_file('{}_{}.data'.format(prefix, tag))
 
     return content
 
 
-def get_info_job(v, param):
+def get_files_job(v, param, prefix):
 #    try:
     content = b''
     with Storage(param["SCRATCH_PATH"]) as storage:
         for c in v:
             tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-            content += storage.get_file('agg/info/info_{}.data'.format(tag))
+            content += storage.get_file('{}_{}.data'.format(prefix, tag))
 
     return content
 
