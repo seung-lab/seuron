@@ -68,7 +68,13 @@ def create_info(stage, param):
     author = slack_userinfo()
     if author is None:
         author = "seuronbot"
-    vol.commit_info()
+
+    try:
+        vol.commit_info()
+    except:
+        slack_message(""":exclamation:*Error*: Cannot commit cloudvolume info to `{}`, check if the bot have write permission.""".format(cv_path))
+        raise
+
     vol.provenance.processing.append({
         'method': param,
         'by': author,
