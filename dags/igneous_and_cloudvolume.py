@@ -162,9 +162,9 @@ def downsample_and_mesh(param):
     from os.path import commonprefix
 
     #Reuse the broker of celery
-    if param.get("SKIP_DOWNSAMPLE", False):
-        slack_message(":exclamation: Skip downsample (and meshing) as instructed")
-        return
+    #if param.get("SKIP_DOWNSAMPLE", False):
+    #    slack_message(":exclamation: Skip downsample (and meshing) as instructed")
+    #    return
 
     broker = configuration.get('celery', 'BROKER_URL')
 
@@ -184,18 +184,23 @@ def downsample_and_mesh(param):
     ws_cloudpath = param["WS_PATH"]
 
     #cube_dim = 512//(2**(mesh_mip+1))
+    target_size = 0
 
     with Connection(broker, connect_timeout=60) as conn:
         queue = conn.SimpleQueue("igneous")
 
-        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), preserve_chunk_size=True)
-        target_size = (1+len(tasks)//32)
-        ramp_up_cluster("igneous", 20, min(50, target_size))
-        for t in tasks:
-            submit_task(queue, t.payload())
+        if not param.get("SKIP_DOWNSAMPLE", False):
+            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+            target_size = (1+len(tasks)//32)
+            ramp_up_cluster("igneous", 20, min(50, target_size))
+            for t in tasks:
+                submit_task(queue, t.payload())
 
-        check_queue("igneous")
-        slack_message(":arrow_forward: Downsampled")
+            check_queue("igneous")
+            slack_message(":arrow_forward: Downsampled")
+        else:
+            target_size = 10
+            ramp_up_cluster("igneous", 20, min(50, target_size))
 
         if param.get("SKIP_MESHING", False):
             slack_message(":exclamation: Skip meshing as instructed")
@@ -219,12 +224,18 @@ def downsample_and_mesh(param):
             mesh_mip = 0
 
         slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
-        if (target_size > 20):
-            reset_cluster("igneous", 20)
+        if not param.get("SKIP_DOWNSAMPLE", False):
+            if (target_size > 20):
+                reset_cluster("igneous", 20)
 
         tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
         for t in tasks:
             submit_task(queue, t.payload())
+
+        if param.get("SKIP_DOWNSAMPLE", False):
+            target_size = (1+len(tasks)//32)
+            ramp_up_cluster("igneous", 20, min(50, target_size))
+
         check_queue("igneous")
         slack_message(":arrow_forward: Meshed")
 
@@ -278,23 +289,24 @@ def downsample_and_mesh(param):
             submit_task(queue, t.payload())
         print("total number of tasks: {}".format(len(task_list)))
 
-        if not param.get("SKIP_WS", False):
-            tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-            for t in tasks:
-                submit_task(queue, t.payload())
-        if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
-            tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, preserve_chunk_size=True)
+        if not param.get("SKIP_DOWNSAMPLE", False):
+            if not param.get("SKIP_WS", False):
+                tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+                for t in tasks:
+                    submit_task(queue, t.payload())
+            if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
+                tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, num_mips=2, preserve_chunk_size=True)
+                for t in tasks:
+                    submit_task(queue, t.payload())
+
+            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+            target_size = (1+len(tasks)//32)
+            ramp_up_cluster("igneous", 20, min(50, target_size))
             for t in tasks:
                 submit_task(queue, t.payload())
 
-        tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-        target_size = (1+len(tasks)//32)
-        ramp_up_cluster("igneous", 20, min(50, target_size))
-        for t in tasks:
-            submit_task(queue, t.payload())
-
-        if not param.get("SKIP_AGG", False):
-            tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
+            #if not param.get("SKIP_AGG", False):
+            tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
             for t in tasks:
                 submit_task(queue, t.payload())
 
