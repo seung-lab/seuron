@@ -27,11 +27,13 @@ def dataset_resolution(path, mip=0):
     return vol.resolution.tolist()
 
 def check_cloud_path_empty(path):
-    s = Storage(path)
+    import traceback
     try:
+        s = Storage(path)
         obj = next(s.list_files(), None)
     except:
-        slack_message(""":exclamation:*Error*: Check cloud path failed: {}, does the bucket exist?""".format(path))
+        slack_message(""":exclamation:*Error*: Check cloud path failed:
+```{}``` """.format(traceback.format_exc()))
         raise
 
     if obj is not None:
