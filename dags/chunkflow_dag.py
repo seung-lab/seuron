@@ -116,11 +116,11 @@ def supply_default_parameters():
         Variable.set("inference_param", param, serialize_json=True)
         slack_message("*Assume affinity resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
-    if "IMAGE_MASK_PATH" in param and "IMAGE_MASK_MIP" not in param:
+    if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and "IMAGE_MASK_MIP" not in param:
         param["IMAGE_MASK_MIP"] = param["IMAGE_MIP"]
         slack_message("*Assume image mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
-    if "AFF_MASK_PATH" in param and "AFF_MASK_MIP" not in param:
+    if param.get("AFF_MASK_PATH", "N/A") != "N/A" and "AFF_MASK_MIP" not in param:
         param["AFF_MASK_MIP"] = param["IMAGE_MIP"]
         slack_message("*Assume affinity mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
