@@ -288,7 +288,7 @@ def dispatch_command(cmd, payload):
                 run_segmentation()
             else:
                 q_payload.put(msg)
-                q_cmd.put("run")
+                q_cmd.put("runseg")
     elif cmd == "runinference":
         state, _ = dag_state("chunkflow_generator")
         if check_running():
@@ -349,14 +349,17 @@ def hello_world(**payload):
 
 def handle_batch(q_payload, q_cmd):
     while True:
+        current_task="runseg"
         logger.debug("check queue")
         time.sleep(1)
         if q_payload.qsize() == 0:
             continue
         if q_cmd.qsize() != 0:
             cmd = q_cmd.get()
-            if cmd != "run":
+            if cmd != "runseg" and cmd != "runinf":
                 continue
+            else:
+                current_task = cmd
         else:
             continue
 
@@ -395,18 +398,33 @@ def handle_batch(q_payload, q_cmd):
                 supply_default_param(param)
                 update_metadata(msg)
                 replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
-                set_variable('param', param, serialize_json=True)
-                sanity_check()
-                wait_for_airflow()
-                state, _ = dag_state("sanity_check")
+                state = "unknown"
+                if current_task == "runseg":
+                    set_variable('param', param, serialize_json=True)
+                    sanity_check()
+                    wait_for_airflow()
+                    state, _ = dag_state("sanity_check")
+                elif current_task == "runinf":
+                    set_variable('inference_param', param, serialize_json=True)
+                    chunkflow_set_env()
+                    wait_for_airflow()
+                    state, _ = dag_state("chunkflow_generator")
+
                 if state != "success":
                     replyto(msg, "*Sanity check failed, abort!*")
                     break
 
+            state = "unknown"
             replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
-            run_segmentation()
-            wait_for_airflow()
-            state, _ = dag_state("segmentation")
+            if current_task == "runseg":
+                run_segmentation()
+                wait_for_airflow()
+                state, _ = dag_state("segmentation")
+            elif current_task == "runinf":
+                run_inference()
+                wait_for_airflow()
+                state, _ = dag_state("chunkflow_worker")
+
             if state != "success":
                 replyto(msg, "*Segmentation failed, abort!*")
                 break
