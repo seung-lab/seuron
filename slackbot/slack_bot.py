@@ -184,15 +184,12 @@ def update_inference_param(msg):
             return
 
         if not check_running():
-            #try:
-            #    q_payload.get_nowait()
-            #except Empty:
-            #    pass
+            clear_queues()
 
-            #if isinstance(json_obj, list):
-            #    replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-            #    json_obj = json_obj[0]
-            #    q_payload.put(msg)
+            if isinstance(json_obj, list):
+                replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+                json_obj = json_obj[0]
+                q_payload.put(msg)
 
             supply_default_param(json_obj)
             replyto(msg, "Running chunkflow setup_env, please wait")
@@ -302,7 +299,11 @@ def dispatch_command(cmd, payload):
             create_run_token(msg)
             update_metadata(msg)
             param_updated = False
-            run_inference()
+            if q_payload.qsize() == 0:
+                run_inference()
+            else:
+                q_payload.put(msg)
+                q_cmd.put("runinf")
     elif cmd == "extractcontactsurfaces":
         state, _ = dag_state("sanity_check")
         if check_running():
