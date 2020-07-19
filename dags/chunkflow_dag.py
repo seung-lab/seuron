@@ -96,7 +96,7 @@ def supply_default_parameters():
 
     image_bbox = vol.bounds
     if "IMAGE_RESOLUTION" not in param:
-        param["IMAGE_RESOLUTION"] = list(vol.resolution)
+        param["IMAGE_RESOLUTION"] = vol.resolution.tolist()
         Variable.set("inference_param", param, serialize_json=True)
 
     if "BBOX" not in param:
