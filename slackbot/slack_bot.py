@@ -427,7 +427,7 @@ def handle_batch(q_payload, q_cmd):
                 state, _ = dag_state("chunkflow_worker")
 
             if state != "success":
-                replyto(msg, "*Segmentation failed, abort!*")
+                replyto(msg, "*Bach job failed, abort!*")
                 break
 
         replyto(msg, "*Batch process finished*")
