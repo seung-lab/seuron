@@ -4,6 +4,7 @@ from airflow.operators.docker_plugin import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import inference_param_default, default_args
+from datetime import datetime
 from igneous_and_cloudvolume import check_queue
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
@@ -181,7 +182,6 @@ def drain_tasks_op(dag, queue):
         xcom_all=True,
         force_pull=True,
         on_failure_callback=task_failure_alert,
-        default_args=default_args,
         image=param["CHUNKFLOW_IMAGE"],
         priority_weight=100000,
         weight_rule=WeightRule.ABSOLUTE,
@@ -200,7 +200,6 @@ def setup_env_op(dag, queue):
         xcom_push=True,
         xcom_all=True,
         force_pull=True,
-        default_args=default_args,
         image=param["CHUNKFLOW_IMAGE"],
         priority_weight=100000,
         weight_rule=WeightRule.ABSOLUTE,
@@ -236,7 +235,6 @@ def worker_op(dag, queue, wid):
         task_id='worker_{}'.format(wid),
         command=cmdlist,
         force_pull=True,
-        default_args=default_args,
         image=param["CHUNKFLOW_IMAGE"],
         host_args={'runtime': 'nvidia'},
         priority_weight=1,
@@ -285,9 +283,16 @@ def process_output(**kwargs):
     slack_message('chunkflow set_env finished')
     slack_message('Affinitymap: `{}`'.format(param["AFF_PATH"]))
 
+generator_default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2019, 2, 8),
+    'catchup': False,
+    'retries': 0,
+}
 
 
-dag_generator = DAG("chunkflow_generator", default_args=default_args, schedule_interval=None)
+dag_generator = DAG("chunkflow_generator", default_args=generator_default_args, schedule_interval=None)
 dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interval=None)
 
 sanity_check_task = PythonOperator(
