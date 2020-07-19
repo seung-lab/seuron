@@ -200,6 +200,7 @@ def setup_env_op(dag, queue):
         xcom_push=True,
         xcom_all=True,
         force_pull=True,
+        on_failure_callback=task_failure_alert,
         image=param["CHUNKFLOW_IMAGE"],
         priority_weight=100000,
         weight_rule=WeightRule.ABSOLUTE,
