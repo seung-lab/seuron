@@ -83,6 +83,32 @@ def supply_default_parameters():
             slack_message(":exclamation:*IMAGE_RESOLUTION and IMAGE_MIP are both specified, Perfer IMAGE_RESOLUTION*")
         param["IMAGE_MIP"] = vol.mip
 
+    if "IMAGE_MASK_RESOLUTION" in param and param.get("IMAGE_MASK_PATH", "N/A") != "N/A":
+        try:
+            vol = CloudVolume(param["IMAGE_MASK_PATH"], mip=param["IMAGE_MASK_RESOLUTION"])
+        except:
+            slack_message(":u7981:*ERROR: Cannot access image mask * `{}` at resolution {}".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
+            raise ValueError('Resolution does not exist')
+
+        if "IMAGE_MASK_MIP" in param:
+            slack_message(":exclamation:*IMAGE_MASK_RESOLUTION and IMAGE_MASK_MIP are both specified, Perfer IMAGE_MASK_RESOLUTION*")
+        param["IMAGE_MASK_MIP"] = vol.mip
+
+        slack_message(":exclamation:*Use image mask * `{}` at resolution {}".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
+
+    if "AFF_MASK_RESOLUTION" in param and param.get("AFF_MASK_PATH", "N/A") != "N/A":
+        try:
+            vol = CloudVolume(param["AFF_MASK_PATH"], mip=param["AFF_MASK_RESOLUTION"])
+        except:
+            slack_message(":u7981:*ERROR: Cannot access affinity mask * `{}` at resolution {}".format(param["AFF_MASK_PATH"], param["AFF_MASK_RESOLUTION"]))
+            raise ValueError('Resolution does not exist')
+
+        if "AFF_MASK_MIP" in param:
+            slack_message(":exclamation:*AFF_MASK_RESOLUTION and AFF_MASK_MIP are both specified, Perfer AFF_MASK_RESOLUTION*")
+        param["AFF_MASK_MIP"] = vol.mip
+
+        slack_message(":exclamation:*Use affinity mask * `{}` at resolution {}".format(param["AFF_MASK_PATH"], param["AFF_MASK_RESOLUTION"]))
+
     if "IMAGE_MIP" not in param:
         param["IMAGE_MIP"] = 0
         slack_message("*Use MIP 0 image by default*")
