@@ -177,7 +177,7 @@ def update_inference_param(msg):
     payload = download_file(msg)
     if payload:
         try:
-            json_obj = json.loads(payload, object_pairs_hook=OrderedDict)
+            json_obj = json5.loads(payload, object_pairs_hook=OrderedDict)
         except (ValueError, TypeError) as e:
             replyto(msg, "Cannot load the json file: {}".format(str(e)))
             print(payload)
