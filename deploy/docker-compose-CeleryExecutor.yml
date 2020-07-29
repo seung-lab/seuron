@@ -17,7 +17,7 @@ services:
                 constraints: [ engine.labels.infrakit-role == manager ]
 
     postgres:
-        image: mariadb:10.4
+        image: mariadb:10.5
         environment:
             - MYSQL_USER
             - MYSQL_PASSWORD
