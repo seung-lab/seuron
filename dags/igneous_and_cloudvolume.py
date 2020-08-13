@@ -200,120 +200,113 @@ def downsample_and_mesh(param):
 
             check_queue("igneous")
             slack_message(":arrow_forward: Downsampled")
-        else:
-            target_size = 10
-            ramp_up_cluster("igneous", 20, min(50, target_size))
 
-        if param.get("SKIP_MESHING", False):
-            slack_message(":exclamation: Skip meshing as instructed")
-            return
+        if not param.get("SKIP_MESHING", False):
 
         #if param.get("SKIP_AGG", False):
         #    slack_message(":exclamation: No segmentation generated, skip meshing")
         #    return
 
-        vol = CloudVolume(seg_cloudpath)
-        mesh_mip = int(log2(vol.resolution[2]/vol.resolution[0]))
+            vol = CloudVolume(seg_cloudpath)
+            mesh_mip = int(log2(vol.resolution[2]/vol.resolution[0]))
 
-        if mesh_mip not in vol.available_mips:
-            mesh_mip = max(vol.available_mips)
+            if mesh_mip not in vol.available_mips:
+                mesh_mip = max(vol.available_mips)
 
-        simplification = True
-        max_simplification_error = 40
-        if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
-            simplification = False
-            max_simplification_error = 0
-            mesh_mip = 0
+            simplification = True
+            max_simplification_error = 40
+            if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
+                simplification = False
+                max_simplification_error = 0
+                mesh_mip = 0
 
-        slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
-        if not param.get("SKIP_DOWNSAMPLE", False):
-            if (target_size > 20):
-                reset_cluster("igneous", 20)
+            slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
+            if not param.get("SKIP_DOWNSAMPLE", False):
+                if (target_size > 20):
+                    reset_cluster("igneous", 20)
 
-        tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
-        for t in tasks:
-            submit_task(queue, t.payload())
-
-        if param.get("SKIP_DOWNSAMPLE", False):
-            target_size = (1+len(tasks)//32)
-            ramp_up_cluster("igneous", 20, min(50, target_size))
-
-        check_queue("igneous")
-        slack_message(":arrow_forward: Meshed")
-
-        #FIXME: should reuse the function in segmentation scripts
-        layer = 1
-        bits_per_dim = 10
-        n_bits_for_layer_id = 8
-
-        layer_offset = 64 - n_bits_for_layer_id
-        x_offset = layer_offset - bits_per_dim
-        y_offset = x_offset - bits_per_dim
-        z_offset = y_offset - bits_per_dim
-
-        chunk_voxels = 1 << (64-n_bits_for_layer_id-bits_per_dim*3)
-
-        v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
-
-        prefix_list = []
-        for c in v:
-            if c.mip_level() == 0:
-                x, y, z = c.coordinate()
-                min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
-                max_id = min_id + chunk_voxels
-                if len(str(min_id)) != len(str(max_id)):
-                    raise NotImplementedError("No common prefix, need to split the range")
-                prefix = commonprefix([str(min_id), str(max_id)])
-                if len(prefix) == 0:
-                    raise NotImplementedError("No common prefix, need to split the range")
-                digits = len(str(min_id)) - len(prefix) - 1
-                mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
-                #print(int(mid),int(mid)-1)
-                prefix1 = commonprefix([str(min_id), str(mid-1)])
-                prefix2 = commonprefix([str(max_id), str(mid)])
-                if len(prefix1) <= len(prefix):
-                    #print("min_id {}, max_id {}, prefix {}".format(min_id, max_id, prefix))
-                    prefix_list.append(prefix)
-                else:
-                    #print("min_id {}, max_id {}, mid {}, prefix {}, {}".format(min_id, max_id, mid, prefix1, prefix2))
-                    prefix_list.append(prefix1)
-                    prefix_list.append(prefix2)
-
-        task_list = []
-        if (target_size > 10):
-            reset_cluster("igneous", 10)
-        for p in sorted(prefix_list, key=len):
-            if any(p.startswith(s) for s in task_list):
-                print("Already considered, skip {}".format(p))
-                continue
-            task_list.append(p)
-            t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
-            submit_task(queue, t.payload())
-        print("total number of tasks: {}".format(len(task_list)))
-
-        if not param.get("SKIP_DOWNSAMPLE", False):
-            if not param.get("SKIP_WS", False):
-                tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
-                for t in tasks:
-                    submit_task(queue, t.payload())
-            if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
-                tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, num_mips=2, preserve_chunk_size=True)
-                for t in tasks:
-                    submit_task(queue, t.payload())
-
-            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
-            target_size = (1+len(tasks)//32)
-            ramp_up_cluster("igneous", 20, min(50, target_size))
+            tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
             for t in tasks:
                 submit_task(queue, t.payload())
 
-            #if not param.get("SKIP_AGG", False):
-            tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
-            for t in tasks:
-                submit_task(queue, t.payload())
+            if param.get("SKIP_DOWNSAMPLE", False):
+                target_size = (1+len(tasks)//32)
+                ramp_up_cluster("igneous", 20, min(50, target_size))
 
-        check_queue("igneous")
-        slack_message(":arrow_forward: Manifest genrated")
+            check_queue("igneous")
+            slack_message(":arrow_forward: Meshed")
+
+            #FIXME: should reuse the function in segmentation scripts
+            layer = 1
+            bits_per_dim = 10
+            n_bits_for_layer_id = 8
+
+            layer_offset = 64 - n_bits_for_layer_id
+            x_offset = layer_offset - bits_per_dim
+            y_offset = x_offset - bits_per_dim
+            z_offset = y_offset - bits_per_dim
+
+            chunk_voxels = 1 << (64-n_bits_for_layer_id-bits_per_dim*3)
+
+            v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
+
+            prefix_list = []
+            for c in v:
+                if c.mip_level() == 0:
+                    x, y, z = c.coordinate()
+                    min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
+                    max_id = min_id + chunk_voxels
+                    if len(str(min_id)) != len(str(max_id)):
+                        raise NotImplementedError("No common prefix, need to split the range")
+                    prefix = commonprefix([str(min_id), str(max_id)])
+                    if len(prefix) == 0:
+                        raise NotImplementedError("No common prefix, need to split the range")
+                    digits = len(str(min_id)) - len(prefix) - 1
+                    mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
+                    #print(int(mid),int(mid)-1)
+                    prefix1 = commonprefix([str(min_id), str(mid-1)])
+                    prefix2 = commonprefix([str(max_id), str(mid)])
+                    if len(prefix1) <= len(prefix):
+                        prefix_list.append(prefix)
+                    else:
+                        prefix_list.append(prefix1)
+                        prefix_list.append(prefix2)
+
+            task_list = []
+            if (target_size > 10):
+                reset_cluster("igneous", 10)
+            for p in sorted(prefix_list, key=len):
+                if any(p.startswith(s) for s in task_list):
+                    print("Already considered, skip {}".format(p))
+                    continue
+                task_list.append(p)
+                t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
+                submit_task(queue, t.payload())
+            print("total number of tasks: {}".format(len(task_list)))
+
+            if not param.get("SKIP_DOWNSAMPLE", False):
+                if not param.get("SKIP_WS", False):
+                    tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+                    for t in tasks:
+                        submit_task(queue, t.payload())
+                if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
+                    tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, num_mips=2, preserve_chunk_size=True)
+                    for t in tasks:
+                        submit_task(queue, t.payload())
+
+                tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+                target_size = (1+len(tasks)//32)
+                ramp_up_cluster("igneous", 20, min(50, target_size))
+                for t in tasks:
+                    submit_task(queue, t.payload())
+
+                #if not param.get("SKIP_AGG", False):
+                tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+                for t in tasks:
+                    submit_task(queue, t.payload())
+
+            check_queue("igneous")
+            slack_message(":arrow_forward: Manifest genrated")
         queue.close()
         #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
         #check_queue(tq)
