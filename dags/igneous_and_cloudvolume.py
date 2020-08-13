@@ -192,7 +192,7 @@ def downsample_and_mesh(param):
         queue = conn.SimpleQueue("igneous")
 
         if not param.get("SKIP_DOWNSAMPLE", False):
-            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, num_mips=2, preserve_chunk_size=True)
+            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), num_mips=2, preserve_chunk_size=True)
             target_size = (1+len(tasks)//32)
             ramp_up_cluster("igneous", 20, min(50, target_size))
             for t in tasks:
