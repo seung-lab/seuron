@@ -335,6 +335,10 @@ def downsample_and_mesh(param):
                         progress=False, # Show a progress bar
                         parallel=1, # Number of parallel processes to use (more useful locally)
                     )
+
+            target_size = (1+len(tasks)//32)
+            ramp_up_cluster("igneous", 20, min(50, target_size))
+
             for t in tasks:
                 submit_task(queue, t.payload())
 
