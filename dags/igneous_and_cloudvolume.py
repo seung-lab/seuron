@@ -310,6 +310,50 @@ def downsample_and_mesh(param):
 
             check_queue("igneous")
             slack_message(":arrow_forward: Manifest genrated")
+
+        if not param.get("SKIP_SKELETON", False):
+            vol.refresh_info()
+            skeleton_mip = isotropic_mip
+
+            if skeleton_mip not in vol.available_mips:
+                skeleton_mip = max(vol.available_mips)
+
+            tasks = tc.create_skeletonizing_tasks(seg_cloudpath, mip=skeleton_mip,
+                        shape=Vec(512, 512, 512),
+                        sharded=True, # Generate (true) concatenated .frag files (False) single skeleton fragments
+                        spatial_index=True, # Generate a spatial index so skeletons can be queried by bounding box
+                        info=None, # provide a cloudvolume info file if necessary (usually not)
+                        fill_missing=True, # Use zeros if part of the image is missing instead of raising an error
+
+                        # see Kimimaro's documentation for the below parameters
+                        teasar_params={'scale':10, 'const': 10},
+                        object_ids=None, # Only skeletonize these ids
+                        mask_ids=None, # Mask out these ids
+                        fix_branching=True, # (True) higher quality branches at speed cost
+                        fix_borders=True, # (True) Enable easy stitching of 1 voxel overlapping tasks
+                        dust_threshold=1000, # Don't skeletonize below this physical distance
+                        progress=False, # Show a progress bar
+                        parallel=1, # Number of parallel processes to use (more useful locally)
+                    )
+            for t in tasks:
+                submit_task(queue, t.payload())
+
+            check_queue("igneous")
+            slack_message(":arrow_forward: Skeleton fragments created")
+            tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
+                        dust_threshold=1000,
+                        tick_threshold=3500,
+                        preshift_bits=9,
+                        minishard_bits=4,
+                        shard_bits=11,
+                        minishard_index_encoding='gzip', # or None
+                        data_encoding='gzip', # or None
+                    )
+            for t in tasks:
+                submit_task(queue, t.payload())
+            check_queue("igneous")
+            slack_message(":arrow_forward: Skeleton merged")
+
         queue.close()
         #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
         #check_queue(tq)
