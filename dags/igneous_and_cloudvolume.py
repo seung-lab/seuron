@@ -190,9 +190,12 @@ def downsample_and_mesh(param):
 
     with Connection(broker, connect_timeout=60) as conn:
         queue = conn.SimpleQueue("igneous")
+        vol = CloudVolume(seg_cloudpath)
+        isotropic_mip = int(log2(vol.resolution[2]/vol.resolution[0]))
 
         if not param.get("SKIP_DOWNSAMPLE", False):
-            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), num_mips=2, preserve_chunk_size=True)
+
+            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), num_mips=isotropic_mip, preserve_chunk_size=True)
             target_size = (1+len(tasks)//32)
             ramp_up_cluster("igneous", 20, min(50, target_size))
             for t in tasks:
@@ -207,8 +210,8 @@ def downsample_and_mesh(param):
         #    slack_message(":exclamation: No segmentation generated, skip meshing")
         #    return
 
-            vol = CloudVolume(seg_cloudpath)
-            mesh_mip = int(log2(vol.resolution[2]/vol.resolution[0]))
+            vol.refresh_info()
+            mesh_mip = isotropic_mip
 
             if mesh_mip not in vol.available_mips:
                 mesh_mip = max(vol.available_mips)
