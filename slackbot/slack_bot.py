@@ -221,7 +221,8 @@ def update_param(msg):
             clear_queues()
 
             if isinstance(json_obj, list):
-                replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+                if (len(json_obj) > 1):
+                    replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
                 json_obj = json_obj[0]
                 q_payload.put(msg)
 
