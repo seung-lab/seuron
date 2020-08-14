@@ -88,7 +88,7 @@ def generate_ng_payload(param):
     return payload
 
 def generate_link(param, broadcast, **kwargs):
-    ng_host = "https://neuromancer-seung-import.appspot.com"
+    ng_host = param.get("NG_HOST", "https://neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
     ti = kwargs['ti']
     seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
