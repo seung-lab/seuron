@@ -334,7 +334,7 @@ Fundamental chunk size: {chunk_size}
     if param.get("OVERLAP", False) and top_mip > local_batch_mip:
         msg += ":exclamation:Agglomeration in overlaping mode at MIP {}\n".format(param.get("BATCH_MIP", 3))
 
-    for skip_flag, op in [("SKIP_WS", "watershed"), ("SKIP_AGG", "agglomeration"), ("SKIP_DOWNSAMPLE", "downsample"), ("SKIP_MESHING", "meshing")]:
+    for skip_flag, op in [("SKIP_WS", "watershed"), ("SKIP_AGG", "agglomeration"), ("SKIP_DOWNSAMPLE", "downsample"), ("SKIP_MESHING", "meshing"), ("SKIP_SKELETON", "skeletonization")]:
         if param.get(skip_flag, False):
             msg += ":exclamation:Skip {op}!\n".format(op=op)
 
