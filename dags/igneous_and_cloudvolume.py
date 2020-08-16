@@ -326,7 +326,7 @@ def downsample_and_mesh(param):
                         fill_missing=True, # Use zeros if part of the image is missing instead of raising an error
 
                         # see Kimimaro's documentation for the below parameters
-                        teasar_params={'scale':10, 'const': 10},
+                        teasar_params=param.get("TEASAR_PARAMS", {'scale':10, 'const': 10}),
                         object_ids=None, # Only skeletonize these ids
                         mask_ids=None, # Mask out these ids
                         fix_branching=True, # (True) higher quality branches at speed cost
