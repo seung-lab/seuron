@@ -316,7 +316,7 @@ process_output_task = PythonOperator(
     queue="manager",
     dag=dag_generator
 )
-scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), param.get("TASK_NUM",1), "manager")
+scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), param.get("TASK_NUM",2)//2, "manager")
 scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "manager")
 
 wait_for_chunkflow_task = PythonOperator(
@@ -347,7 +347,7 @@ workers = []
 skips = []
 
 
-for i in range(min(param.get("TASK_NUM", 1), 100)):
+for i in range(min(param.get("TASK_NUM", 1), 2000)):
     workers.append(worker_op(dag_worker, "gpu", i))
     scale_up_cluster_task >> workers[i] >> scale_down_cluster_task
 
