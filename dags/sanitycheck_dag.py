@@ -198,16 +198,16 @@ def check_cv_data():
                 Variable.set("param", param, serialize_json=True)
                 slack_message("*Use cloudvolume chunk size `{}` to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
 
-        else:
-            if "CHUNK_SIZE" not in param:
-                param["CHUNK_SIZE"] = [512,512,64]
-                Variable.set("param", param, serialize_json=True)
-                slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
+#        else:
+    if "CHUNK_SIZE" not in param:
+        param["CHUNK_SIZE"] = [512,512,64]
+        Variable.set("param", param, serialize_json=True)
+        slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
 
-            cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
-            if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
-                slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
-                raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
+    cv_chunk_size = param.get("CV_CHUNK_SIZE", [128,128,16])
+    if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
+        slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
+        raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
 
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
