@@ -149,8 +149,9 @@ def check_cv_data():
             slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
             raise
 
-        param["AFF_PATH"] = "unspecified"
-        param["WS_PATH"] = "unspecified"
+        if param.get("SKIP_WS", False):
+            param["AFF_PATH"] = "N/A" if "AFF_PATH" not in param else param["AFF_PATH"]
+            param["WS_PATH"] = "N/A" if "WS_PATH" not in param else param["WS_PATH"]
         param["AFF_MIP"] = 0
         param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
         Variable.set("param", param, serialize_json=True)
@@ -242,34 +243,35 @@ def print_summary():
     param = Variable.get("param", deserialize_json=True)
     data_bbox = param["BBOX"]
 
-    chunk_size = param["CHUNK_SIZE"]
+    if not (param.get("SKIP_WS", False) and param.get("SKIP_AGG", False)):
+        chunk_size = param["CHUNK_SIZE"]
 
-    v = ChunkIterator(data_bbox, chunk_size)
+        v = ChunkIterator(data_bbox, chunk_size)
 
-    bchunks = 0
-    hchunks = 0
-    ntasks = 0
-    nnodes = 0
-    top_mip = v.top_mip_level()
-    local_batch_mip = param.get("BATCH_MIP", 3)
-    if top_mip < local_batch_mip:
-        local_batch_mip = top_mip
+        bchunks = 0
+        hchunks = 0
+        ntasks = 0
+        nnodes = 0
+        top_mip = v.top_mip_level()
+        local_batch_mip = param.get("BATCH_MIP", 3)
+        if top_mip < local_batch_mip:
+            local_batch_mip = top_mip
 
-    for c in v:
-        mip = c.mip_level()
-        if nnodes % 1000 == 0:
-            print("{} nodes processed".format(nnodes))
-        if mip < local_batch_mip:
-            break
-        else:
-            ntasks+=1
-            nnodes += 1
-            if mip == local_batch_mip:
-                bchunks+=1
-            elif mip >= param.get("HIGH_MIP", 5):
-                hchunks+=1
-    ntasks += bchunks
-    ntasks *= 2
+        for c in v:
+            mip = c.mip_level()
+            if nnodes % 1000 == 0:
+                print("{} nodes processed".format(nnodes))
+            if mip < local_batch_mip:
+                break
+            else:
+                ntasks+=1
+                nnodes += 1
+                if mip == local_batch_mip:
+                    bchunks+=1
+                elif mip >= param.get("HIGH_MIP", 5):
+                    hchunks+=1
+        ntasks += bchunks
+        ntasks *= 2
 
     paths = {}
 
@@ -313,7 +315,8 @@ Agglomeration threshold: {agg_threshold}
             agg_threshold = param["AGG_THRESHOLD"],
         )
 
-    msg += '''
+    if not (param["SKIP_WS"] and param["SKIP_AGG"]):
+        msg += '''
 Worker image: {worker_image}
 Fundamental chunk size: {chunk_size}
 
@@ -322,17 +325,17 @@ Fundamental chunk size: {chunk_size}
 {hchunks} chunks at mip level {high_mip} and above
 {ntasks} tasks in total
 '''.format(
-        worker_image = param["WORKER_IMAGE"],
-        chunk_size = param["CHUNK_SIZE"],
-        nnodes = nnodes,
-        bchunks = bchunks,
-        local_batch_mip = local_batch_mip,
-        hchunks = hchunks,
-        high_mip = param.get("HIGH_MIP", 5),
-        ntasks = ntasks
-    )
-    if param.get("OVERLAP", False) and top_mip > local_batch_mip:
-        msg += ":exclamation:Agglomeration in overlaping mode at MIP {}\n".format(param.get("BATCH_MIP", 3))
+            worker_image = param["WORKER_IMAGE"],
+            chunk_size = param["CHUNK_SIZE"],
+            nnodes = nnodes,
+            bchunks = bchunks,
+            local_batch_mip = local_batch_mip,
+            hchunks = hchunks,
+            high_mip = param.get("HIGH_MIP", 5),
+            ntasks = ntasks
+        )
+        if param.get("OVERLAP", False) and top_mip > local_batch_mip:
+            msg += ":exclamation:Agglomeration in overlaping mode at MIP {}\n".format(param.get("BATCH_MIP", 3))
 
     for skip_flag, op in [("SKIP_WS", "watershed"), ("SKIP_AGG", "agglomeration"), ("SKIP_DOWNSAMPLE", "downsample"), ("SKIP_MESHING", "meshing"), ("SKIP_SKELETON", "skeletonization")]:
         if param.get(skip_flag, False):
