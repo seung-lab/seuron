@@ -16,7 +16,7 @@ resources:
           fernetKey: fernetKey_for_airflow
           botUserID: slack_bot_id
           remoteLogFolder: gs_bucket_for_the_logs
-          seuronImageTag: ranl_testing
+          seuronImage: ranlu/air-tasks:ranl_testing
           #slackToken:
           #workerID:
           project: segmentation
