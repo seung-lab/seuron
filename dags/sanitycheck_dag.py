@@ -376,6 +376,7 @@ affinity_check = PythonOperator(
 summary = PythonOperator(
     task_id="summary",
     python_callable=print_summary,
+    on_failure_callback=cv_check_alert,
     queue="manager",
     dag=dag)
 
