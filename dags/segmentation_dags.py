@@ -20,7 +20,7 @@ import urllib
 from collections import OrderedDict
 
 def generate_ng_payload(param):
-    ng_resolution = dataset_resolution(param["AFF_PATH"], int(param.get("AFF_MIP", 0)))
+    ng_resolution = dataset_resolution(param["SEG_PATH"])
     seg_resolution = ng_resolution
     layers = OrderedDict()
     if "IMAGE_PATH" in param:
