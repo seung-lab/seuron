@@ -5,7 +5,7 @@
 # SOURCE: https://github.com/wongwill86/air-tasks
 
 ARG BASE_DIST=slim
-ARG BASE_TAG=0.0.7-customAF
+ARG BASE_TAG=0.0.8-customAF
 ARG BASE_TEST=
 
 FROM ranlu/air-tasks:base-${BASE_DIST}-${BASE_TAG}${BASE_TEST}
@@ -39,7 +39,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && rm -rf igneous \
     && rm -rf airflow \
     && pip install -U networkx \
-    && cd /usr/local/lib/python3.6/site-packages \
+    && cd /usr/local/lib/python3.8/site-packages \
     && patch -p1 < ${AIRFLOW_HOME}/celery.patch \
     && patch -p1 < ${AIRFLOW_HOME}/igneous.patch \
     && apt-mark auto '.*' > /dev/null \
