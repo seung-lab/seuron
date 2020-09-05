@@ -12,9 +12,6 @@ services:
             - net.ipv4.tcp_keepalive_intvl=45
             - net.ipv4.tcp_keepalive_probes=15
             - net.ipv4.tcp_keepalive_time=120
-        deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
 
     postgres:
         image: mariadb:10.5
@@ -27,9 +24,6 @@ services:
             - "3306:3306"
         volumes:
             - /var/lib/mysql:/var/lib/mysql
-        deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
         command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout --innodb-buffer-pool-size=100G
 
     # single shot initialize the database
@@ -51,9 +45,6 @@ services:
         #ports:
             #- "8080:8080"
         command: airflow upgradedb
-        deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
         deploy:
             restart_policy:
                 condition: on-failure
@@ -78,9 +69,6 @@ services:
             #- "8080:8080"
         command: python pipeline/init_pipeline.py
         deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
-        deploy:
             restart_policy:
                 condition: on-failure
 
@@ -103,8 +91,6 @@ services:
             - "8080:8080"
         command: airflow webserver
         deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
             restart_policy:
                 condition: any
 
@@ -125,8 +111,6 @@ services:
             - REMOTE_LOG_FOLDER
         command: airflow scheduler
         deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
             restart_policy:
                 condition: any
 
@@ -152,8 +136,6 @@ services:
         command: airflow worker -q worker
         deploy:
             mode: global
-            placement:
-                constraints: [ engine.labels.infrakit-role == worker ]
             restart_policy:
                 condition: any
 
@@ -180,8 +162,6 @@ services:
         command: airflow worker -q atomic
         deploy:
             mode: global
-            placement:
-                constraints: [ engine.labels.infrakit-role == atomic ]
             restart_policy:
                 condition: any
 
@@ -208,8 +188,6 @@ services:
         command: airflow worker -q composite
         deploy:
             mode: global
-            placement:
-                constraints: [ engine.labels.infrakit-role == composite ]
             restart_policy:
                 condition: any
 
@@ -237,8 +215,6 @@ services:
             - AIRFLOW__CELERY__CELERYD_CONCURRENCY=4
         command: airflow worker -q manager
         deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
             restart_policy:
                 condition: any
 
@@ -262,8 +238,6 @@ services:
             - DEPLOYMENT
         command: python slackbot/slack_bot.py
         deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
             restart_policy:
                 condition: any
 
@@ -277,8 +251,6 @@ services:
             - webserver
             - rabbitmq
         deploy:
-            placement:
-                constraints: [ engine.labels.infrakit-role == manager ]
             restart_policy:
                 condition: any
         #volumes:
