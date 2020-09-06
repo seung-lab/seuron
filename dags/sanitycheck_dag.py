@@ -315,7 +315,7 @@ Agglomeration threshold: {agg_threshold}
             agg_threshold = param["AGG_THRESHOLD"],
         )
 
-    if not (param["SKIP_WS"] and param["SKIP_AGG"]):
+    if not (param.get("SKIP_WS", False) and param.get("SKIP_AGG", False)):
         msg += '''
 Worker image: {worker_image}
 Fundamental chunk size: {chunk_size}
