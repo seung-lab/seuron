@@ -137,7 +137,7 @@ def get_files_job(v, param, prefix):
 
 
 def check_queue(queue):
-    totalTries = 2
+    totalTries = 5
     nTries = totalTries
     while True:
         sleep(5)
