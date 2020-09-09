@@ -139,6 +139,7 @@ def get_files_job(v, param, prefix):
 def check_queue(queue):
     totalTries = 5
     nTries = totalTries
+    count = 0
     while True:
         sleep(5)
         ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
@@ -147,6 +148,11 @@ def check_queue(queue):
         queue_status = ret.json()
         nTasks = queue_status["messages"]
         print("Tasks left: {}".format(nTasks))
+
+        count += 1
+        if count % 60 == 0:
+            slack_message("{} tasks left in queue {}".format(nTasks, queue))
+
         if nTasks == 0:
             nTries -= 1
         else:
