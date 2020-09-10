@@ -113,7 +113,7 @@ def task_failure_alert(context):
         "&task_id={ti.task_id}"
         "&execution_date={iso}"
     ).format(**locals())
-    slack_alert(":exclamation: Task failed, check the latest error log: `{}`".format(log_url), context)
+    slack_alert(":exclamation: Task failed, check the latest error log: `{}`".format(log_url), None, context)
 
 
 def task_done_alert(context):
