@@ -151,7 +151,7 @@ def check_queue(queue):
 
         count += 1
         if count % 60 == 0:
-            slack_message("{} tasks left in queue {}".format(nTasks, queue))
+            slack_message("{} tasks remain in queue {}".format(nTasks, queue))
 
         if nTasks == 0:
             nTries -= 1
