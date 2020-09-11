@@ -91,7 +91,7 @@ def generate_link(param, broadcast, **kwargs):
     ng_host = param.get("NG_HOST", "https://neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
 
-    if param.get("SKIP_AGG", False):
+    if not param.get("SKIP_AGG", False):
         ti = kwargs['ti']
         seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
         payload["layers"]["seg"]["hiddenSegments"] = [str(x) for x in seglist]
