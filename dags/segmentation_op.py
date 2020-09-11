@@ -18,7 +18,7 @@ def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op, par
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=params.get("HIGH_MIP_TIMEOUT", 120)),
+        execution_timeout=timedelta(minutes=params.get("HIGH_MIP_TIMEOUT", 600)),
         force_pull=True,
         queue=queue,
         dag=dag
@@ -37,7 +37,7 @@ def composite_chunks_overlap_op(img, dag, config_mounts, queue, tag, params):
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=params.get("OVERLAP_TIMEOUT", 60)),
+        execution_timeout=timedelta(minutes=params.get("OVERLAP_TIMEOUT", 240)),
         force_pull=True,
         queue=queue,
         dag=dag
@@ -56,7 +56,7 @@ def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, o
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=params.get("BATCH_MIP_TIMEOUT", 30)),
+        execution_timeout=timedelta(minutes=params.get("BATCH_MIP_TIMEOUT", 120)),
         force_pull=True,
         queue=queue,
         dag=dag
@@ -74,7 +74,7 @@ def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op, p
         image=img,
         on_retry_callback=task_retry_alert,
         weight_rule=WeightRule.ABSOLUTE,
-        execution_timeout=timedelta(minutes=params.get("REMAP_TIMEOUT", 30)),
+        execution_timeout=timedelta(minutes=params.get("REMAP_TIMEOUT", 120)),
         force_pull=True,
         queue=queue,
         dag=dag
