@@ -516,6 +516,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         provide_context=True,
         op_args=[param],
         default_args=default_args,
+        on_success_callback=task_done_alert,
+        on_retry_callback=task_retry_alert,
         dag=dag_agg,
         queue=aux_queue
     )
@@ -526,6 +528,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         task_id="CS_Summary",
         python_callable=contact_surfaces,
         op_args=[param],
+        on_success_callback=task_done_alert,
+        on_retry_callback=task_retry_alert,
         default_args=default_args,
         dag=dag_cs,
         queue=aux_queue
@@ -539,6 +543,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             op_args=[param,],
             default_args=default_args,
             dag=dag_agg,
+            on_success_callback=task_done_alert,
+            on_retry_callback=task_retry_alert,
             queue=aux_queue
         )
         aux_agg_tasks.append(comp_seg_task)
