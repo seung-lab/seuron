@@ -624,7 +624,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             task_id = "Generate_neuroglancer_link",
             provide_context=True,
             python_callable=generate_link,
-            op_args = [param, False],
+            op_args = [param, True],
             default_args=default_args,
             dag=dag_manager,
             queue = "manager"
