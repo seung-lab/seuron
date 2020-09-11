@@ -204,6 +204,7 @@ def downsample_and_mesh(param):
             tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), num_mips=isotropic_mip, preserve_chunk_size=True)
             target_size = (1+len(tasks)//32)
             ramp_up_cluster("igneous", 20, min(50, target_size))
+            slack_message(":arrow_forward: Start downsampling: {} tasks in total".format(len(tasks)))
             for t in tasks:
                 submit_task(queue, t.payload())
 
@@ -235,6 +236,7 @@ def downsample_and_mesh(param):
                     reset_cluster("igneous", 20)
 
             tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
+            slack_message(":arrow_forward: Start meshing: {} tasks in total".format(len(tasks)))
             for t in tasks:
                 submit_task(queue, t.payload())
 
@@ -291,7 +293,8 @@ def downsample_and_mesh(param):
                 task_list.append(p)
                 t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
                 submit_task(queue, t.payload())
-            print("total number of tasks: {}".format(len(task_list)))
+
+            slack_message(":arrow_forward: Generating mesh manifest: {} tasks in total".format(len(task_list)))
 
             if not param.get("SKIP_DOWNSAMPLE", False):
                 if not param.get("SKIP_WS", False):
@@ -341,6 +344,7 @@ def downsample_and_mesh(param):
                         progress=False, # Show a progress bar
                         parallel=1, # Number of parallel processes to use (more useful locally)
                     )
+            slack_message(":arrow_forward: Creating skeleton fragments: {} tasks in total".format(len(tasks)))
 
             target_size = (1+len(tasks)//32)
             ramp_up_cluster("igneous", 20, min(50, target_size))
@@ -359,6 +363,7 @@ def downsample_and_mesh(param):
                         minishard_index_encoding='gzip', # or None
                         data_encoding='gzip', # or None
                     )
+            slack_message(":arrow_forward: Merging skeleton fragments: {} tasks in total".format(len(tasks)))
             for t in tasks:
                 submit_task(queue, t.payload())
             check_queue("igneous")
