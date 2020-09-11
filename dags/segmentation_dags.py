@@ -610,6 +610,16 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     igneous_task >> scaling_igneous_finish
     wait["agg"] >> scaling_global_finish
 
+    nglink_task = PythonOperator(
+        task_id = "Generate_neuroglancer_link",
+        provide_context=True,
+        python_callable=generate_link,
+        op_args = [param, True],
+        default_args=default_args,
+        dag=dag_manager,
+        queue = "manager"
+    )
+    igneous_task >> nglink_task >> ending_op
     if "GT_PATH" in param:
         evaluation_task = PythonOperator(
             task_id = "Evaluate_Segmentation",
@@ -620,27 +630,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             dag=dag_manager,
             queue = "manager"
         )
-        nglink_task = PythonOperator(
-            task_id = "Generate_neuroglancer_link",
-            provide_context=True,
-            python_callable=generate_link,
-            op_args = [param, True],
-            default_args=default_args,
-            dag=dag_manager,
-            queue = "manager"
-        )
-        igneous_task >> [nglink_task, evaluation_task] >> ending_op
-    else:
-        nglink_task = PythonOperator(
-            task_id = "Generate_neuroglancer_link",
-            provide_context=True,
-            python_callable=generate_link,
-            op_args = [param, True],
-            default_args=default_args,
-            dag=dag_manager,
-            queue = "manager"
-        )
-        igneous_task >> nglink_task >> ending_op
+        igneous_task >> evaluation_task >> ending_op
 
 
     if min(high_mip, top_mip) - batch_mip > 2:
