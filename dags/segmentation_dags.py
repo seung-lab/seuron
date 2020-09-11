@@ -90,11 +90,13 @@ def generate_ng_payload(param):
 def generate_link(param, broadcast, **kwargs):
     ng_host = param.get("NG_HOST", "https://neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
-    ti = kwargs['ti']
-    seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
-    payload["layers"]["seg"]["hiddenSegments"] = [str(x) for x in seglist]
 
-    url = "neuroglancer link: {host}/#!{payload}".format(
+    if param.get("SKIP_AGG", False):
+        ti = kwargs['ti']
+        seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
+        payload["layers"]["seg"]["hiddenSegments"] = [str(x) for x in seglist]
+
+    url = "<{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,
         payload=urllib.parse.quote(json.dumps(payload)))
     slack_message(url, broadcast=broadcast)
@@ -223,7 +225,7 @@ def get_atomic_files(param, prefix):
 
     return content
 
-def evaluate_results(param):
+def compare_segmentation(param, **kwargs):
     from io import BytesIO
     import os
     from collections import defaultdict
@@ -244,17 +246,30 @@ def evaluate_results(param):
     rand_split, rand_merge = evaluate_rand(s_i, t_j, p_ij)
     voi_split, voi_merge = evaluate_voi(s_i, t_j, p_ij)
     seg_pairs = find_large_diff(s_i, t_j, p_ij, payload)
+    scores = {
+        'rand_split': rand_split,
+        'rand_merge': rand_merge,
+        'voi_split': voi_split,
+        'voi_merge': voi_merge,
+    }
+    Variable.set("seg_eval", scores, serialize_json=True)
     output = {
         "ng_payload": payload,
         "seg_pairs": seg_pairs
     }
-
-
     gs_log_path = conf.get('core', 'remote_log_folder')
     bucket_name = gs_log_path[5:].split('/')[0]
-    diff_server = param.get("DIFF_SERVER", "https://diff-dot-neuromancer-seung-import.appspot.com")
 
     upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
+
+
+def evaluate_results(param, **kwargs):
+    if "GT_PATH" not in param:
+        return
+
+    diff_server = param.get("DIFF_SERVER", "https://diff-dot-neuromancer-seung-import.appspot.com")
+
+    scores = Variable.get("seg_eval", deserialize_json=True)
 
     msg = '''*Evaluation against ground truth* `{gt_path}`:
 rand split: *{rand_split}*
@@ -264,10 +279,10 @@ voi merge : *{voi_merge}*
 seg diff: {url}
 '''.format(
     gt_path=param["GT_PATH"],
-    rand_split=round(abs(rand_split),3),
-    rand_merge=round(abs(rand_merge),3),
-    voi_split=round(abs(voi_split),3),
-    voi_merge=round(abs(voi_merge),3),
+    rand_split=round(abs(scores['rand_split']),3),
+    rand_merge=round(abs(scores['rand_merge']),3),
+    voi_split=round(abs(scores['voi_split']),3),
+    voi_merge=round(abs(scores['voi_merge']),3),
     url="{}/{}".format(diff_server, param["NAME"])
     )
     slack_message(msg, broadcast=True)
@@ -343,12 +358,6 @@ def get_files(param, prefix):
 
 
 def process_infos(param, **kwargs):
-    if param.get("SKIP_AGG", False):
-        ti = kwargs['ti']
-        ti.xcom_push(key='segcount', value=0)
-        ti.xcom_push(key='svcount', value=0)
-        ti.xcom_push(key='topsegs', value=[])
-        return
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     prefix = "agg/info/info"
     content = get_files(param, prefix)
@@ -507,9 +516,11 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         provide_context=True,
         op_args=[param],
         default_args=default_args,
-        dag=dag_manager,
-        queue="manager"
+        dag=dag_agg,
+        queue=aux_queue
     )
+
+    aux_agg_tasks = [check_seg]
 
     summary_cs = PythonOperator(
         task_id="CS_Summary",
@@ -519,6 +530,18 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         dag=dag_cs,
         queue=aux_queue
     )
+
+    if "GT_PATH" in param:
+        comp_seg_task = PythonOperator(
+            task_id = "Compare_Segmentation",
+            python_callable=compare_segmentation,
+            provide_context=True,
+            op_args=[param,],
+            default_args=default_args,
+            dag=dag_agg,
+            queue=aux_queue
+        )
+        aux_agg_tasks.append(comp_seg_task)
 
     cm = ["param"]
     if "MOUNT_SECRETES" in param:
@@ -566,6 +589,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     scaling_cs_start >> init['cs']
     slack_ops['cs'][top_mip] >> summary_cs >> scaling_cs_finish
+    slack_ops['agg'][top_mip] >> aux_agg_tasks >> mark_done['agg']
 
 
     igneous_task = PythonOperator(
@@ -585,11 +609,11 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     reset_flags >> scaling_global_start
     igneous_task >> scaling_igneous_finish
     wait["agg"] >> scaling_global_finish
-    wait["agg"] >> check_seg
 
     if "GT_PATH" in param:
         evaluation_task = PythonOperator(
             task_id = "Evaluate_Segmentation",
+            provide_context=True,
             python_callable=evaluate_results,
             op_args = [param,],
             default_args=default_args,
@@ -605,8 +629,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             dag=dag_manager,
             queue = "manager"
         )
-        [check_seg, igneous_task] >> nglink_task >> ending_op
-        igneous_task >> evaluation_task >> ending_op
+        igneous_task >> [nglink_task, evaluation_task] >> ending_op
     else:
         nglink_task = PythonOperator(
             task_id = "Generate_neuroglancer_link",
@@ -617,7 +640,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             dag=dag_manager,
             queue = "manager"
         )
-        [check_seg, igneous_task] >> nglink_task >> ending_op
+        igneous_task >> nglink_task >> ending_op
 
 
     if min(high_mip, top_mip) - batch_mip > 2:
@@ -641,6 +664,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             scaling_ops[stage]["down_long"] = scale_down_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0, "manager")
             if stage == "cs":
                 scaling_ops[stage]["down_long"].set_upstream(summary_cs)
+            elif stage == "agg":
+                aux_agg_tasks >> scaling_ops[stage]["down_long"]
             else:
                 scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
 
