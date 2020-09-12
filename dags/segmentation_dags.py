@@ -92,9 +92,8 @@ def generate_link(param, broadcast, **kwargs):
     payload = generate_ng_payload(param)
 
     if not param.get("SKIP_AGG", False):
-        ti = kwargs['ti']
-        seglist = ti.xcom_pull(task_ids="Check_Segmentation", key="topsegs")
-        payload["layers"]["seg"]["hiddenSegments"] = [str(x) for x in seglist]
+        seglist = Variable.get("topsegs")
+        payload["layers"]["seg"]["hiddenSegments"] = seglist.split(' ')
 
     url = "<{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,
@@ -378,10 +377,7 @@ Largest segments:
     top20list="\n".join("id: {} ({})".format(data[order[i]][0], data[order[i]][1]) for i in range(ntops))
     )
     slack_message(msg, attachment='/tmp/hist.png')
-    ti = kwargs['ti']
-    ti.xcom_push(key='segcount', value=len(data))
-    ti.xcom_push(key='svcount', value=np.sum(data['count']))
-    ti.xcom_push(key='topsegs', value=[data[order[i]][0] for i in range(ntops)])
+    Variable.set("topsegs", " ".join(str(int(data[order[i]][0])) for i in range(ntops)))
 
 
 if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
