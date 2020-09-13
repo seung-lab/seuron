@@ -591,7 +591,9 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     scaling_cs_start >> init['cs']
     slack_ops['cs'][top_mip] >> summary_cs >> scaling_cs_finish
-    slack_ops['agg'][top_mip] >> aux_agg_tasks >> mark_done['agg']
+    slack_ops['agg'][top_mip] >> check_seg >> mark_done['agg']
+    if "GT_PATH" in param:
+        slack_ops['agg']['remap'] >> comp_seg_task >> mark_done['agg']
 
 
     igneous_task = PythonOperator(
