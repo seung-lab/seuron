@@ -176,12 +176,12 @@ def check_cv_data():
             try:
                 ws_param = provenance['processing'][0]['method']
                 ws_chunk_size = ws_param["CHUNK_SIZE"]
-                ws_chunkmap_path = ws_param['SCRATCH_PATH']+"/chunkmap"
+                ws_chunkmap_path = os.path.join(ws_param['SCRATCH_PATH'], "chunkmap") if "CHUNKMAP_OUTPUT" not in param else param["CHUNKMAP_OUTPUT"]
             except:
                 raise
 
-            if "CHUNKMAP_PATH" not in param:
-                param['CHUNKMAP_PATH'] = ws_chunkmap_path
+            if "CHUNKMAP_INPUT" not in param:
+                param['CHUNKMAP_INPUT'] = ws_chunkmap_path
                 Variable.set("param", param, serialize_json=True)
                 slack_message("*Use chunkmap path derived from the watershed layer* `{}`".format(ws_chunkmap_path))
 
