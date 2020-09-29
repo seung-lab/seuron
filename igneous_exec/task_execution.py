@@ -1,3 +1,5 @@
+from airflow.models import Variable
+import os
 import time
 import traceback
 import threading
@@ -18,6 +20,18 @@ import psutil
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
 @click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
 def command(tag, queue, qurl, timeout, loop):
+    param = Variable.get("param", deserialize_json=True)
+    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+    if not os.path.exists(cv_secrets_path):
+        os.makedirs(cv_secrets_path)
+
+    mount_secrets = param.get("MOUNT_SECRETES", [])
+
+    for k in mount_secrets:
+        v = Variable.get(k)
+        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
+            value_file.write(v)
+
     conn = Connection(qurl, heartbeat=120)
     worker = threading.Thread(target=handle_task, args=(q_task, q_state,))
     worker.daemon = True

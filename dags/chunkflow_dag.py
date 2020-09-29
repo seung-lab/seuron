@@ -3,7 +3,7 @@ from airflow.models import Variable
 from airflow.operators.docker_plugin import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
-from param_default import inference_param_default, default_args
+from param_default import inference_param_default, default_args, cv_path
 from datetime import datetime
 from igneous_and_cloudvolume import check_queue
 
@@ -174,8 +174,13 @@ def drain_tasks_op(dag, queue):
     param = Variable.get("inference_param", deserialize_json=True)
     cmdlist = 'bash -c "chunkflow/scripts/drain_tasks.sh"'
 
+    cm = ['inference_param']
+    if "MOUNT_SECRETES" in param:
+        cm += param["MOUNT_SECRETES"]
+
     return DockerWithVariablesOperator(
-        ["inference_param"],
+        cm,
+        mount_point=cv_path,
         task_id='drain_tasks',
         command=cmdlist,
         xcom_push=True,
@@ -193,8 +198,13 @@ def setup_env_op(dag, queue):
     param = Variable.get("inference_param", deserialize_json=True)
     cmdlist = 'bash -c "chunkflow/scripts/setup_env.sh"'
 
+    cm = ['inference_param']
+    if "MOUNT_SECRETES" in param:
+        cm += param["MOUNT_SECRETES"]
+
     return DockerWithVariablesOperator(
-        ["inference_param"],
+        cm,
+        mount_point=cv_path,
         task_id='setup_env',
         command=cmdlist,
         xcom_push=True,
@@ -231,8 +241,13 @@ def worker_op(dag, queue, wid):
     param = Variable.get("inference_param", deserialize_json=True)
     cmdlist = 'bash -c "chunkflow/scripts/inference.sh"'
 
+    cm = ['inference_param']
+    if "MOUNT_SECRETES" in param:
+        cm += param["MOUNT_SECRETES"]
+
     return DockerWithVariablesOperator(
-        ["inference_param"],
+        cm,
+        mount_point=cv_path,
         task_id='worker_{}'.format(wid),
         command=cmdlist,
         force_pull=True,
