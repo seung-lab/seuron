@@ -377,4 +377,7 @@ def downsample_and_mesh(param):
         #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
         #check_queue(tq)
 
+    for k in mount_secrets:
+        os.remove(os.path.join(cv_secrets_path, k))
+
 
