@@ -73,7 +73,7 @@ def create_info(stage, param):
 
     param["CHUNKMAP_OUTPUT"] = os.path.join(param["SCRATCH_PATH"], stage, "chunkmap")
     Variable.set("param", param, serialize_json=True)
-    slack_message(""":exclamation: Write the map from chunked segments to real segments to {}.""".format(param["CHUNKMAP_OUTPUT"]))
+    slack_message(""":exclamation: Write the map from chunked segments to real segments to `{}`.""".format(param["CHUNKMAP_OUTPUT"]))
 
     try:
         vol.commit_info()
