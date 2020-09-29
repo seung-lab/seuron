@@ -176,7 +176,7 @@ def check_cv_data():
             try:
                 ws_param = provenance['processing'][0]['method']
                 ws_chunk_size = ws_param["CHUNK_SIZE"]
-                ws_chunkmap_path = os.path.join(ws_param['SCRATCH_PATH'], "chunkmap") if "CHUNKMAP_OUTPUT" not in param else param["CHUNKMAP_OUTPUT"]
+                ws_chunkmap_path = os.path.join(ws_param['SCRATCH_PATH'], "chunkmap") if "CHUNKMAP_OUTPUT" not in ws_param else ws_param["CHUNKMAP_OUTPUT"]
             except:
                 raise
 
