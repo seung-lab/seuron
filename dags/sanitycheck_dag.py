@@ -64,7 +64,13 @@ def check_cv_data():
     mount_secrets = param.get("MOUNT_SECRETES", [])
 
     for k in mount_secrets:
-        v = Variable.get(k)
+        try:
+            v = Variable.get(k)
+        except KeyError:
+            webui_ip = Variable.get("webui_ip")
+            slack_message(":exclamation:*{} does not exist, specify it from <https://{}/airflow/admin/variable/|the web interface>*".format(k, webui_ip))
+            raise
+
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
 
