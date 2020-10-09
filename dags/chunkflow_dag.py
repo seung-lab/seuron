@@ -34,8 +34,8 @@ def generate_ng_link():
     if "IMAGE_SHADER" in param:
         layers["img"]["shader"] = param["IMAGE_SHADER"]
 
-    layers["aff"] = {
-        "source": "precomputed://"+param["AFF_PATH"],
+    layers["out"] = {
+        "source": "precomputed://"+param["OUTPUT_PATH"],
         "shader": param.get("AFF_SHADER", "void main() {\n  float r = toNormalized(getDataValue(0));\n  float g = toNormalized(getDataValue(1));\n  float b = toNormalized(getDataValue(2)); \n  emitRGB(vec3(r,g,b));\n}"),
         "type": "image"
     }
@@ -97,18 +97,18 @@ def supply_default_parameters():
 
         slack_message(":exclamation:*Use image mask * `{}` at resolution {}".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
 
-    if "AFF_MASK_RESOLUTION" in param and param.get("AFF_MASK_PATH", "N/A") != "N/A":
+    if "OUTPUT_MASK_RESOLUTION" in param and param.get("OUTPUT_MASK_PATH", "N/A") != "N/A":
         try:
-            vol = CloudVolume(param["AFF_MASK_PATH"], mip=param["AFF_MASK_RESOLUTION"])
+            vol = CloudVolume(param["OUTPUT_MASK_PATH"], mip=param["OUTPUT_MASK_RESOLUTION"])
         except:
-            slack_message(":u7981:*ERROR: Cannot access affinity mask * `{}` at resolution {}".format(param["AFF_MASK_PATH"], param["AFF_MASK_RESOLUTION"]))
+            slack_message(":u7981:*ERROR: Cannot access output mask * `{}` at resolution {}".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
             raise ValueError('Resolution does not exist')
 
-        if "AFF_MASK_MIP" in param:
-            slack_message(":exclamation:*AFF_MASK_RESOLUTION and AFF_MASK_MIP are both specified, Perfer AFF_MASK_RESOLUTION*")
-        param["AFF_MASK_MIP"] = vol.mip
+        if "OUTPUT_MASK_MIP" in param:
+            slack_message(":exclamation:*OUTPUT_MASK_RESOLUTION and OUTPUT_MASK_MIP are both specified, Perfer OUTPUT_MASK_RESOLUTION*")
+        param["OUTPUT_MASK_MIP"] = vol.mip
 
-        slack_message(":exclamation:*Use affinity mask * `{}` at resolution {}".format(param["AFF_MASK_PATH"], param["AFF_MASK_RESOLUTION"]))
+        slack_message(":exclamation:*Use output mask * `{}` at resolution {}".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
 
     if "IMAGE_MIP" not in param:
         param["IMAGE_MIP"] = 0
@@ -131,25 +131,25 @@ def supply_default_parameters():
         Variable.set("inference_param", param, serialize_json=True)
         slack_message("*inference the whole image by default* {}".format(param["BBOX"]))
 
-    if "AFF_PATH" not in param:
-        if "AFF_PREFIX" in param:
-            param["AFF_PATH"] = param["AFF_PREFIX"]+param["NAME"]
+    if "OUTPUT_PATH" not in param:
+        if "OUTPUT_PREFIX" in param:
+            param["OUTPUT_PATH"] = param["OUTPUT_PREFIX"]+param["NAME"]
         else:
-            slack_message(":u7981:*ERROR: Either AFF_PATH or AFF_PREFIX has to be specified")
-            raise ValueError('No output affinity map path')
+            slack_message(":u7981:*ERROR: Either OUTPUT_PATH or OUTPUT_PREFIX has to be specified")
+            raise ValueError('No output output path')
 
-    if "AFF_MIP" not in param:
-        param["AFF_MIP"] = param["IMAGE_MIP"]
+    if "OUTPUT_MIP" not in param:
+        param["OUTPUT_MIP"] = param["IMAGE_MIP"]
         Variable.set("inference_param", param, serialize_json=True)
-        slack_message("*Assume affinity resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
+        slack_message("*Assume output resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
     if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and "IMAGE_MASK_MIP" not in param:
         param["IMAGE_MASK_MIP"] = param["IMAGE_MIP"]
         slack_message("*Assume image mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
-    if param.get("AFF_MASK_PATH", "N/A") != "N/A" and "AFF_MASK_MIP" not in param:
-        param["AFF_MASK_MIP"] = param["IMAGE_MIP"]
-        slack_message("*Assume affinity mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
+    if param.get("OUTPUT_MASK_PATH", "N/A") != "N/A" and "OUTPUT_MASK_MIP" not in param:
+        param["OUTPUT_MASK_MIP"] = param["IMAGE_MIP"]
+        slack_message("*Assume output mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
     if "MAX_RAM" not in param:
         param["MAX_RAM"] = 12
@@ -157,7 +157,7 @@ def supply_default_parameters():
 
 
     if "MAX_MIP" not in param:
-        param["MAX_MIP"] = max(5, param.get("IMAGE_MASK_MIP",0), param.get("AFF_MASK_MIP",0), param["IMAGE_MIP"], param["AFF_MIP"])
+        param["MAX_MIP"] = max(5, param.get("IMAGE_MASK_MIP",0), param.get("OUTPUT_MASK_MIP",0), param["IMAGE_MIP"], param["OUTPUT_MIP"])
         slack_message("*Max mip level set to {}*".format(param["MAX_MIP"]))
 
     target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
@@ -297,7 +297,7 @@ def process_output(**kwargs):
     Variable.set("chunkflow_done", "no")
 
     slack_message('chunkflow set_env finished')
-    slack_message('Affinitymap: `{}`'.format(param["AFF_PATH"]))
+    slack_message('Output path: `{}`'.format(param["OUTPUT_PATH"]))
 
 generator_default_args = {
     'owner': 'airflow',
