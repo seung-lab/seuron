@@ -323,6 +323,11 @@ def process_output(**kwargs):
             task_number = int(m.group(0))
             param["TASK_NUM"] = task_number
 
+    for k in ['PATCH_NUM', 'EXPAND_MARGIN_SIZE', 'TASK_NUM']:
+        if k not in param:
+            slack_message(":u7981:*ERROR: Fail to capture {} from the chunkflow output, bail*".format(k))
+            raise ValueError('Chunkflow output error')
+
     Variable.set("inference_param", param, serialize_json=True)
 
     gs_log_path = conf.get('core', 'remote_log_folder')
