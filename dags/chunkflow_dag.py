@@ -167,9 +167,8 @@ def supply_default_parameters():
         slack_message("*Assume output mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
     if "MAX_RAM" not in param:
-        param["MAX_RAM"] = 12
-        slack_message("*Set memory limit of each task to 12 GB by default*")
-
+        param["MAX_RAM"] = 4
+        slack_message("*Set memory limit of each task to 4 GB by default*")
 
     if "MAX_MIP" not in param:
         param["MAX_MIP"] = max(5, param.get("IMAGE_MASK_MIP",0), param.get("OUTPUT_MASK_MIP",0), param["IMAGE_MIP"], param["OUTPUT_MIP"])
