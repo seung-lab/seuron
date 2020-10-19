@@ -163,6 +163,29 @@ def supply_default_parameters():
         param["MAX_MIP"] = max(5, param.get("IMAGE_MASK_MIP",0), param.get("OUTPUT_MASK_MIP",0), param["IMAGE_MIP"], param["OUTPUT_MIP"])
         slack_message("*Max mip level set to {}*".format(param["MAX_MIP"]))
 
+    if param.get("INFERENCE_FRAMEWORK", "pytorch") != "pytorch":
+        slack_message("*Use {} backend for inference*".format(param["INFERENCE_FRAMEWORK"]))
+
+    if "OUTPUT_CHANNELS" in param and "INFERENCE_OUTPUT_CHANNELS" not in param:
+        param["INFERENCE_OUTPUT_CHANNELS"] = param["OUTPUT_CHANNELS"]
+    elif "OUTPUT_CHANNELS" not in param and "INFERENCE_OUTPUT_CHANNELS" in param:
+        param["OUTPUT_CHANNELS"] = param["INFERENCE_OUTPUT_CHANNELS"]
+
+    if param.get("MYELIN_MASK_THRESHOLD", "N/A") != "N/A":
+        if param.get("OUTPUT_CHANNELS", 3) != 3 or param.get("INFERENCE_OUTPUT_CHANNELS", 3) != 4:
+            slack_message(":u7981:*ERROR: Myelin mask threshold requires 3 OUTPUT_CHANNELS and 4 INFERENCE_OUTPUT_CHANNELS*")
+        else:
+            slack_message("*Apply myelin mask with threshold {}*".format(float(param["MYELIN_MASK_THRESHOLD"])))
+
+    if param.get("POSTPROC", "N/A") != "N/A":
+        slack_message("*Post process the inference output with operator* `{}`".format(param["POSTPROC"]))
+
+    if param.get("OUTPUT_DTYPE", "float32") != "float32":
+        slack_message("*Write the output as {}*".format(param.get("OUTPUT_DTYPE", "float32")))
+
+    if param.get("OUTPUT_CHANNELS", 3) != 3 or param.get("INFERENCE_OUTPUT_CHANNELS", 3) != 3:
+        slack_message("*Inference the input into {} channels and output {} channels*".format(param.get("INFERENCE_OUTPUT_CHANNELS", 3),param.get("OUTPUT_CHANNELS", 3)))
+
     target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
     if not image_bbox.contains_bbox(target_bbox):
         slack_message(":u7981:*ERROR: Bounding box is outside of the image, image: {} vs bbox: {}*".format([int(x) for x in image_bbox.to_list()], param["BBOX"]))
