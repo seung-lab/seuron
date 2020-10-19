@@ -143,6 +143,9 @@ def supply_default_parameters():
         Variable.set("inference_param", param, serialize_json=True)
         slack_message("*Assume output resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
+    if param.get("IMAGE_HISTOGRAM_PATH", "N/A") != "N/A":
+        slack_message("*Normalize images with histograms in* `{}`, *lower threshold: {}, upper threshold: {}*".format(param["IMAGE_HISTOGRAM_PATH"], param.get("CONTRAST_NORMALIZATION_LOWER_THRESHOLD", 0.01), param.get("CONTRAST_NORMALIZATION_UPPER_THRESHOLD", 0.99)))
+
     if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and "IMAGE_MASK_MIP" not in param:
         param["IMAGE_MASK_MIP"] = param["IMAGE_MIP"]
         slack_message("*Assume image mask resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
