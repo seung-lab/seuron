@@ -78,7 +78,7 @@ def supply_default_parameters():
         try:
             vol = CloudVolume(param["IMAGE_PATH"], mip=param["IMAGE_RESOLUTION"])
         except:
-            slack_message(":u7981:*ERROR: Cannot access image * `{}` at resolution {}".format(param["IMAGE_PATH"], param["IMAGE_RESOLUTION"]))
+            slack_message(":u7981:*ERROR: Cannot access image * `{}` *at resolution {}*".format(param["IMAGE_PATH"], param["IMAGE_RESOLUTION"]))
             raise ValueError('Resolution does not exist')
         if "IMAGE_MIP" in param:
             slack_message(":exclamation:*IMAGE_RESOLUTION and IMAGE_MIP are both specified, Perfer IMAGE_RESOLUTION*")
@@ -88,27 +88,27 @@ def supply_default_parameters():
         try:
             vol = CloudVolume(param["IMAGE_MASK_PATH"], mip=param["IMAGE_MASK_RESOLUTION"])
         except:
-            slack_message(":u7981:*ERROR: Cannot access image mask * `{}` at resolution {}".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
+            slack_message(":u7981:*ERROR: Cannot access image mask * `{}` *at resolution {}*".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
             raise ValueError('Resolution does not exist')
 
         if "IMAGE_MASK_MIP" in param:
             slack_message(":exclamation:*IMAGE_MASK_RESOLUTION and IMAGE_MASK_MIP are both specified, Perfer IMAGE_MASK_RESOLUTION*")
         param["IMAGE_MASK_MIP"] = vol.mip
 
-        slack_message(":exclamation:*Use image mask * `{}` at resolution {}".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
+        slack_message(":exclamation:*Use image mask * `{}` *at resolution {}*".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
 
     if "OUTPUT_MASK_RESOLUTION" in param and param.get("OUTPUT_MASK_PATH", "N/A") != "N/A":
         try:
             vol = CloudVolume(param["OUTPUT_MASK_PATH"], mip=param["OUTPUT_MASK_RESOLUTION"])
         except:
-            slack_message(":u7981:*ERROR: Cannot access output mask * `{}` at resolution {}".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
+            slack_message(":u7981:*ERROR: Cannot access output mask * `{}` *at resolution {}*".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
             raise ValueError('Resolution does not exist')
 
         if "OUTPUT_MASK_MIP" in param:
             slack_message(":exclamation:*OUTPUT_MASK_RESOLUTION and OUTPUT_MASK_MIP are both specified, Perfer OUTPUT_MASK_RESOLUTION*")
         param["OUTPUT_MASK_MIP"] = vol.mip
 
-        slack_message(":exclamation:*Use output mask * `{}` at resolution {}".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
+        slack_message(":exclamation:*Use output mask * `{}` *at resolution {}*".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
 
     if "IMAGE_MIP" not in param:
         param["IMAGE_MIP"] = 0
@@ -118,7 +118,7 @@ def supply_default_parameters():
     try:
         vol = CloudVolume(param["IMAGE_PATH"],mip=param["IMAGE_MIP"])
     except:
-        slack_message(":u7981:*ERROR: Cannot access the image layer* `{}` at MIP {}".format(param["IMAGE_PATH"], param["IMAGE_MIP"]))
+        slack_message(":u7981:*ERROR: Cannot access the image layer* `{}` *at MIP {}*".format(param["IMAGE_PATH"], param["IMAGE_MIP"]))
         raise ValueError('Mip level does not exist')
 
     image_bbox = vol.bounds

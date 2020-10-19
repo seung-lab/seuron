@@ -81,7 +81,7 @@ def check_cv_data():
             try:
                 vol = CloudVolume(param["AFF_PATH"], mip=param["AFF_RESOLUTION"])
             except:
-                slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` at resolution {}".format(param["AFF_PATH"], param["AFF_RESOLUTION"]))
+                slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` *at resolution {}*".format(param["AFF_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Resolution does not exist')
             if "AFF_MIP" in param:
                 slack_message(":exclamation:*AFF_RESOLUTION and AFF_MIP are both specified, Perfer AFF_RESOLUTION*")
@@ -96,7 +96,7 @@ def check_cv_data():
         try:
             vol = CloudVolume(param["AFF_PATH"],mip=param["AFF_MIP"])
         except:
-            slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` at MIP {}".format(param["AFF_PATH"], param["AFF_MIP"]))
+            slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` *at MIP {}*".format(param["AFF_PATH"], param["AFF_MIP"]))
             raise ValueError('Mip level does not exist')
 
         aff_bbox = vol.bounds
@@ -122,7 +122,7 @@ def check_cv_data():
             try:
                 gt_vol = CloudVolume(param["GT_PATH"],mip=param["AFF_RESOLUTION"])
             except:
-                slack_message(":u7981:*ERROR: Cannot access the ground truth layer* `{}` at resolution {}".format(param["GT_PATH"], param["AFF_RESOLUTION"]))
+                slack_message(":u7981:*ERROR: Cannot access the ground truth layer* `{}` *at resolution {}*".format(param["GT_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Ground truth layer does not exist')
             gt_bbox = gt_vol.bounds
             if not gt_bbox.contains_bbox(target_bbox):
@@ -136,7 +136,7 @@ def check_cv_data():
             try:
                 sem_vol = CloudVolume(param["SEM_PATH"], mip=param["AFF_RESOLUTION"])
             except:
-                slack_message(":u7981:*ERROR: Cannot access the semantic layer* `{}` at resolution {}".format(param["SEM_PATH"], param["AFF_RESOLUTION"]))
+                slack_message(":u7981:*ERROR: Cannot access the semantic layer* `{}` *at resolution {}*".format(param["SEM_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Semantic layer does not exist')
             sem_bbox = sem_vol.bounds
             if not sem_bbox.contains_bbox(target_bbox):
@@ -203,7 +203,7 @@ def check_cv_data():
             if "CV_CHUNK_SIZE" in ws_param and "CV_CHUNK_SIZE" not in param:
                 param["CV_CHUNK_SIZE"] = ws_param["CV_CHUNK_SIZE"]
                 Variable.set("param", param, serialize_json=True)
-                slack_message("*Use cloudvolume chunk size `{}` to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
+                slack_message("*Use cloudvolume chunk size* `{}` *to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
 
 #        else:
     if "CHUNK_SIZE" not in param:
