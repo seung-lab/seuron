@@ -8,6 +8,7 @@ from airflow_api import get_variable, run_segmentation, \
     sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
     mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid
+from kombu_helper import drain_messages
 from copy import deepcopy
 import requests
 import re
@@ -121,6 +122,11 @@ def cancel_run(msg):
         cluster_size[k] = 0
     set_variable("cluster_target_size", cluster_size, serialize_json=True)
     run_dag("cluster_management")
+    time.sleep(10)
+
+    replyto(msg, "Drain tasks from the queues...")
+    drain_messages("amqp://172.31.31.249:5672", "igneous")
+    drain_messages("amqp://172.31.31.249:5672", "chunkflow")
 
     replyto(msg, "*Current run cancelled*", broadcast=True)
 
@@ -185,6 +191,7 @@ def update_inference_param(msg):
 
         if not check_running():
             clear_queues()
+            drain_messages("amqp://172.31.31.249:5672", "chunkflow")
 
             if isinstance(json_obj, list):
                 replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
