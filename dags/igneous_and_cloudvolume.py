@@ -223,6 +223,10 @@ def downsample_and_mesh(param):
                 submit_task(queue, t.payload())
 
             check_queue("igneous")
+            token = Variable.get('run_token')
+            if not token:
+                return
+
             slack_message(":arrow_forward: Downsampled")
 
         if not param.get("SKIP_MESHING", False):
@@ -259,6 +263,9 @@ def downsample_and_mesh(param):
                 ramp_up_cluster("igneous", 20, min(50, target_size))
 
             check_queue("igneous")
+            token = Variable.get('run_token')
+            if not token:
+                return
             slack_message(":arrow_forward: Meshed")
 
             #FIXME: should reuse the function in segmentation scripts
@@ -332,6 +339,9 @@ def downsample_and_mesh(param):
                     submit_task(queue, t.payload())
 
             check_queue("igneous")
+            token = Variable.get('run_token')
+            if not token:
+                return
             slack_message(":arrow_forward: Manifest genrated")
 
         if not param.get("SKIP_SKELETON", False):
@@ -367,6 +377,9 @@ def downsample_and_mesh(param):
                 submit_task(queue, t.payload())
 
             check_queue("igneous")
+            token = Variable.get('run_token')
+            if not token:
+                return
             slack_message(":arrow_forward: Skeleton fragments created")
             tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
                         dust_threshold=1000,
@@ -381,6 +394,9 @@ def downsample_and_mesh(param):
             for t in tasks:
                 submit_task(queue, t.payload())
             check_queue("igneous")
+            token = Variable.get('run_token')
+            if not token:
+                return
             slack_message(":arrow_forward: Skeleton merged")
 
         queue.close()

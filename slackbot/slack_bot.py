@@ -258,10 +258,13 @@ def dispatch_command(cmd, payload):
         update_inference_param(msg)
     elif cmd.startswith("cancelrun"):
         token = get_variable("run_token")
-        if cmd != "cancelrun"+token:
+        if not token:
+            replyto(msg, "The bot is idle, nothing to cancel")
+        elif cmd != "cancelrun"+token:
             replyto(msg, "Wrong token")
         else:
             if check_running():
+                set_variable("run_token", "")
                 clear_queues()
                 q_cmd.put("cancel")
                 cancel_run(msg)
