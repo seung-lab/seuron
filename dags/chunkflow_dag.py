@@ -339,7 +339,7 @@ def process_output(**kwargs):
     Variable.set("chunkflow_done", "no")
 
     slack_message('chunkflow set_env finished')
-    slack_message('Output path: `{}`'.format(param["OUTPUT_PATH"]))
+    slack_message('Output path: `{}`'.format(param["OUTPUT_PATH"]), broadcast=True)
 
 generator_default_args = {
     'owner': 'airflow',
