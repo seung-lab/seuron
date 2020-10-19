@@ -26,6 +26,16 @@ def dataset_resolution(path, mip=0):
     vol = CloudVolume(path, mip=mip)
     return vol.resolution.tolist()
 
+def cv_has_data(path, mip=0):
+    vol = CloudVolume(path, mip=mip)
+    return vol.image.has_data(mip)
+
+def cv_scale_with_data(path):
+    vol = CloudVolume(path)
+    for m in vol.available_mips:
+        if vol.image.has_data(m):
+            return m, vol.scales[m]['resolution']
+
 def check_cloud_path_empty(path):
     import traceback
     try:

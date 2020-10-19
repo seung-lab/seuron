@@ -5,7 +5,7 @@ from airflow.operators.python_operator import PythonOperator, ShortCircuitOperat
 from airflow.utils.weight_rule import WeightRule
 from param_default import inference_param_default, default_args, cv_path
 from datetime import datetime
-from igneous_and_cloudvolume import check_queue
+from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
@@ -111,8 +111,14 @@ def supply_default_parameters():
         slack_message(":exclamation:*Use output mask * `{}` *at resolution {}*".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))
 
     if "IMAGE_MIP" not in param:
-        param["IMAGE_MIP"] = 0
-        slack_message("*Use MIP 0 image by default*")
+        try:
+            param["IMAGE_MIP"], param["IMAGE_RESOLUTION"] = cv_scale_with_data(param["IMAGE_PATH"])
+        except:
+            slack_message(":u7981:*ERROR: Cannot access the images in* `{}`".format(param["IMAGE_PATH"]))
+            raise ValueError("No data")
+
+        slack_message("*Use images at resolution {}*".format(param["IMAGE_RESOLUTION"]))
+        Variable.set("inference_param", param, serialize_json=True)
 
     print("check image done")
     try:
@@ -120,6 +126,12 @@ def supply_default_parameters():
     except:
         slack_message(":u7981:*ERROR: Cannot access the image layer* `{}` *at MIP {}*".format(param["IMAGE_PATH"], param["IMAGE_MIP"]))
         raise ValueError('Mip level does not exist')
+
+    if not cv_has_data(param["IMAGE_PATH"], mip=param["IMAGE_MIP"]):
+        resolution = vol.scales[param["IMAGE_MIP"]]['resolution']
+        slack_message(":u7981:*ERROR: No data in* `{}`  *at resolution {} (mip {})*".format(param["IMAGE_PATH"], resolution, param["IMAGE_MIP"]))
+        raise ValueError('No data available')
+
 
     image_bbox = vol.bounds
     if "IMAGE_RESOLUTION" not in param:

@@ -7,7 +7,7 @@ from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
 from param_default import param_default
-from igneous_and_cloudvolume import check_cloud_path_empty
+from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scale_with_data
 import os
 
 from chunk_iterator import ChunkIterator
@@ -89,15 +89,24 @@ def check_cv_data():
             Variable.set("param", param, serialize_json=True)
 
         if "AFF_MIP" not in param:
-            param["AFF_MIP"] = 0
+            try:
+                param["AFF_MIP"], param["AFF_RESOLUTION"] = cv_scale_with_data(param["AFF_PATH"])
+            except:
+                slack_message(":u7981:*ERROR: Cannot access the affinity map in* `{}`".format(param["AFF_PATH"]))
+                raise ValueError("No data")
             Variable.set("param", param, serialize_json=True)
-            slack_message("*Use MIP 0 affinity map by default*")
+            slack_message("*Use affinity map at resolution {} by default*".format(param["AFF_RESOLUTION"]))
 
         try:
             vol = CloudVolume(param["AFF_PATH"],mip=param["AFF_MIP"])
         except:
             slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` *at MIP {}*".format(param["AFF_PATH"], param["AFF_MIP"]))
             raise ValueError('Mip level does not exist')
+
+        if not cv_has_data(param["AFF_PATH"], mip=param["AFF_MIP"]):
+            resolution = vol.scales[param["AFF_MIP"]]['resolution']
+            slack_message(":u7981:*ERROR: No data in* `{}`  *at resolution {} (mip {})*".format(param["AFF_PATH"], resolution, param["AFF_MIP"]))
+            raise ValueError('No data available')
 
         aff_bbox = vol.bounds
         if "AFF_RESOLUTION" not in param:
