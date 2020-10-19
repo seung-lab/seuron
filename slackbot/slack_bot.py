@@ -17,7 +17,6 @@ import logging
 from secrets import token_hex
 import threading
 import queue
-from queue import Empty
 
 param_updated = False
 
