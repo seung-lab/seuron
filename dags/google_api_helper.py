@@ -169,4 +169,5 @@ def reduce_instance_group_size(key, size):
         return
     else:
         real_size = resize_instance_group(project_id, cluster_info[key], size)
-        slack_message(":arrow_down: Scale down cluster {} to {} instances".format(key, real_size))
+        slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stablize".format(key, real_size))
+        sleep(60)
