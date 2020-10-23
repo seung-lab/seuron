@@ -135,18 +135,13 @@ def check_cloud_path_empty(path):
         slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
         raise RuntimeError('Path already exist')
 
+@mount_secrets
 def create_info(stage, param):
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
-    if not os.path.exists(cv_secrets_path):
-        os.makedirs(cv_secrets_path)
-
-    mount_secrets = param.get("MOUNT_SECRETES", [])
-
-    for k in mount_secrets:
-        v = Variable.get(k)
-        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
-            value_file.write(v)
-
+    import os
+    from time import strftime
+    from cloudvolume import CloudVolume
+    from airflow.models import Variable
+    from slack_message import slack_message, slack_userinfo
     bbox = param["BBOX"]
     resolution = param["AFF_RESOLUTION"]
     cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,32])
@@ -197,10 +192,6 @@ def create_info(stage, param):
             )
         vol = CloudVolume(cv_path, mip=0, info=metadata_size)
         vol.commit_info()
-
-
-    for k in mount_secrets:
-        os.remove(os.path.join(cv_secrets_path, k))
 
 
 def upload_json(path, filename, content):
