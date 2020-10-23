@@ -108,14 +108,17 @@ def kombu_tasks(create_tasks):
 
 
 def dataset_resolution(path, mip=0):
+    from cloudvolume import CloudVolume
     vol = CloudVolume(path, mip=mip)
     return vol.resolution.tolist()
 
 def cv_has_data(path, mip=0):
+    from cloudvolume import CloudVolume
     vol = CloudVolume(path, mip=mip)
     return vol.image.has_data(mip)
 
 def cv_scale_with_data(path):
+    from cloudvolume import CloudVolume
     vol = CloudVolume(path)
     for m in vol.available_mips:
         if vol.image.has_data(m):
@@ -123,6 +126,7 @@ def cv_scale_with_data(path):
 
 def check_cloud_path_empty(path):
     import traceback
+    from cloudvolume import Storage
     try:
         s = Storage(path)
         obj = next(s.list_files(), None)
@@ -195,11 +199,13 @@ def create_info(stage, param):
 
 
 def upload_json(path, filename, content):
+    from cloudvolume import Storage
     with Storage(path) as storage:
         storage.put_json(filename, content)
 
 
 def get_atomic_files_job(v, param, prefix):
+    from cloudvolume import Storage
     content = b''
     with Storage(param["SCRATCH_PATH"]) as storage:
         for c in v:
@@ -212,6 +218,7 @@ def get_atomic_files_job(v, param, prefix):
 
 
 def get_files_job(v, param, prefix):
+    from cloudvolume import Storage
 #    try:
     content = b''
     with Storage(param["SCRATCH_PATH"]) as storage:
