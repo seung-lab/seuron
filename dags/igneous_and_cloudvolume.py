@@ -22,6 +22,63 @@ retry = tenacity.retry(
 def submit_task(queue, payload):
     queue.put(payload)
 
+
+def mount_secrets(func):
+    def inner(*args, **kwargs):
+        import os
+        from airflow.models import Variable
+        cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+        if not os.path.exists(cv_secrets_path):
+            os.makedirs(cv_secrets_path)
+
+        inner_param = Variable.get("param", deserialize_json=True)
+        mount_secrets = inner_param.get("MOUNT_SECRETES", [])
+
+        for k in mount_secrets:
+            v = Variable.get(k)
+            with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
+                value_file.write(v)
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            for k in mount_secrets:
+                os.remove(os.path.join(cv_secrets_path, k))
+
+    return inner
+
+
+def kombu_tasks(create_tasks):
+    def inner(*args, **kwargs):
+        from airflow import configuration
+        from kombu import Connection
+        from google_api_helper import ramp_up_cluster, ramp_down_cluster
+        from slack_message import slack_message
+        broker = configuration.get('celery', 'BROKER_URL')
+
+        try:
+            with Connection(broker, connect_timeout=60) as conn:
+                queue = conn.SimpleQueue("igneous")
+                tasks = create_tasks(*args, **kwargs)
+                target_size = (1+len(tasks)//32)
+                ramp_up_cluster("igneous", min(target_size, 10) , target_size)
+                for t in tasks:
+                    submit_task(queue, t.payload())
+
+                queue.close()
+
+            check_queue("igneous")
+            ramp_down_cluster("igneous", 0)
+            slack_message("All igneous tasks submitted by {} finished".format(create_tasks.__name__))
+
+        except Exception as e:
+            slack_message("Failed to submit igneous tasks using {}".format(create_tasks.__name__))
+            raise e
+
+    return inner
+
+
 def dataset_resolution(path, mip=0):
     vol = CloudVolume(path, mip=mip)
     return vol.resolution.tolist()
