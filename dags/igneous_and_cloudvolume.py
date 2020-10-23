@@ -23,6 +23,34 @@ def submit_task(queue, payload):
     queue.put(payload)
 
 
+def check_queue(queue):
+    import requests
+    from time import sleep
+    from slack_message import slack_message
+    totalTries = 5
+    nTries = totalTries
+    count = 0
+    while True:
+        sleep(5)
+        ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
+        if not ret.ok:
+            raise RuntimeError("Cannot connect to rabbitmq management interface")
+        queue_status = ret.json()
+        nTasks = queue_status["messages"]
+        print("Tasks left: {}".format(nTasks))
+
+        count += 1
+        if count % 60 == 0:
+            slack_message("{} tasks remain in queue {}".format(nTasks, queue))
+
+        if nTasks == 0:
+            nTries -= 1
+        else:
+            nTries = totalTries
+        if nTries == 0:
+            return
+
+
 def mount_secrets(func):
     def inner(*args, **kwargs):
         import os
@@ -205,31 +233,6 @@ def get_files_job(v, param, prefix):
 #    except:
 #        print("Cannot read all the info files")
 #        return None
-
-
-def check_queue(queue):
-    totalTries = 5
-    nTries = totalTries
-    count = 0
-    while True:
-        sleep(5)
-        ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
-        if not ret.ok:
-            raise RuntimeError("Cannot connect to rabbitmq management interface")
-        queue_status = ret.json()
-        nTasks = queue_status["messages"]
-        print("Tasks left: {}".format(nTasks))
-
-        count += 1
-        if count % 60 == 0:
-            slack_message("{} tasks remain in queue {}".format(nTasks, queue))
-
-        if nTasks == 0:
-            nTries -= 1
-        else:
-            nTries = totalTries
-        if nTries == 0:
-            return
 
 
 def downsample_and_mesh(param):
