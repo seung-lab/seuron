@@ -312,7 +312,7 @@ def dispatch_command(cmd, payload):
             else:
                 q_payload.put(msg)
                 q_cmd.put("runseg")
-    elif cmd == "runinference":
+    elif cmd == "runinference" or cmd == "runinferences":
         state, _ = dag_state("chunkflow_generator")
         if check_running():
             replyto(msg, "I am busy right now")
