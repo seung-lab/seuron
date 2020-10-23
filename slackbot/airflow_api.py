@@ -58,7 +58,7 @@ def update_user_info(userid):
 
 
 def check_running():
-    dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface']
+    dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous"]
 
     for d in dags:
         state, exec_date = dag_state(d)
@@ -110,6 +110,16 @@ def run_dag(dag_id):
     session.add(dr)
     session.commit()
     session.close()
+
+
+def run_igneous_tasks():
+    dag_id = "igneous"
+
+    if check_running():
+        return False
+
+    run_dag(dag_id)
+    return True
 
 
 def run_segmentation():

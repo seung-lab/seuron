@@ -400,3 +400,20 @@ def downsample_and_mesh(param):
     downsample(os.path.join(seg_cloudpath, "size_map"))
 
 
+@mount_secrets
+@kombu_tasks
+def submit_igneous_tasks():
+    from airflow.models import Variable
+    from slack_message import slack_message
+    python_string = Variable.get("python_string")
+    exec(python_string, globals())
+    tasks = submit_tasks()
+
+    if len(tasks) > 100000:
+        slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
+        raise
+
+    slack_message(":arrow_forward: submit {} igneous tasks".format(len(tasks)))
+    return tasks
+
+
