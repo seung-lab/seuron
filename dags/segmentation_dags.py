@@ -14,6 +14,7 @@ from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_files_job, get_atomic_files_job, dataset_resolution
+from igneous_ops import create_igneous_ops
 import numpy as np
 import json
 import urllib
@@ -596,22 +597,14 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         slack_ops['agg']['remap'] >> comp_seg_task >> mark_done['agg']
 
 
-    igneous_task = PythonOperator(
-        task_id = "Downsample_and_Mesh",
-        python_callable=downsample_and_mesh,
-        op_args = [param,],
-        default_args=default_args,
-        on_success_callback=task_done_alert,
-        on_retry_callback=task_retry_alert,
-        dag=dag_manager,
-        queue = "manager"
-    )
+    igneous_tasks = create_igneous_ops(param, dag_manager)
 
     scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0, "manager")
 
-    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_task >> ending_op
+    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_tasks[0]
+    igneous_tasks[-1] >> ending_op
     reset_flags >> scaling_global_start
-    igneous_task >> scaling_igneous_finish
+    igneous_tasks[-1]>> scaling_igneous_finish
     wait["agg"] >> scaling_global_finish
 
     nglink_task = PythonOperator(
@@ -623,7 +616,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         dag=dag_manager,
         queue = "manager"
     )
-    igneous_task >> nglink_task >> ending_op
+    igneous_tasks[-1] >> nglink_task >> ending_op
     if "GT_PATH" in param:
         evaluation_task = PythonOperator(
             task_id = "Evaluate_Segmentation",
@@ -634,7 +627,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             dag=dag_manager,
             queue = "manager"
         )
-        igneous_task >> evaluation_task >> ending_op
+        igneous_tasks[-1] >> evaluation_task >> ending_op
 
 
     if min(high_mip, top_mip) - batch_mip > 2:

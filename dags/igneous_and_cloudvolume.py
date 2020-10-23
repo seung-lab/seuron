@@ -1,15 +1,3 @@
-from airflow.models import Variable
-from cloudvolume import CloudVolume, Storage
-from cloudvolume.lib import Vec
-import os
-import requests
-from time import sleep, strftime
-from math import log2
-
-from slack_message import slack_message, slack_userinfo
-from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster
-
-
 import tenacity
 
 retry = tenacity.retry(
@@ -124,6 +112,22 @@ def cv_scale_with_data(path):
         if vol.image.has_data(m):
             return m, vol.scales[m]['resolution']
 
+def isotropic_mip(path):
+    from math import log2
+    from cloudvolume import CloudVolume
+    vol = CloudVolume(path)
+    return int(log2(vol.resolution[2]/vol.resolution[0]))
+
+def mip_for_mesh_and_skeleton(path):
+    from cloudvolume import CloudVolume
+    from slack_message import slack_message
+    vol = CloudVolume(path)
+    mip = isotropic_mip(path)
+    if mip not in vol.available_mips:
+        mip = max(vol.available_mips)
+
+    return mip
+
 def check_cloud_path_empty(path):
     import traceback
     from cloudvolume import Storage
@@ -233,235 +237,166 @@ def get_files_job(v, param, prefix):
 #        return None
 
 
-def downsample_and_mesh(param):
+@mount_secrets
+@kombu_tasks
+def downsample_for_meshing(seg_cloudpath, mask):
     import igneous.task_creation as tc
+    from slack_message import slack_message
+    mip, _ = cv_scale_with_data(seg_cloudpath)
+    tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=True, mask=mask, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True)
+    slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+    return tasks
+
+
+@mount_secrets
+@kombu_tasks
+def downsample(seg_cloudpath):
+    import igneous.task_creation as tc
+    from slack_message import slack_message
+    mip, _ = cv_scale_with_data(seg_cloudpath)
+    tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=True, preserve_chunk_size=True)
+    slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+    return tasks
+
+
+@mount_secrets
+@kombu_tasks
+def mesh(seg_cloudpath, mesh_quality):
+    import igneous.task_creation as tc
+    from cloudvolume.lib import Vec
+    from cloudvolume import CloudVolume
+    from slack_message import slack_message
+    mesh_mip = mip_for_mesh_and_skeleton(seg_cloudpath)
+    simplification = True
+    max_simplification_error = 40
+    if mesh_quality == "PERFECT":
+        simplification = False
+        max_simplification_error = 0
+        mesh_mip = 0
+
+    vol = CloudVolume(seg_cloudpath)
+
+    slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
+
+    tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
+    slack_message(":arrow_forward: Start meshing `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+
+    return tasks
+
+
+@mount_secrets
+@kombu_tasks
+def mesh_manifest(seg_cloudpath, bbox, chunk_size):
     from igneous.tasks import MeshManifestTask
-    from airflow import configuration
-    from kombu import Connection
     from chunk_iterator import ChunkIterator
     from os.path import commonprefix
+    from slack_message import slack_message
+    #FIXME: should reuse the function in segmentation scripts
+    layer = 1
+    bits_per_dim = 10
+    n_bits_for_layer_id = 8
 
-    #Reuse the broker of celery
-    #if param.get("SKIP_DOWNSAMPLE", False):
-    #    slack_message(":exclamation: Skip downsample (and meshing) as instructed")
-    #    return
+    layer_offset = 64 - n_bits_for_layer_id
+    x_offset = layer_offset - bits_per_dim
+    y_offset = x_offset - bits_per_dim
+    z_offset = y_offset - bits_per_dim
 
-    broker = configuration.get('celery', 'BROKER_URL')
+    chunk_voxels = 1 << (64-n_bits_for_layer_id-bits_per_dim*3)
 
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
-    if not os.path.exists(cv_secrets_path):
-        os.makedirs(cv_secrets_path)
+    v = ChunkIterator(bbox, chunk_size)
 
-    mount_secrets = param.get("MOUNT_SECRETES", [])
+    prefix_list = []
+    for c in v:
+        if c.mip_level() == 0:
+            x, y, z = c.coordinate()
+            min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
+            max_id = min_id + chunk_voxels
+            if len(str(min_id)) != len(str(max_id)):
+                raise NotImplementedError("No common prefix, need to split the range")
+            prefix = commonprefix([str(min_id), str(max_id)])
+            if len(prefix) == 0:
+                raise NotImplementedError("No common prefix, need to split the range")
+            digits = len(str(min_id)) - len(prefix) - 1
+            mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
+            #print(int(mid),int(mid)-1)
+            prefix1 = commonprefix([str(min_id), str(mid-1)])
+            prefix2 = commonprefix([str(max_id), str(mid)])
+            if len(prefix1) <= len(prefix):
+                prefix_list.append(prefix)
+            else:
+                prefix_list.append(prefix1)
+                prefix_list.append(prefix2)
 
-    for k in mount_secrets:
-        v = Variable.get(k)
-        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
-            value_file.write(v)
+    task_list = []
+    tasks = []
+    for p in sorted(prefix_list, key=len):
+        if any(p.startswith(s) for s in task_list):
+            print("Already considered, skip {}".format(p))
+            continue
+        task_list.append(p)
+        t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
+        tasks.append(t)
+
+    slack_message(":arrow_forward: Generating mesh manifest for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+    return tasks
 
 
+@mount_secrets
+@kombu_tasks
+def create_skeleton_fragments(seg_cloudpath, teasar_param):
+    import igneous.task_creation as tc
+    from cloudvolume.lib import Vec
+    from slack_message import slack_message
+    skeleton_mip = mip_for_mesh_and_skeleton(seg_cloudpath)
+    tasks = tc.create_skeletonizing_tasks(seg_cloudpath, mip=skeleton_mip,
+                shape=Vec(256, 256, 256),
+                sharded=True, # Generate (true) concatenated .frag files (False) single skeleton fragments
+                spatial_index=True, # Generate a spatial index so skeletons can be queried by bounding box
+                info=None, # provide a cloudvolume info file if necessary (usually not)
+                fill_missing=True, # Use zeros if part of the image is missing instead of raising an error
+                # see Kimimaro's documentation for the below parameters
+                teasar_params=teasar_param,
+                object_ids=None, # Only skeletonize these ids
+                mask_ids=None, # Mask out these ids
+                fix_branching=True, # (True) higher quality branches at speed cost
+                fix_borders=True, # (True) Enable easy stitching of 1 voxel overlapping tasks
+                dust_threshold=1000, # Don't skeletonize below this physical distance
+                progress=False, # Show a progress bar
+                parallel=1, # Number of parallel processes to use (more useful locally)
+            )
+    slack_message(":arrow_forward: Creating skeleton fragments for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+    return tasks
+
+
+@mount_secrets
+@kombu_tasks
+def merge_skeleton_fragments(seg_cloudpath):
+    import igneous.task_creation as tc
+    from slack_message import slack_message
+    tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
+                dust_threshold=1000,
+                tick_threshold=3500,
+                preshift_bits=9,
+                minishard_bits=4,
+                shard_bits=11,
+                minishard_index_encoding='gzip', # or None
+                data_encoding='gzip', # or None
+            )
+    slack_message(":arrow_forward: Merging skeleton fragments for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+    return tasks
+
+
+def downsample_and_mesh(param):
+    import os
     seg_cloudpath = param["SEG_PATH"]
     ws_cloudpath = param["WS_PATH"]
-
-    #cube_dim = 512//(2**(mesh_mip+1))
-    target_size = 0
-
-    with Connection(broker, connect_timeout=60) as conn:
-        queue = conn.SimpleQueue("igneous")
-        vol = CloudVolume(seg_cloudpath)
-        isotropic_mip = int(log2(vol.resolution[2]/vol.resolution[0]))
-
-        if not param.get("SKIP_DOWNSAMPLE", False):
-
-            tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, mask=param.get("SIZE_THRESHOLDED_MESH", False), num_mips=isotropic_mip, preserve_chunk_size=True)
-            target_size = (1+len(tasks)//32)
-            ramp_up_cluster("igneous", 20, min(50, target_size))
-            slack_message(":arrow_forward: Start downsampling: {} tasks in total".format(len(tasks)))
-            for t in tasks:
-                submit_task(queue, t.payload())
-
-            check_queue("igneous")
-            token = Variable.get('run_token')
-            if not token:
-                return
-
-            slack_message(":arrow_forward: Downsampled")
-
-        if not param.get("SKIP_MESHING", False):
-
-        #if param.get("SKIP_AGG", False):
-        #    slack_message(":exclamation: No segmentation generated, skip meshing")
-        #    return
-
-            vol.refresh_info()
-            mesh_mip = isotropic_mip
-
-            if mesh_mip not in vol.available_mips:
-                mesh_mip = max(vol.available_mips)
-
-            simplification = True
-            max_simplification_error = 40
-            if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
-                simplification = False
-                max_simplification_error = 0
-                mesh_mip = 0
-
-            slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
-            if not param.get("SKIP_DOWNSAMPLE", False):
-                if (target_size > 20):
-                    reset_cluster("igneous", 20)
-
-            tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
-            slack_message(":arrow_forward: Start meshing: {} tasks in total".format(len(tasks)))
-            for t in tasks:
-                submit_task(queue, t.payload())
-
-            if param.get("SKIP_DOWNSAMPLE", False):
-                target_size = (1+len(tasks)//32)
-                ramp_up_cluster("igneous", 20, min(50, target_size))
-
-            check_queue("igneous")
-            token = Variable.get('run_token')
-            if not token:
-                return
-            slack_message(":arrow_forward: Meshed")
-
-            #FIXME: should reuse the function in segmentation scripts
-            layer = 1
-            bits_per_dim = 10
-            n_bits_for_layer_id = 8
-
-            layer_offset = 64 - n_bits_for_layer_id
-            x_offset = layer_offset - bits_per_dim
-            y_offset = x_offset - bits_per_dim
-            z_offset = y_offset - bits_per_dim
-
-            chunk_voxels = 1 << (64-n_bits_for_layer_id-bits_per_dim*3)
-
-            v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
-
-            prefix_list = []
-            for c in v:
-                if c.mip_level() == 0:
-                    x, y, z = c.coordinate()
-                    min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
-                    max_id = min_id + chunk_voxels
-                    if len(str(min_id)) != len(str(max_id)):
-                        raise NotImplementedError("No common prefix, need to split the range")
-                    prefix = commonprefix([str(min_id), str(max_id)])
-                    if len(prefix) == 0:
-                        raise NotImplementedError("No common prefix, need to split the range")
-                    digits = len(str(min_id)) - len(prefix) - 1
-                    mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
-                    #print(int(mid),int(mid)-1)
-                    prefix1 = commonprefix([str(min_id), str(mid-1)])
-                    prefix2 = commonprefix([str(max_id), str(mid)])
-                    if len(prefix1) <= len(prefix):
-                        prefix_list.append(prefix)
-                    else:
-                        prefix_list.append(prefix1)
-                        prefix_list.append(prefix2)
-
-            task_list = []
-            if (target_size > 10):
-                reset_cluster("igneous", 10)
-            for p in sorted(prefix_list, key=len):
-                if any(p.startswith(s) for s in task_list):
-                    print("Already considered, skip {}".format(p))
-                    continue
-                task_list.append(p)
-                t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
-                submit_task(queue, t.payload())
-
-            slack_message(":arrow_forward: Generating mesh manifest: {} tasks in total".format(len(task_list)))
-
-            if not param.get("SKIP_DOWNSAMPLE", False):
-                if not param.get("SKIP_WS", False):
-                    tasks = tc.create_downsampling_tasks(ws_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-                    for t in tasks:
-                        submit_task(queue, t.payload())
-                if "SEM_PATH" in param and param.get("DOWNSAMPLE_SEM", False):
-                    tasks = tc.create_downsampling_tasks(param["SEM_PATH"], mip=param["AFF_MIP"], fill_missing=True, preserve_chunk_size=True)
-                    for t in tasks:
-                        submit_task(queue, t.payload())
-
-                tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=0, fill_missing=True, preserve_chunk_size=True)
-                target_size = (1+len(tasks)//32)
-                ramp_up_cluster("igneous", 20, min(50, target_size))
-                for t in tasks:
-                    submit_task(queue, t.payload())
-
-                #if not param.get("SKIP_AGG", False):
-                tasks = tc.create_downsampling_tasks(seg_cloudpath+"/size_map", mip=0, fill_missing=True, preserve_chunk_size=True)
-                for t in tasks:
-                    submit_task(queue, t.payload())
-
-            check_queue("igneous")
-            token = Variable.get('run_token')
-            if not token:
-                return
-            slack_message(":arrow_forward: Manifest genrated")
-
-        if not param.get("SKIP_SKELETON", False):
-            vol.refresh_info()
-            skeleton_mip = isotropic_mip
-
-            if skeleton_mip not in vol.available_mips:
-                skeleton_mip = max(vol.available_mips)
-
-            tasks = tc.create_skeletonizing_tasks(seg_cloudpath, mip=skeleton_mip,
-                        shape=Vec(512, 512, 512),
-                        sharded=True, # Generate (true) concatenated .frag files (False) single skeleton fragments
-                        spatial_index=True, # Generate a spatial index so skeletons can be queried by bounding box
-                        info=None, # provide a cloudvolume info file if necessary (usually not)
-                        fill_missing=True, # Use zeros if part of the image is missing instead of raising an error
-
-                        # see Kimimaro's documentation for the below parameters
-                        teasar_params=param.get("TEASAR_PARAMS", {'scale':10, 'const': 10}),
-                        object_ids=None, # Only skeletonize these ids
-                        mask_ids=None, # Mask out these ids
-                        fix_branching=True, # (True) higher quality branches at speed cost
-                        fix_borders=True, # (True) Enable easy stitching of 1 voxel overlapping tasks
-                        dust_threshold=1000, # Don't skeletonize below this physical distance
-                        progress=False, # Show a progress bar
-                        parallel=1, # Number of parallel processes to use (more useful locally)
-                    )
-            slack_message(":arrow_forward: Creating skeleton fragments: {} tasks in total".format(len(tasks)))
-
-            target_size = (1+len(tasks)//32)
-            ramp_up_cluster("igneous", 20, min(50, target_size))
-
-            for t in tasks:
-                submit_task(queue, t.payload())
-
-            check_queue("igneous")
-            token = Variable.get('run_token')
-            if not token:
-                return
-            slack_message(":arrow_forward: Skeleton fragments created")
-            tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
-                        dust_threshold=1000,
-                        tick_threshold=3500,
-                        preshift_bits=9,
-                        minishard_bits=4,
-                        shard_bits=11,
-                        minishard_index_encoding='gzip', # or None
-                        data_encoding='gzip', # or None
-                    )
-            slack_message(":arrow_forward: Merging skeleton fragments: {} tasks in total".format(len(tasks)))
-            for t in tasks:
-                submit_task(queue, t.payload())
-            check_queue("igneous")
-            token = Variable.get('run_token')
-            if not token:
-                return
-            slack_message(":arrow_forward: Skeleton merged")
-
-        queue.close()
-        #tc.create_downsampling_tasks(tq, seg_cloudpath, mip=5, fill_missing=True, preserve_chunk_size=True)
-        #check_queue(tq)
-
-    for k in mount_secrets:
-        os.remove(os.path.join(cv_secrets_path, k))
+    downsample_for_meshing(seg_cloudpath, param.get("SIZE_THRESHOLDED_MESH", False))
+    mesh(seg_cloudpath, param.get("MESH_QUALITY", "NORMAL"))
+    mesh_manifest(seg_cloudpath, param["BBOX"], param["CHUNK_SIZE"])
+    create_skeleton_fragments(seg_cloudpath, param.get("TEASAR_PARAMS", {'scale':10, 'const': 10}))
+    merge_skeleton_fragments(seg_cloudpath)
+    downsample(seg_cloudpath)
+    downsample(ws_cloudpath)
+    downsample(os.path.join(seg_cloudpath, "size_map"))
 
 
