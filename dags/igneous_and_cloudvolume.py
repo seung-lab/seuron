@@ -415,8 +415,17 @@ def submit_igneous_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
     python_string = Variable.get("python_string")
+
     exec(python_string, globals())
-    tasks = submit_tasks()
+
+    if "submit_tasks" not in globals() or not callable(globals()["submit_tasks"]):
+        slack_message(":exclamation:*Error* cannot find the submit_tasks function")
+        return
+
+    tasks = globals()["submit_tasks"]()
+
+    if not tasks:
+        return
 
     if len(tasks) > 100000:
         slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
