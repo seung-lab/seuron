@@ -24,7 +24,7 @@ services:
             - "3306:3306"
         volumes:
             - /var/lib/mysql:/var/lib/mysql
-        command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout --innodb-buffer-pool-size=100G
+        command: --max_connections=20000 --wait-timeout=7200 --interactive-timeout=7200 --max-allowed-packet=500M --innodb_lock_wait_timeout=7200 --innodb-rollback-on-timeout --innodb-buffer-pool-size=${MYSQL_MEM}M
 
     # single shot initialize the database
     init-db:
