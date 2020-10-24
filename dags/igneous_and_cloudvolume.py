@@ -1,3 +1,4 @@
+from functools import wraps
 
 def check_queue(queue):
     import requests
@@ -28,6 +29,7 @@ def check_queue(queue):
 
 
 def mount_secrets(func):
+    @wraps(func)
     def inner(*args, **kwargs):
         import os
         from airflow.models import Variable
@@ -68,6 +70,7 @@ def kombu_tasks(create_tasks):
         queue.put(payload)
 
 
+    @wraps(create_tasks)
     def inner(*args, **kwargs):
         from airflow import configuration
         from kombu import Connection
