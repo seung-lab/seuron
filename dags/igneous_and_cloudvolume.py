@@ -1,15 +1,3 @@
-import tenacity
-
-retry = tenacity.retry(
-  reraise=True,
-  stop=tenacity.stop_after_attempt(10),
-  wait=tenacity.wait_random_exponential(multiplier=0.5, max=60.0),
-)
-
-@retry
-def submit_task(queue, payload):
-    queue.put(payload)
-
 
 def check_queue(queue):
     import requests
@@ -66,6 +54,20 @@ def mount_secrets(func):
 
 
 def kombu_tasks(create_tasks):
+    import tenacity
+
+    retry = tenacity.retry(
+      reraise=True,
+      stop=tenacity.stop_after_attempt(10),
+      wait=tenacity.wait_random_exponential(multiplier=0.5, max=60.0),
+    )
+
+
+    @retry
+    def submit_message(queue, payload):
+        queue.put(payload)
+
+
     def inner(*args, **kwargs):
         from airflow import configuration
         from kombu import Connection
@@ -80,7 +82,7 @@ def kombu_tasks(create_tasks):
                 target_size = (1+len(tasks)//32)
                 ramp_up_cluster("igneous", min(target_size, 10) , target_size)
                 for t in tasks:
-                    submit_task(queue, t.payload())
+                    submit_message(queue, t.payload())
 
                 queue.close()
 
