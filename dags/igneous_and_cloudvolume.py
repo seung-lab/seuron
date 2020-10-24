@@ -55,7 +55,7 @@ def mount_secrets(func):
     return inner
 
 
-def kombu_tasks(create_tasks):
+def kombu_tasks(queue_name, cluster_name, worker_factor):
     import tenacity
 
     retry = tenacity.retry(
@@ -69,39 +69,41 @@ def kombu_tasks(create_tasks):
     def submit_message(queue, payload):
         queue.put(payload)
 
+    def decorator(create_tasks):
+        @wraps(create_tasks)
+        def inner(*args, **kwargs):
+            from airflow import configuration
+            from kombu import Connection
+            from google_api_helper import ramp_up_cluster, ramp_down_cluster
+            from slack_message import slack_message
+            broker = configuration.get('celery', 'BROKER_URL')
 
-    @wraps(create_tasks)
-    def inner(*args, **kwargs):
-        from airflow import configuration
-        from kombu import Connection
-        from google_api_helper import ramp_up_cluster, ramp_down_cluster
-        from slack_message import slack_message
-        broker = configuration.get('celery', 'BROKER_URL')
+            try:
+                tasks = create_tasks(*args, **kwargs)
+                if not tasks:
+                    slack_message("No tasks submitted by {}".format(create_tasks.__name__))
+                    return
 
-        try:
-            tasks = create_tasks(*args, **kwargs)
-            if not tasks:
-                slack_message("No tasks submitted by {}".format(create_tasks.__name__))
-                return
+                with Connection(broker, connect_timeout=60) as conn:
+                    queue = conn.SimpleQueue(queue_name)
+                    for t in tasks:
+                        submit_message(queue, t.payload())
+                    queue.close()
 
-            with Connection(broker, connect_timeout=60) as conn:
-                queue = conn.SimpleQueue("igneous")
-                for t in tasks:
-                    submit_message(queue, t.payload())
-                queue.close()
+                target_size = (1+len(tasks)//worker_factor)
+                ramp_up_cluster(cluster_name, min(target_size, 10) , target_size)
+                check_queue(queue_name)
+                ramp_down_cluster(cluster_name, 0)
 
-            target_size = (1+len(tasks)//32)
-            ramp_up_cluster("igneous", min(target_size, 10) , target_size)
-            check_queue("igneous")
-            ramp_down_cluster("igneous", 0)
+                slack_message("All igneous tasks submitted by {} finished".format(create_tasks.__name__))
 
-            slack_message("All igneous tasks submitted by {} finished".format(create_tasks.__name__))
+            except Exception as e:
+                slack_message("Failed to submit igneous tasks using {}".format(create_tasks.__name__))
+                raise e
 
-        except Exception as e:
-            slack_message("Failed to submit igneous tasks using {}".format(create_tasks.__name__))
-            raise e
+        return inner
 
-    return inner
+    return decorator
 
 
 def dataset_resolution(path, mip=0):
@@ -247,7 +249,7 @@ def get_files_job(v, param, prefix):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def downsample_for_meshing(seg_cloudpath, mask):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -258,7 +260,7 @@ def downsample_for_meshing(seg_cloudpath, mask):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def downsample(seg_cloudpath):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -269,7 +271,7 @@ def downsample(seg_cloudpath):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def mesh(seg_cloudpath, mesh_quality):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
@@ -294,7 +296,7 @@ def mesh(seg_cloudpath, mesh_quality):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def mesh_manifest(seg_cloudpath, bbox, chunk_size):
     from igneous.tasks import MeshManifestTask
     from chunk_iterator import ChunkIterator
@@ -351,7 +353,7 @@ def mesh_manifest(seg_cloudpath, bbox, chunk_size):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def create_skeleton_fragments(seg_cloudpath, teasar_param):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
@@ -378,7 +380,7 @@ def create_skeleton_fragments(seg_cloudpath, teasar_param):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def merge_skeleton_fragments(seg_cloudpath):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -410,7 +412,7 @@ def downsample_and_mesh(param):
 
 
 @mount_secrets
-@kombu_tasks
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def submit_igneous_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
