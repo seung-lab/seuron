@@ -429,7 +429,7 @@ def submit_igneous_tasks():
     if not tasks:
         return
 
-    if len(tasks) > 100000:
+    if len(tasks) > 1000000:
         slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
         raise
 
