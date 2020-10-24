@@ -82,6 +82,9 @@ def kombu_tasks(create_tasks):
             with Connection(broker, connect_timeout=60) as conn:
                 queue = conn.SimpleQueue("igneous")
                 tasks = create_tasks(*args, **kwargs)
+                if not tasks:
+                    slack_message("No tasks submitted by {}".format(create_tasks.__name__))
+                    return
                 target_size = (1+len(tasks)//32)
                 ramp_up_cluster("igneous", min(target_size, 10) , target_size)
                 for t in tasks:
