@@ -416,7 +416,7 @@ def downsample_and_mesh(param):
 def submit_igneous_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
-    python_string = Variable.get("igneous_tasks")
+    python_string = Variable.get("igneous_script")
 
     exec(python_string, globals())
 
@@ -433,7 +433,7 @@ def submit_igneous_tasks():
         slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
         raise
 
-    slack_message(":arrow_forward: submit {} igneous tasks".format(len(tasks)))
+    slack_message(":arrow_forward: submitting {} igneous tasks".format(len(tasks)))
     return tasks
 
 

@@ -248,7 +248,7 @@ def run_scripts(msg):
         if not check_running():
             create_run_token(msg)
             update_metadata(msg)
-            set_variable('igneous_tasks', payload)
+            set_variable('igneous_script', payload)
             replyto(msg, "Execute `submit_tasks` function")
             run_igneous_tasks()
         else:
