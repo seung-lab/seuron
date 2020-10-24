@@ -129,7 +129,6 @@ def isotropic_mip(path):
 
 def mip_for_mesh_and_skeleton(path):
     from cloudvolume import CloudVolume
-    from slack_message import slack_message
     vol = CloudVolume(path)
     mip = isotropic_mip(path)
     if mip not in vol.available_mips:
