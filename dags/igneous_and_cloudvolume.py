@@ -139,6 +139,7 @@ def mip_for_mesh_and_skeleton(path):
 def check_cloud_path_empty(path):
     import traceback
     from cloudvolume import Storage
+    from slack_message import slack_message
     try:
         s = Storage(path)
         obj = next(s.list_files(), None)
