@@ -416,7 +416,7 @@ def downsample_and_mesh(param):
 def submit_igneous_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
-    python_string = Variable.get("python_string")
+    python_string = Variable.get("igneous_tasks")
 
     exec(python_string, globals())
 
