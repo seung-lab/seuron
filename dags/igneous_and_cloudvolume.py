@@ -79,21 +79,22 @@ def kombu_tasks(create_tasks):
         broker = configuration.get('celery', 'BROKER_URL')
 
         try:
+            tasks = create_tasks(*args, **kwargs)
+            if not tasks:
+                slack_message("No tasks submitted by {}".format(create_tasks.__name__))
+                return
+
             with Connection(broker, connect_timeout=60) as conn:
                 queue = conn.SimpleQueue("igneous")
-                tasks = create_tasks(*args, **kwargs)
-                if not tasks:
-                    slack_message("No tasks submitted by {}".format(create_tasks.__name__))
-                    return
-                target_size = (1+len(tasks)//32)
-                ramp_up_cluster("igneous", min(target_size, 10) , target_size)
                 for t in tasks:
                     submit_message(queue, t.payload())
-
                 queue.close()
 
+            target_size = (1+len(tasks)//32)
+            ramp_up_cluster("igneous", min(target_size, 10) , target_size)
             check_queue("igneous")
             ramp_down_cluster("igneous", 0)
+
             slack_message("All igneous tasks submitted by {} finished".format(create_tasks.__name__))
 
         except Exception as e:
