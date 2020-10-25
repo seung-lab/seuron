@@ -233,9 +233,6 @@ services:
                         if (\\$$is_rabbitmq = AB) { \\n
                             rewrite ^\\/*(.*) \\/rabbitmq\\/\\$$1 permanent;\\n
                         }\\n
-                        location \\/ {\\n
-                            rewrite . \\/airflow\\/admin\\/ permanent;\\n
-                        }\\n
                         location ^~ \\/airflow\\/ {\\n
                             proxy_redirect http:\\/\\/\\$$host \\$$scheme:\\/\\/\\$$host;\\n
                             proxy_pass http:\\/\\/webserver:8080\\/;\\n
