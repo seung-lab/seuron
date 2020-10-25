@@ -376,7 +376,7 @@ def hello_world(**payload):
     client.chat_postMessage(
         channel='#seuron-alerts',
         username=workerid,
-        text="Hello world from <https://{}|{}>!".format(host_ip, host_ip))
+        text="Hello world from <https://{}/airflow/admin/|{}>!".format(host_ip, host_ip))
 
 
 def handle_batch(q_payload, q_cmd):
