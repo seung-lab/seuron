@@ -24,6 +24,8 @@ COPY ./setup_airflow.py ./celery.patch ./igneous.patch ./
 
 RUN savedAptMark="$(apt-mark showmanual)" \
     && apt-get -y update \
+    && apt-get -y install --no-install-recommends apt-transport-https ca-certificates gnupg curl \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-sdk -y \
     && buildDeps='git build-essential libmariadb-dev libxml2-dev libxslt1-dev' \
     && apt-get -y install --no-install-recommends $buildDeps sudo \
     && pip install -U pip \
@@ -43,7 +45,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && patch -p1 < ${AIRFLOW_HOME}/celery.patch \
     && patch -p1 < ${AIRFLOW_HOME}/igneous.patch \
     && apt-mark auto '.*' > /dev/null \
-    && apt-mark manual libmariadb3 libxml2 libxslt1.1 sudo \
+    && apt-mark manual libmariadb3 libxml2 libxslt1.1 sudo google-cloud-sdk\
     && apt-mark manual $savedAptMark \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf \
@@ -90,5 +92,6 @@ RUN cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
 
 
 USER ${AIRFLOW_USER}
+RUN gcloud auth --quiet configure-docker
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["scripts/entrypoint-dood.sh"]
