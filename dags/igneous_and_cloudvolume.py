@@ -69,6 +69,20 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
     def submit_message(queue, payload):
         queue.put(payload)
 
+
+    def extract_payload(msg):
+        if type(msg) is str:
+            return msg
+        else:
+            payload = getattr(msg, "payload", None)
+            if payload is None:
+                raise RuntimeError('Unknown message type')
+            elif callable(payload):
+                return payload()
+            else:
+                return payload
+
+
     def decorator(create_tasks):
         @wraps(create_tasks)
         def inner(*args, **kwargs):
@@ -87,7 +101,8 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                 with Connection(broker, connect_timeout=60) as conn:
                     queue = conn.SimpleQueue(queue_name)
                     for t in tasks:
-                        submit_message(queue, t.payload())
+                        payload = extract_payload(t)
+                        submit_message(queue, payload)
                     queue.close()
 
                 target_size = (1+len(tasks)//worker_factor)
