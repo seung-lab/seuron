@@ -19,7 +19,10 @@ def drain_messages(conn, queue):
                 message = simple_queue.get_nowait()
             except SimpleQueue.Empty:
                 status = check_queue(queue)
-                if status["messages"] > 0:
+                if "messages" not in status:
+                    sleep(30)
+                    continue
+                elif status["messages"] > 0:
                     print(f'still {status["messages"]} messages left in the queue, sleep for 30s')
                     sleep(30)
                     continue
