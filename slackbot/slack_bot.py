@@ -166,7 +166,6 @@ def download_file(msg):
         replyto(msg, "You need to upload a parameter file with this message")
         return None
     else:
-        time.sleep(2)
         # only use the first file:
         file_info = msg["files"][0]
         private_url = file_info["url_private_download"]
