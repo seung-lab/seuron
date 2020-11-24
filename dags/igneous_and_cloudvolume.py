@@ -128,15 +128,26 @@ def dataset_resolution(path, mip=0):
 
 def cv_has_data(path, mip=0):
     from cloudvolume import CloudVolume
+    from slack_message import slack_message
     vol = CloudVolume(path, mip=mip)
-    return vol.image.has_data(mip)
+    try:
+        return vol.image.has_data(mip)
+    except NotImplementedError:
+        slack_message("CloudVolume does not support has_data for layer `{}`, assume data exists".format(path))
+        return True
+
 
 def cv_scale_with_data(path):
     from cloudvolume import CloudVolume
+    from slack_message import slack_message
     vol = CloudVolume(path)
     for m in vol.available_mips:
-        if vol.image.has_data(m):
-            return m, vol.scales[m]['resolution']
+        try:
+            if vol.image.has_data(m):
+                return m, vol.scales[m]['resolution']
+        except NotImplementedError:
+            slack_message("CloudVolume does not support has_data for layer `{}`. You need to explicitly specify the input resolution".format(path))
+
 
 def isotropic_mip(path):
     from math import log2
