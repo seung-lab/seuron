@@ -51,38 +51,15 @@ def create_igneous_ops(param, dag):
         ops[-1] >> current_op
         ops.append(current_op)
 
+    downsample_target = [seg_cloudpath, os.path.join(seg_cloudpath, "size_map")]
     if not param.get("SKIP_DOWNSAMPLE", False):
         if not param.get("SKIP_WS", False):
-            current_op = PythonOperator(
-                task_id="downsample_ws",
-                python_callable=downsample,
-                op_args = [ws_cloudpath, ],
-                on_retry_callback=task_retry_alert,
-                weight_rule=WeightRule.ABSOLUTE,
-                queue="manager",
-                dag=dag
-            )
-
-            ops[-1] >> current_op
-            ops.append(current_op)
+            downsample_target.append(ws_cloudpath)
 
         current_op = PythonOperator(
-            task_id="downsample_seg",
+            task_id="downsample",
             python_callable=downsample,
-            op_args = [seg_cloudpath, ],
-            on_retry_callback=task_retry_alert,
-            weight_rule=WeightRule.ABSOLUTE,
-            queue="manager",
-            dag=dag
-        )
-
-        ops[-1] >> current_op
-        ops.append(current_op)
-
-        current_op = PythonOperator(
-            task_id="downsample_size_map",
-            python_callable=downsample,
-            op_args = [os.path.join(seg_cloudpath, "size_map"), ],
+            op_args = downsample_target,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
             queue="manager",
