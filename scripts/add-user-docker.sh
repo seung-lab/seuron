@@ -13,6 +13,7 @@ else
     echo "User ${AIRFLOW_USER} belongs to the groups $USER_GID"
     if $(echo $USER_GID | grep -qw $DOCKER_GID); then
         echo "Host Docker Group ID $DOCKER_GID found on user"
+        DOCKER_GROUP=$(getent group ${DOCKER_GID} | cut -d: -f1)
     else
         echo "Host Docker Group ID $DOCKER_GID not found on user"
         echo "Updating docker group to host docker group"
