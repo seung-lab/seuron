@@ -74,6 +74,25 @@ def supply_default_parameters():
             value_file.write(v)
 
 
+    def check_matching_mip(path1, path2):
+        vol1 = CloudVolume(path1, mip=0)
+        vol2 = CloudVolume(path2, mip=0)
+        if all(x == y for x, y in zip(vol1.resolution, vol2.resolution)):
+            return True
+        else:
+            slack_message(":u7981:*ERROR: mip0 resolutions mismatch* {} *vs* {}".format(
+                vol1.resolution, vol2.resolution))
+            return False
+
+
+    if "IMAGE_MASK_PATH" in param and (not check_matching_mip(param["IMAGE_PATH"], param["IMAGE_MASK_PATH"])):
+        raise ValueError('Resolution mismatch')
+
+
+    if "OUTPUT_MASK_PATH" in param and (not check_matching_mip(param["IMAGE_PATH"], param["OUTPUT_MASK_PATH"])):
+        raise ValueError('Resolution mismatch')
+
+
     if "IMAGE_RESOLUTION" in param:
         try:
             vol = CloudVolume(param["IMAGE_PATH"], mip=param["IMAGE_RESOLUTION"])
