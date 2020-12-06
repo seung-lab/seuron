@@ -129,6 +129,13 @@ def supply_default_parameters():
                 vol1.resolution, vol2.resolution))
             return False
 
+    if "ONNX_MODEL_PATH" in param and "PYTORCH_MODEL_PATH" in param:
+        slack_message(":u7981:*ERROR: Cannot specify pytorch model and onnx model at the same time*")
+        raise ValueError('Can only use one backend')
+
+    if "ONNX_MODEL_PATH" in param and param.get("ENABLE_FP16", False):
+        slack_message(":exclamation:*Enable FP16 Inference*")
+
     if "CHUNKFLOW_IMAGE" not in param:
         slack_message(":u7981:*ERROR: You have to specify a chunkflow image")
         raise ValueError('chunkflow image missing')
