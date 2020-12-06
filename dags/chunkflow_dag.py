@@ -59,6 +59,51 @@ def generate_ng_link():
         payload=urllib.parse.quote(json.dumps(payload)))
     slack_message(url, broadcast=True)
 
+
+def check_patch_parameters(param):
+    if "INPUT_PATCH_SIZE" not in param:
+        slack_message("Use default input patch size: `[256,256,20]`")
+        param["INPUT_PATCH_SIZE"] = [256,256,20]
+    if "OUTPUT_PATCH_SIZE" not in param:
+        slack_message("No cropping by default, output patch size: `{}`".format(param["INPUT_PATCH_SIZE"]))
+        param["OUTPUT_PATCH_SIZE"] = param["INPUT_PATCH_SIZE"][:]
+
+    input_patch_size = param["INPUT_PATCH_SIZE"]
+    output_patch_size = param["OUTPUT_PATCH_SIZE"]
+
+    if (any(x < y for x, y in zip(input_patch_size, output_patch_size))):
+        slack_message("""input patch size smaller than output patch size""")
+        raise ValueError('Parameter mismatch')
+
+    if "OUTPUT_PATCH_OVERLAP" not in param:
+        if "INPUT_PATCH_OVERLAP_RATIO" not in param:
+            slack_message("""Use 50% overlap between input patches""")
+
+    overlap = param.get("INPUT_PATCH_OVERLAP_RATIO", 0.5)
+    output_patch_overlap = [ int(i*overlap - (i-o)) for i, o in zip(input_patch_size, output_patch_size)  ]
+    output_patch_overlap = [o+o%2 for o in output_patch_overlap]
+
+
+    if "OUTPUT_PATCH_OVERLAP" in param and "INPUT_PATCH_OVERLAP_RATIO" in param:
+        if any(x != y for x, y in zip(output_patch_overlap, param["OUTPUT_PATCH_OVERLAP"])):
+            slack_message(f":u7981:*ERROR: Output patch overlap* `f{param['OUTPUT_PATCH_OVERLAP']}` *is inconsistent with input patch overlap ratio* `f{overlap}`")
+            raise ValueError('Parameter mismatch')
+
+    if "OUTPUT_PATCH_OVERLAP" not in param:
+        if any(x < 0 for x in output_patch_overlap):
+            slack_message(":u7981:*ERROR: The output patches have gaps after cropping, not enough overlap between input patches")
+            raise ValueError('Input patch overlap too small')
+        param["OUTPUT_PATCH_OVERLAP"] = output_patch_overlap
+        slack_message(f'Output patch overlap: `{param["OUTPUT_PATCH_OVERLAP"]}`')
+
+
+    if "CHUNK_CROP_MARGIN" not in param:
+        param["CHUNK_CROP_MARGIN"] = [o + (ip - op)//2 for o, ip, op in zip(param["OUTPUT_PATCH_OVERLAP"], input_patch_size, output_patch_size)]
+        slack_message(f'Chunk crop margin: `{param["CHUNK_CROP_MARGIN"]}`')
+
+    return param
+
+
 def supply_default_parameters():
     param = Variable.get("inference_param", deserialize_json=True)
 
@@ -221,7 +266,7 @@ def supply_default_parameters():
         slack_message(":u7981:*ERROR: Bounding box is outside of the image, image: {} vs bbox: {}*".format([int(x) for x in image_bbox.to_list()], param["BBOX"]))
         raise ValueError('Bounding box is outside of the image')
 
-    Variable.set("inference_param", param, serialize_json=True)
+    Variable.set("inference_param", check_patch_parameters(param), serialize_json=True)
 
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
