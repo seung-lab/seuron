@@ -226,8 +226,7 @@ def supply_default_parameters():
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
 
-def drain_tasks_op(dag, queue):
-    param = Variable.get("inference_param", deserialize_json=True)
+def drain_tasks_op(dag, param, queue):
     cmdlist = 'bash -c "chunkflow/scripts/drain_tasks.sh"'
 
     cm = ['inference_param']
@@ -250,8 +249,7 @@ def drain_tasks_op(dag, queue):
         dag=dag
     )
 
-def setup_env_op(dag, queue):
-    param = Variable.get("inference_param", deserialize_json=True)
+def setup_env_op(dag, param, queue):
     cmdlist = 'bash -c "chunkflow/scripts/setup_env.sh"'
 
     cm = ['inference_param']
@@ -293,8 +291,7 @@ def skip_worker_op(dag, queue, wid):
     )
 
 
-def worker_op(dag, queue, wid):
-    param = Variable.get("inference_param", deserialize_json=True)
+def worker_op(dag, param, queue, wid):
     cmdlist = 'bash -c "chunkflow/scripts/inference.sh"'
 
     cm = ['inference_param']
@@ -416,15 +413,15 @@ generate_ng_link_task = PythonOperator(
 
 mark_done_task = mark_done_op(dag_worker, "chunkflow_done")
 
-set_env_task = setup_env_op(dag_generator, "manager")
-drain_tasks = drain_tasks_op(dag_generator, "manager")
+set_env_task = setup_env_op(dag_generator, param, "manager")
+drain_tasks = drain_tasks_op(dag_generator, param, "manager")
 
 workers = []
 skips = []
 
 
 for i in range(min(param.get("TASK_NUM", 1), 2000)):
-    workers.append(worker_op(dag_worker, "gpu", i))
+    workers.append(worker_op(dag_worker, param, "gpu", i))
     scale_up_cluster_task >> workers[i] >> scale_down_cluster_task
 
 sanity_check_task >> drain_tasks >> set_env_task >> process_output_task
