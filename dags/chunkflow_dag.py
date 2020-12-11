@@ -422,7 +422,8 @@ skips = []
 
 for i in range(min(param.get("TASK_NUM", 1), 2000)):
     workers.append(worker_op(dag_worker, param, "gpu", i))
-    scale_up_cluster_task >> workers[i] >> scale_down_cluster_task
+
+scale_up_cluster_task >> workers >> scale_down_cluster_task
 
 sanity_check_task >> drain_tasks >> set_env_task >> process_output_task
 
