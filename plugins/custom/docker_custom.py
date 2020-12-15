@@ -215,7 +215,10 @@ class DockerConfigurableOperator(DockerOperator):
             self.log.info('Pulling docker image %s', image)
             for l in self.cli.pull(image, stream=True):
                 output = json.loads(l.decode('utf-8'))
-                self.log.info("%s", output['status'])
+                try:
+                    self.log.info("%s", output['status'])
+                except KeyError:
+                    pass
 
         cpu_shares = int(round(self.cpus * 1024))
 
