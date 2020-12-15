@@ -156,7 +156,9 @@ def process_composite_tasks(c, cm, top_mip, params):
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
     elif c.mip_level() == local_batch_mip:
         for stage, op in [("ws", "ws"), ("agg", "me"), ("cs", "cs")]:
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
+            generate_chunks[stage]["batch"][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip-1, tag, stage, op, params)
+            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
+            generate_chunks[stage]["batch"][tag] >> generate_chunks[stage][c.mip_level()][tag]
             if params.get('OVERLAP', False) and stage == 'agg':
                 overlap_chunks[tag] = composite_chunks_overlap_op(image, dag[stage], cm, short_queue, tag, params)
                 for n in c.neighbours():
@@ -172,7 +174,7 @@ def process_composite_tasks(c, cm, top_mip, params):
                 remap_chunks[stage][tag]=remap_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip, tag, stage, op, params)
                 slack_ops[stage]["remap"].set_upstream(remap_chunks[stage][tag])
                 generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
-            init[stage].set_downstream(generate_chunks[stage][c.mip_level()][tag])
+            init[stage].set_downstream(generate_chunks[stage]["batch"][tag])
 
     if c.mip_level() < top_mip:
         parent_coord = [i//2 for i in c.coordinate()]
@@ -564,6 +566,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             break
         else:
             for k in ["ws","agg","cs"]:
+                generate_chunks[k]["batch"] = {}
                 if c.mip_level() not in generate_chunks[k]:
                     generate_chunks[k][c.mip_level()] = {}
 

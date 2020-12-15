@@ -50,7 +50,7 @@ def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, o
     return DockerWithVariablesOperator(
         config_mounts,
         mount_point=cv_path,
-        task_id='composite_chunk_{}_{}'.format(stage, tag),
+        task_id='batch_chunk_{}_{}'.format(stage, tag),
         command=cmd_proto.format(cmdlist),
         default_args=default_args,
         image=img,
