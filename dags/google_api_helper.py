@@ -105,6 +105,7 @@ def resize_instance_group(project_id, instance_group, size):
             break
         if downsize and target_size <= 0:
             target_size = 0
+        sleep(30)
 
     return min(size, max_size)
 
