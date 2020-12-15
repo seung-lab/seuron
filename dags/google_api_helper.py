@@ -89,7 +89,11 @@ def resize_instance_group(project_id, instance_group, size):
 
     target_size = size
     for ig in instance_group:
+        info_group_manager = instance_group_manager_info(project_id, ig)
+        info_group = instance_group_info(project_id, ig)
         ig_size = min(target_size, ig['max_size'])
+        if info_group_manager["targetSize"] > info_group["size"]:
+            ig_size = min(ig_size, info_group["size"]+1)
         credentials = GoogleCredentials.get_application_default()
         service = discovery.build('compute', 'v1', credentials=credentials)
         request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=ig_size)
