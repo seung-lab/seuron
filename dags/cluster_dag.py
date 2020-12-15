@@ -60,6 +60,7 @@ def cluster_control():
         return
     for key in cluster_info:
         if key in target_sizes:
+            print(f"processing cluster: {key}")
             if target_sizes[key] != 0:
                 try:
                     if key == "composite":
@@ -70,6 +71,7 @@ def cluster_control():
                     total_size = gapi.get_cluster_size(project_id, cluster_info[key])
                     total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
                 except:
+                    slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), channel="#seuron-alerts")
                     continue
                 if num_tasks < total_size:
                     if 10 < num_tasks < total_size//10:
