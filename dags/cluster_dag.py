@@ -45,7 +45,8 @@ def check_queue(queue):
     import requests
     ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
     if not ret.ok:
-        raise RuntimeError("Cannot connect to rabbitmq management interface")
+        slack_message(f"Cannot get info for queue {queue}, assume 0 tasks")
+        return 0
     queue_status = ret.json()
     return queue_status["messages"]
 
