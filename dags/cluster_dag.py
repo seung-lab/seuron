@@ -62,7 +62,11 @@ def cluster_control():
         if key in target_sizes:
             if target_sizes[key] != 0:
                 try:
-                    num_tasks = check_queue(key)
+                    if key == "composite":
+                        tasks = [check_queue(f"{key}_{i}") for i in range(5,11)]
+                        num_tasks = sum(tasks)
+                    else:
+                        num_tasks = check_queue(key)
                     total_size = gapi.get_cluster_size(project_id, cluster_info[key])
                     total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
                 except:
