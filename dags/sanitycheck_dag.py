@@ -76,7 +76,7 @@ def check_cv_data():
 
 
     # We need affinity map for watershed and agglomeration, not for meshing
-    if (not param.get("SKIP_AGG", False)) or (not param.get("SKIP_AGG", False)):
+    if (not param.get("SKIP_WS", False)) or (not param.get("SKIP_AGG", False)):
         if "AFF_RESOLUTION" in param:
             try:
                 vol = CloudVolume(param["AFF_PATH"], mip=param["AFF_RESOLUTION"])
