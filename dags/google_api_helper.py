@@ -92,6 +92,8 @@ def resize_instance_group(project_id, instance_group, size):
         info_group_manager = instance_group_manager_info(project_id, ig)
         info_group = instance_group_info(project_id, ig)
         ig_size = min(target_size, ig['max_size'])
+        if ig_size < info_group["size"] and not downsize:
+            continue
         if info_group_manager["targetSize"] > info_group["size"]:
             ig_size = min(ig_size, info_group["size"]+1)
         credentials = GoogleCredentials.get_application_default()
