@@ -1,4 +1,4 @@
-from airflow.operators.docker_plugin import DockerWithVariablesOperator
+from custom.docker_custom import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.utils.weight_rule import WeightRule

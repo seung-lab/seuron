@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.docker_plugin import DockerWithVariablesOperator
+from custom.docker_custom import DockerWithVariablesOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import datetime, timedelta
 from cloudvolume import CloudVolume

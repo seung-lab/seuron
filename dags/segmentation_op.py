@@ -1,4 +1,4 @@
-from airflow.operators.docker_plugin import DockerWithVariablesOperator
+from custom.docker_custom import DockerWithVariablesOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import timedelta
 from param_default import default_args, cv_path, cmd_proto

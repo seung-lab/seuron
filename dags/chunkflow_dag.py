@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.models import Variable
-from airflow.operators.docker_plugin import DockerWithVariablesOperator
+from custom.docker_custom import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import inference_param_default, default_args, cv_path
