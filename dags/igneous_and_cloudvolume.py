@@ -189,7 +189,7 @@ def create_info(stage, param):
     from slack_message import slack_message, slack_userinfo
     bbox = param["BBOX"]
     resolution = param["AFF_RESOLUTION"]
-    cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,32])
+    cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,64])
     metadata_seg = CloudVolume.create_new_info(
         num_channels    = 1,
         layer_type      = 'segmentation',
