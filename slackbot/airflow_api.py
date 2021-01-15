@@ -18,8 +18,10 @@ def mark_dags_success(dags):
     dagbag = DagBag()
     for d in dags:
         if d in dagbag.dags:
-            dag = dagbag.dags[d]
-            set_dag_run_state(dag, dag.latest_execution_date, commit=True)
+            state, exec_date = dag_state(d)
+            if state == "running":
+                dag = dagbag.dags[d]
+                set_dag_run_state(dag, dag.latest_execution_date, commit=True)
 
 
 def update_slack_connection(payload, token):
