@@ -328,7 +328,7 @@ def mesh(seg_cloudpath, mesh_quality):
 @kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def mesh_manifest(seg_cloudpath, bbox, chunk_size):
     from igneous.tasks import MeshManifestTask
-    from chunk_iterator import ChunkIterator
+    from chunkiterator import ChunkIterator
     from os.path import commonprefix
     from slack_message import slack_message
     #FIXME: should reuse the function in segmentation scripts

@@ -31,6 +31,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && pip install -U pip \
     && pip install -U numpy joblib psutil matplotlib \
     && pip install -U cloud-volume json5 \
+    && CFLAGS="-Os -g0 -Wl,--strip-all" pip install -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && git clone https://github.com/seung-lab/airflow --depth 1 -b v1-9-stable-3-ranl_cherrypick \
     && git clone https://github.com/seung-lab/igneous --depth 1 \
     # Deleting this symlink not handled correctly by shutil.copy

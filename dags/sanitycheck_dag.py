@@ -10,7 +10,7 @@ from param_default import param_default
 from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scale_with_data
 import os
 
-from chunk_iterator import ChunkIterator
+from chunkiterator import ChunkIterator
 from helper_ops import slack_message_op, placeholder_op
 from slack_message import slack_message
 

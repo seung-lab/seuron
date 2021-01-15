@@ -6,7 +6,7 @@ from airflow.operators.dagrun_operator import TriggerDagRunOperator
 from airflow.utils.weight_rule import WeightRule
 from airflow.models import Variable
 
-from chunk_iterator import ChunkIterator
+from chunkiterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
 from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
