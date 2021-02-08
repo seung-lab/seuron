@@ -134,8 +134,8 @@ def supply_default_parameters():
         slack_message(":u7981:*ERROR: Cannot specify pytorch model and onnx model at the same time*")
         raise ValueError('Can only use one backend')
 
-    if "ONNX_MODEL_PATH" in param and param.get("ENABLE_FP16", False):
-        slack_message(":exclamation:*Enable FP16 Inference*")
+    if param.get("ENABLE_FP16", False):
+        slack_message(":exclamation:*Enable FP16 inference for TensorRT*")
 
     if "CHUNKFLOW_IMAGE" not in param:
         slack_message(":u7981:*ERROR: You have to specify a chunkflow image")
