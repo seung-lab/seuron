@@ -84,7 +84,8 @@ def cluster_control():
 
                 if (total_target_size - total_size) > 0.1 * total_target_size:
                     slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, total_size, total_target_size))
-                    gapi.resize_instance_group(project_id, cluster_info[key], total_target_size)
+                    if (total_target_size > 0):
+                        gapi.resize_instance_group(project_id, cluster_info[key], total_target_size)
                 else:
                     if total_target_size < target_sizes[key] and total_target_size != 0:
                         max_size = 0
