@@ -150,12 +150,11 @@ def process_composite_tasks(c, cm, top_mip, params):
 
     top_tag = str(top_mip)+"_0_0_0"
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-    if c.mip_level() > local_batch_mip:
-        for stage, op in [("ws", "ws"), ("agg", "me"), ("cs", "cs")]:
+    for stage, op in [("ws", "ws"), ("agg", "me"), ("cs", "cs")]:
+        if c.mip_level() > local_batch_mip:
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
-    elif c.mip_level() == local_batch_mip:
-        for stage, op in [("ws", "ws"), ("agg", "me"), ("cs", "cs")]:
+        elif c.mip_level() == local_batch_mip:
             generate_chunks[stage]["batch"][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip-1, tag, stage, op, params)
             generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
             generate_chunks[stage]["batch"][tag] >> generate_chunks[stage][c.mip_level()][tag]
