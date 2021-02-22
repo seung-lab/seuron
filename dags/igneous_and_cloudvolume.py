@@ -220,7 +220,7 @@ def create_info(stage, param):
     vol.commit_provenance()
 
     if stage == "agg":
-        cv_path = param["SEG_PATH"]+"/size_map"
+        cv_path = os.path.join(param["SEG_PATH"], "size_map")
         metadata_size = CloudVolume.create_new_info(
             num_channels    = 1,
             layer_type      = 'image',
