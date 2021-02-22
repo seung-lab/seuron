@@ -84,7 +84,7 @@ def handle_task(q_task, q_state):
         if q_task.qsize() > 0:
             msg = q_task.get()
             print("run task: {}".format(msg))
-            task = totask({'payload': msg, 'id': -1})
+            task = totask(msg)
             task.execute()
             q_state.put("done")
 

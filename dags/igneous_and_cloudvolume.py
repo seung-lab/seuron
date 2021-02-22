@@ -71,16 +71,12 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
 
 
     def extract_payload(msg):
+        from taskqueue.queueables import totask
+        from taskqueue.lib import jsonify
         if type(msg) is str:
             return msg
         else:
-            payload = getattr(msg, "payload", None)
-            if payload is None:
-                raise RuntimeError('Unknown message type')
-            elif callable(payload):
-                return payload()
-            else:
-                return payload
+            return jsonify(totask(msg).payload())
 
 
     def decorator(create_tasks):
