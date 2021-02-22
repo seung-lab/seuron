@@ -106,10 +106,10 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                 check_queue(queue_name)
                 ramp_down_cluster(cluster_name, 0)
 
-                slack_message("All igneous tasks submitted by {} finished".format(create_tasks.__name__))
+                slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
 
             except Exception as e:
-                slack_message("Failed to submit igneous tasks using {}".format(create_tasks.__name__))
+                slack_message("Failed to submit tasks using {}".format(create_tasks.__name__))
                 raise e
 
         return inner
