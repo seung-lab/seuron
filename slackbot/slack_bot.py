@@ -273,7 +273,7 @@ def run_custom_scripts(msg):
 
 
 def supply_default_param(json_obj):
-    if "NAME" not in json_obj:
+    if not json_obj.get("NAME", ""):
         json_obj["NAME"] = token_hex(16)
 
     if "SCRATCH_PREFIX" not in json_obj and "SCRATCH_PATH" not in json_obj:
