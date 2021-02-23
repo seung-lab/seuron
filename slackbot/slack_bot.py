@@ -304,10 +304,10 @@ def dispatch_command(cmd, payload):
             replyto(msg, "Wrong token")
         else:
             if check_running():
-                set_variable("run_token", "")
                 clear_queues()
                 q_cmd.put("cancel")
                 cancel_run(msg)
+                set_variable("run_token", "")
             else:
                 replyto(msg, "The bot is idle, nothing to cancel")
 
