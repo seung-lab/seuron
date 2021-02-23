@@ -362,7 +362,6 @@ def worker_op(dag, param, queue, wid):
         command=cmdlist,
         force_pull=True,
         image=param["CHUNKFLOW_IMAGE"],
-        host_args={'runtime': 'nvidia'},
         priority_weight=1,
         weight_rule=WeightRule.ABSOLUTE,
         on_retry_callback=task_retry_alert,
