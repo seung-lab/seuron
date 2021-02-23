@@ -1,4 +1,4 @@
-from igneous_and_cloudvolume import submit_igneous_tasks
+from igneous_and_cloudvolume import submit_igneous_tasks, submit_custom_tasks
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
@@ -15,7 +15,8 @@ igneous_default_args = {
 
 dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule_interval=None)
 
-submit_tasks = PythonOperator(
+
+submit_igneous_tasks = PythonOperator(
     task_id="submit_igneous_tasks",
     python_callable=submit_igneous_tasks,
     priority_weight=100000,
@@ -25,5 +26,18 @@ submit_tasks = PythonOperator(
     dag=dag_igneous
 )
 
+
+dag_custom = DAG("custom", default_args=igneous_default_args, schedule_interval=None)
+
+
+submit_custom_tasks = PythonOperator(
+    task_id="submit_custom_tasks",
+    python_callable=submit_custom_tasks,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=dag_custom
+)
 
 

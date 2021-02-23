@@ -91,6 +91,8 @@ RUN cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
     && mv version/COMMIT version/air-tasks.COMMIT.${BASE_DIST}-${BASE_TAG} \
     && mv version/TAGS version/air-tasks.TAGS.${BASE_DIST}-${BASE_TAG}
 
+RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/custom
+
 
 USER ${AIRFLOW_USER}
 RUN gcloud auth --quiet configure-docker

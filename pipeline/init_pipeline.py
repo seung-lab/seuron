@@ -31,6 +31,7 @@ gpu_worker_group = "{deployment}-gpu-workers-{zone}".format(deployment=deploymen
 atomic_worker_group = "{deployment}-atomic-workers-{zone}".format(deployment=deployment, zone=zone)
 composite_worker_group = "{deployment}-composite-workers-{zone}".format(deployment=deployment, zone=zone)
 igneous_worker_group = "{deployment}-igneous-workers-{zone}".format(deployment=deployment, zone=zone)
+custom_worker_group = "{deployment}-custom-workers-{zone}".format(deployment=deployment, zone=zone)
 
 instance_groups = {
     'gpu': [{
@@ -52,6 +53,11 @@ instance_groups = {
         'name': igneous_worker_group,
         'zone': zone,
         'max_size': 50
+    }],
+    'custom': [{
+        'name': custom_worker_group,
+        'zone': zone,
+        'max_size': 50
     }]
 }
 
@@ -59,7 +65,8 @@ target_sizes = {
     'gpu': 0,
     'atomic': 0,
     'composite': 0,
-    'igneous': 0
+    'igneous': 0,
+    'custom': 0,
 }
 
 Variable.setdefault("cluster_target_size", target_sizes, deserialize_json=True)

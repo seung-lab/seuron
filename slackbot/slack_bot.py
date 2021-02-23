@@ -6,7 +6,7 @@ import string
 from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
     sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
-    mark_dags_success, run_dag, run_igneous_tasks
+    mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
 from bot_info import slack_token, botid, workerid
 from kombu_helper import drain_messages
 from copy import deepcopy
@@ -108,11 +108,11 @@ def replyto(msg, reply, username=workerid, broadcast=False):
 
 def cancel_run(msg):
     replyto(msg, "Marking all DAG states to success...")
-    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous']
+    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous', 'custom']
     mark_dags_success(dags)
     time.sleep(10)
     #try again because some tasks might already been scheduled
-    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous']
+    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous', 'custom']
     mark_dags_success(dags)
 
     replyto(msg, "Shutting down clusters...")
@@ -126,6 +126,7 @@ def cancel_run(msg):
 
     replyto(msg, "Draining tasks from the queues...")
     drain_messages("amqp://172.31.31.249:5672", "igneous")
+    drain_messages("amqp://172.31.31.249:5672", "custom")
     drain_messages("amqp://172.31.31.249:5672", "chunkflow")
 
     replyto(msg, "*Current run cancelled*", broadcast=True)
@@ -241,7 +242,7 @@ def update_param(msg):
     return
 
 
-def run_scripts(msg):
+def run_igneous_scripts(msg):
     payload = download_file(msg)
     if payload:
         if not check_running():
@@ -250,6 +251,21 @@ def run_scripts(msg):
             set_variable('igneous_script', payload)
             replyto(msg, "Execute `submit_tasks` function")
             run_igneous_tasks()
+        else:
+            replyto(msg, "Busy right now")
+
+    return
+
+
+def run_custom_scripts(msg):
+    payload = download_file(msg)
+    if payload:
+        if not check_running():
+            create_run_token(msg)
+            update_metadata(msg)
+            set_variable('custom_script', payload)
+            replyto(msg, "Execute `submit_tasks` function")
+            run_custom_tasks()
         else:
             replyto(msg, "Busy right now")
 
@@ -329,11 +345,16 @@ def dispatch_command(cmd, payload):
             else:
                 q_payload.put(msg)
                 q_cmd.put("runinf")
-    elif cmd == "runigneoustasks":
+    elif cmd == "runigneoustask" or cmd == "runigneoustasks":
         if check_running():
             replyto(msg, "I am busy right now")
         else:
-            run_scripts(msg)
+            run_igneous_scripts(msg)
+    elif cmd == "runcustomtask" or cmd == "runcustomtasks":
+        if check_running():
+            replyto(msg, "I am busy right now")
+        else:
+            run_custom_scripts(msg)
     elif cmd == "extractcontactsurfaces":
         state, _ = dag_state("sanity_check")
         if check_running():

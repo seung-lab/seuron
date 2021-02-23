@@ -460,3 +460,33 @@ def submit_igneous_tasks():
     return tasks
 
 
+@mount_secrets
+@kombu_tasks(queue_name="custom", cluster_name="custom", worker_factor=32)
+def submit_custom_tasks():
+    from airflow.models import Variable
+    from slack_message import slack_message
+    python_string = Variable.get("custom_script")
+
+    exec(python_string, globals())
+
+    if "submit_tasks" not in globals() or not callable(globals()["submit_tasks"]):
+        slack_message(":exclamation:*Error* cannot find the submit_tasks function")
+        return
+
+    if "process_task" not in globals() or not callable(globals()["process_task"]):
+        slack_message(":exclamation:*Error* cannot find the process_task function")
+        return
+
+    tasks = globals()["submit_tasks"]()
+
+    if not tasks:
+        return
+
+    if len(tasks) > 1000000:
+        slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
+        raise
+
+    slack_message(":arrow_forward: submitting {} custom tasks".format(len(tasks)))
+    return tasks
+
+
