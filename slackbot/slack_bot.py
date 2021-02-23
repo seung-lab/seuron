@@ -196,8 +196,8 @@ def update_inference_param(msg):
 
             if isinstance(json_obj, list):
                 replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+                q_payload.put(json_obj)
                 json_obj = json_obj[0]
-                q_payload.put(msg)
 
             supply_default_param(json_obj)
             replyto(msg, "Running chunkflow setup_env, please wait")
@@ -228,8 +228,8 @@ def update_param(msg):
             if isinstance(json_obj, list):
                 if (len(json_obj) > 1):
                     replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+                q_payload.put(json_obj)
                 json_obj = json_obj[0]
-                q_payload.put(msg)
 
             supply_default_param(json_obj)
             replyto(msg, "Running sanity check, please wait")
@@ -418,17 +418,12 @@ def handle_batch(q_payload, q_cmd):
             continue
 
         logger.debug("get message from queue")
+
+        json_obj = q_payload.get()
         msg = q_payload.get()
 
-        payload = download_file(msg)
-        msg = q_payload.get()
-
-        if payload is None:
+        if json_obj is None:
             continue
-        try:
-            json_obj = json5.loads(payload, object_pairs_hook=OrderedDict)
-        except (ValueError, TypeError) as e:
-            replyto(msg, "Cannot load the json file: {}".format(str(e)))
 
         if (not isinstance(json_obj, list)) or (not isinstance(json_obj[0], dict)):
             replyto(msg, "Batch process expects an array of dicts from the json file")
