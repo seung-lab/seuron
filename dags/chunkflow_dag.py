@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.models import Variable
+from airflow.hooks.base_hook import BaseHook
 from custom.docker_custom import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
@@ -445,7 +446,11 @@ process_output_task = PythonOperator(
     queue="manager",
     dag=dag_generator
 )
-scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), param.get("TASK_NUM",2)//2, "manager")
+
+cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
+
+scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), min(total_gpus, param.get("TASK_NUM",2)//2+1), "manager")
 scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "manager")
 
 wait_for_chunkflow_task = PythonOperator(
@@ -475,8 +480,7 @@ drain_tasks = drain_tasks_op(dag_generator, param, "manager")
 workers = []
 skips = []
 
-
-for i in range(min(param.get("TASK_NUM", 1), 2000)):
+for i in range(min(param.get("TASK_NUM", 1), total_gpus*3)):
     workers.append(worker_op(dag_worker, param, "gpu", i))
 
 scale_up_cluster_task >> workers >> scale_down_cluster_task
