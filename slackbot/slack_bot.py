@@ -132,15 +132,16 @@ def cancel_run(msg):
     replyto(msg, "*Current run cancelled*", broadcast=True)
 
 
-def upload_param(msg):
+def upload_param(msg, param):
     sc = slack.WebClient(slack_token, timeout=300)
-    param = get_variable("param", deserialize_json=True)
     channel = msg['channel']
     userid = msg['user']
+    thread_ts = msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
     sc.files_upload(
         channels=channel,
         filename="param.json",
         filetype="javascript",
+        thread_ts=thread_ts,
         content=json.dumps(param, indent=4),
         initial_comment="<@{}> current parameters".format(userid)
     )
@@ -289,7 +290,8 @@ def dispatch_command(cmd, payload):
     msg = payload['data']
     print(cmd)
     if cmd == "parameters":
-        upload_param(msg)
+        param = get_variable("param", deserialize_json=True)
+        upload_param(msg, param)
     elif cmd == "updateparameters":
         update_param(msg)
     elif cmd == "updateinferenceparameters":
