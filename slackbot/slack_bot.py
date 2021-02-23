@@ -166,30 +166,47 @@ def update_metadata(msg):
 def download_file(msg):
     if "files" not in msg:
         replyto(msg, "You need to upload a parameter file with this message")
-        return None
+        return None, None
     else:
         # only use the first file:
         file_info = msg["files"][0]
         private_url = file_info["url_private_download"]
+        filetype = file_info["pretty_type"]
         response = requests.get(private_url, headers={'Authorization': 'Bearer {}'.format(slack_token)})
 
         if response.status_code == 200:
-            return response.content.decode("ascii", "ignore")
+            return filetype, response.content.decode("ascii", "ignore")
         else:
+            return None, None
+
+def download_json(msg):
+    filetype, content = download_file(msg)
+    if not content:
+        return None
+    if filetype == "JavaScript/JSON":
+        try:
+            json_obj = json5.loads(content, object_pairs_hook=OrderedDict)
+        except (ValueError, TypeError) as e:
+            replyto(msg, "Cannot load the json file: {}".format(str(e)))
             return None
+        return json_obj
+    if filetype == "Python":
+        scope = {}
+        try:
+            exec(content, scope)
+            if "submit_parameters" not in scope or not callable(scope["submit_parameters"]):
+                return None
+            payloads = scope['submit_parameters']()
+        except:
+            replyto(msg, "Cannot execute the `submit_parameters` function in the script")
+        upload_param(msg, payloads)
+        return payloads
 
 
 def update_inference_param(msg):
     global param_updated
-    payload = download_file(msg)
-    if payload:
-        try:
-            json_obj = json5.loads(payload, object_pairs_hook=OrderedDict)
-        except (ValueError, TypeError) as e:
-            replyto(msg, "Cannot load the json file: {}".format(str(e)))
-            print(payload)
-            return
-
+    json_obj = download_json(msg)
+    if json_obj:
         if not check_running():
             clear_queues()
             drain_messages("amqp://172.31.31.249:5672", "chunkflow")
@@ -213,15 +230,8 @@ def update_inference_param(msg):
 
 def update_param(msg):
     global param_updated
-    payload = download_file(msg)
-    if payload:
-        try:
-            json_obj = json5.loads(payload, object_pairs_hook=OrderedDict)
-        except (ValueError, TypeError) as e:
-            replyto(msg, "Cannot load the json file: {}".format(str(e)))
-            print(payload)
-            return
-
+    json_obj = download_json(msg)
+    if json_obj:
         if not check_running():
             clear_queues()
 
@@ -244,7 +254,7 @@ def update_param(msg):
 
 
 def run_igneous_scripts(msg):
-    payload = download_file(msg)
+    _, payload = download_file(msg)
     if payload:
         if not check_running():
             create_run_token(msg)
@@ -259,7 +269,7 @@ def run_igneous_scripts(msg):
 
 
 def run_custom_scripts(msg):
-    payload = download_file(msg)
+    _, payload = download_file(msg)
     if payload:
         if not check_running():
             create_run_token(msg)
