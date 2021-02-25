@@ -6,8 +6,12 @@ from slack_message import task_retry_alert
 
 
 def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op, params):
-    overlap = 1 if params.get("OVERLAP", False) and int(tag.split("_")[0]) > params.get("BATCH_MIP", 3) else 0
-    cmdlist = "export OVERLAP={} && export STAGE={} && /root/seg/scripts/run_wrapper.sh . composite_chunk_{} {}".format(overlap, stage, op, tag)
+    overlap = 0
+    overlap_mode = params.get("OVERLAP_MODE", False)
+    if overlap_mode:
+        overlap_mip = params.get("OVERLAP_MIP", params.get("BATCH_MIP", 3))
+        overlap = 2 if int(tag.split("_")[0]) > overlap_mip else 1
+    cmdlist = "export OVERLAP={} && export STAGE={} && /workspace/seg/scripts/run_wrapper.sh . composite_chunk_{} {}".format(overlap, stage, op, tag)
 
     return DockerWithVariablesOperator(
         config_mounts,
@@ -26,7 +30,7 @@ def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op, par
 
 
 def composite_chunks_overlap_op(img, dag, config_mounts, queue, tag, params):
-    cmdlist = "export OVERLAP=1 && export STAGE=agg && /root/seg/scripts/run_wrapper.sh . composite_chunk_overlap {}".format(tag)
+    cmdlist = "export STAGE=agg && /workspace/seg/scripts/run_wrapper.sh . composite_chunk_overlap {}".format(tag)
 
     return DockerWithVariablesOperator(
         config_mounts,
@@ -45,7 +49,8 @@ def composite_chunks_overlap_op(img, dag, config_mounts, queue, tag, params):
 
 
 def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op, params):
-    cmdlist = "export OVERLAP=0 && export STAGE={} && /root/seg/scripts/run_batch.sh {} {} {}".format(stage, op, mip, tag)
+    overlap = 1 if params.get("OVERLAP_MODE", False) else 0
+    cmdlist = "export OVERLAP={} && export STAGE={} && /workspace/seg/scripts/run_batch.sh {} {} {}".format(overlap, stage, op, mip, tag)
 
     return DockerWithVariablesOperator(
         config_mounts,
@@ -64,7 +69,7 @@ def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, o
 
 
 def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op, params):
-    cmdlist = "export OVERLAP=0 && export STAGE={} && /root/seg/scripts/remap_batch.sh {} {} {}".format(stage, stage, mip, tag)
+    cmdlist = "export STAGE={} && /workspace/seg/scripts/remap_batch.sh {} {} {}".format(stage, stage, mip, tag)
     return DockerWithVariablesOperator(
         config_mounts,
         mount_point=cv_path,
