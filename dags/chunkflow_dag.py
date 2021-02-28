@@ -4,7 +4,7 @@ from airflow.hooks.base_hook import BaseHook
 from custom.docker_custom import DockerWithVariablesOperator
 from airflow.operators.python_operator import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
-from param_default import inference_param_default, default_args, cv_path
+from param_default import inference_param_default, default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels
 from datetime import datetime
 from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
@@ -284,7 +284,8 @@ def supply_default_parameters():
         os.remove(os.path.join(cv_secrets_path, k))
 
 def drain_tasks_op(dag, param, queue):
-    cmdlist = 'bash -c "chunkflow/scripts/drain_tasks.sh"'
+    workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
+    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/drain_tasks.sh")}"'
 
     cm = ['inference_param']
     if "MOUNT_SECRETES" in param:
@@ -292,7 +293,7 @@ def drain_tasks_op(dag, param, queue):
 
     return DockerWithVariablesOperator(
         cm,
-        mount_point=cv_path,
+        mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='drain_tasks',
         command=cmdlist,
         xcom_push=True,
@@ -307,7 +308,8 @@ def drain_tasks_op(dag, param, queue):
     )
 
 def setup_env_op(dag, param, queue):
-    cmdlist = 'bash -c "chunkflow/scripts/setup_env.sh"'
+    workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
+    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/setup_env.sh")}"'
 
     cm = ['inference_param']
     if "MOUNT_SECRETES" in param:
@@ -315,7 +317,7 @@ def setup_env_op(dag, param, queue):
 
     return DockerWithVariablesOperator(
         cm,
-        mount_point=cv_path,
+        mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='setup_env',
         command=cmdlist,
         xcom_push=True,
@@ -349,7 +351,8 @@ def skip_worker_op(dag, queue, wid):
 
 
 def worker_op(dag, param, queue, wid):
-    cmdlist = 'bash -c "chunkflow/scripts/inference.sh"'
+    workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
+    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/inference.sh")}"'
 
     cm = ['inference_param']
     if "MOUNT_SECRETES" in param:
@@ -357,7 +360,7 @@ def worker_op(dag, param, queue, wid):
 
     return DockerWithVariablesOperator(
         cm,
-        mount_point=cv_path,
+        mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='worker_{}'.format(wid),
         command=cmdlist,
         force_pull=True,
@@ -425,6 +428,16 @@ generator_default_args = {
 dag_generator = DAG("chunkflow_generator", default_args=generator_default_args, schedule_interval=None)
 dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interval=None)
 
+image_parameters = PythonOperator(
+    task_id="setup_image_parameters",
+    python_callable=check_worker_image_labels,
+    op_args = ("inference_param",),
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=dag_generator)
+
+
 sanity_check_task = PythonOperator(
     task_id="supply_default_parameters",
     python_callable=supply_default_parameters,
@@ -484,6 +497,6 @@ for i in range(min(param.get("TASK_NUM", 1), total_gpus*3)):
 
 scale_up_cluster_task >> workers >> scale_down_cluster_task
 
-sanity_check_task >> drain_tasks >> set_env_task >> process_output_task
+sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
 
 scale_up_cluster_task >> wait_for_chunkflow_task >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task

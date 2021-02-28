@@ -1,4 +1,24 @@
 from datetime import datetime, timedelta
+
+
+def check_worker_image_labels(var):
+    import docker
+    from airflow.models import Variable
+    if var == "param":
+        image_name = "WORKER_IMAGE"
+        default_path = default_seg_workspace
+    elif var == "inference_param":
+        image_name = "CHUNKFLOW_IMAGE"
+        default_path = default_chunkflow_workspace
+
+    param = Variable.get(var, deserialize_json=True)
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+    image = client.images.pull(param[image_name])
+    param["WORKSPACE_PATH"] = image.labels.get("workspace_path", default_path)
+    param["MOUNT_PATH"] = image.labels.get("mount_path", default_mount_path)
+    Variable.set(var, param, serialize_json=True)
+
+
 param_default = {
     "NAME":"minnie_367_0",
 
@@ -50,7 +70,10 @@ CLUSTER_1_CONN_ID = "atomic"
 CLUSTER_2_CONN_ID = "composite"
 
 
-cv_path = "/root/.cloudvolume/secrets/"
+default_mount_path = "/root/.cloudvolume/secrets/"
+default_chunkflow_workspace = "/root/workspace/chunkflow"
+default_seg_workspace = "/root/seg"
+
 cmd_proto = '/bin/bash -c "mkdir $AIRFLOW_TMP_DIR/work && cd $AIRFLOW_TMP_DIR/work && {} && rm -rf $AIRFLOW_TMP_DIR/work || {{ rm -rf $AIRFLOW_TMP_DIR/work; exit 111; }}"'
 
 batch_mip = 3

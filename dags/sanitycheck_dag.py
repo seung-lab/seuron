@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
-from param_default import param_default
+from param_default import param_default, default_seg_workspace, check_worker_image_labels
 from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scale_with_data
 import os
 
 from chunkiterator import ChunkIterator
 from helper_ops import slack_message_op, placeholder_op
-from slack_message import slack_message
+from slack_message import slack_message, task_failure_alert
 
 Variable.setdefault("param", param_default, deserialize_json=True)
 param = Variable.get("param", deserialize_json=True)
@@ -239,8 +239,10 @@ def check_path_exists_op(dag, tag, path):
         dag=dag
     )
 
+
 def check_worker_image_op(dag):
-    cmdline = '/bin/bash -c "ls /root/seg/scripts/init.sh"'
+    workspace_path = param.get("WORKSPACE_PATH", default_seg_workspace)
+    cmdline = f'/bin/bash -c "ls {os.path.join(workspace_path, "scripts/init.sh")}"'
     return DockerWithVariablesOperator(
         [],
         task_id='check_worker_image',
@@ -382,6 +384,14 @@ for p in [("WS","WS"), ("AGG","SEG")]:
     else:
         path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", paths[p[1]+"_PATH"]))
 
+image_parameters = PythonOperator(
+    task_id="setup_image_parameters",
+    python_callable=check_worker_image_labels,
+    op_args = ("param",),
+    on_failure_callback=task_failure_alert,
+    queue="manager",
+    dag=dag)
+
 
 affinity_check = PythonOperator(
     task_id="check_cloudvolume_data",
@@ -398,4 +408,4 @@ summary = PythonOperator(
     queue="manager",
     dag=dag)
 
-image_check >> path_checks >> affinity_check >> summary
+image_parameters >> image_check >> path_checks >> affinity_check >> summary

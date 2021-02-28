@@ -7,7 +7,7 @@ from airflow.models import Variable
 from datetime import timedelta
 from time import sleep
 from slack_message import slack_message
-from param_default import default_args, cv_path
+from param_default import default_args
 from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster
 
 def slack_message_op(dag, tid, msg):
