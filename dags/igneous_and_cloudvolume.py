@@ -52,6 +52,7 @@ def mount_secrets(func):
     def inner(*args, **kwargs):
         import os
         from airflow.models import Variable
+        from slack_message import slack_message
         cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
         if not os.path.exists(cv_secrets_path):
             os.makedirs(cv_secrets_path)
@@ -63,6 +64,7 @@ def mount_secrets(func):
             v = Variable.get(k)
             with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
                 value_file.write(v)
+            slack_message(f"mount secret `{k}` to `{cv_secrets_path}`")
         try:
             return func(*args, **kwargs)
         except Exception as e:
