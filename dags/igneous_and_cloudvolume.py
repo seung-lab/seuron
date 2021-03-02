@@ -1,31 +1,50 @@
 from functools import wraps
 
+def fetch_worker_messages(ret_queue):
+    from slack_message import slack_message
+    from kombu.simple import SimpleQueue
+    while True:
+        try:
+            message = ret_queue.get_nowait()
+        except SimpleQueue.Empty:
+            break
+        slack_message(f"worker message: {message.payload}")
+        message.ack()
+
+
 def check_queue(queue):
+    from airflow import configuration
     import requests
     from time import sleep
     from slack_message import slack_message
+    from kombu import Connection
+    broker = configuration.get('celery', 'BROKER_URL')
     totalTries = 5
     nTries = totalTries
     count = 0
-    while True:
-        sleep(5)
-        ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
-        if not ret.ok:
-            raise RuntimeError("Cannot connect to rabbitmq management interface")
-        queue_status = ret.json()
-        nTasks = queue_status["messages"]
-        print("Tasks left: {}".format(nTasks))
+    with Connection(broker) as conn:
+        ret_queue = conn.SimpleQueue(queue+"_ret")
+        while True:
+            sleep(5)
+            ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
+            if not ret.ok:
+                raise RuntimeError("Cannot connect to rabbitmq management interface")
+            queue_status = ret.json()
+            nTasks = queue_status["messages"]
+            print("Tasks left: {}".format(nTasks))
 
-        count += 1
-        if count % 60 == 0:
-            slack_message("{} tasks remain in queue {}".format(nTasks, queue))
+            count += 1
+            if count % 60 == 0:
+                slack_message("{} tasks remain in queue {}".format(nTasks, queue))
+            fetch_worker_messages(ret_queue)
 
-        if nTasks == 0:
-            nTries -= 1
-        else:
-            nTries = totalTries
-        if nTries == 0:
-            return
+            if nTasks == 0:
+                nTries -= 1
+            else:
+                nTries = totalTries
+            if nTries == 0:
+                ret_queue.close()
+                return
 
 
 def mount_secrets(func):

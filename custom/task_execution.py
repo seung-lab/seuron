@@ -40,9 +40,10 @@ def command(tag, queue, qurl, timeout, loop):
     conn.release()
     return
 
-def execute(conn, tag, queue, qurl, timeout, loop):
+def execute(conn, tag, queue_name, qurl, timeout, loop):
     print("Pulling from {}".format(qurl))
-    queue = conn.SimpleQueue(queue)
+    queue = conn.SimpleQueue(queue_name)
+    ret_queue = conn.SimpleQueue(queue_name+"_ret")
 
     while True:
         task = 'unknown'
@@ -50,7 +51,7 @@ def execute(conn, tag, queue, qurl, timeout, loop):
             message = queue.get_nowait()
             print("put message into queue: {}".format(message.payload))
             q_task.put(message.payload)
-            if wait_for_task(q_state, conn):
+            if wait_for_task(q_state, ret_queue, conn):
                 print("delete task in queue...")
                 message.ack()
                 print('INFO', task , "succesfully executed")
@@ -81,20 +82,36 @@ def handle_task(q_task, q_state):
         if q_task.qsize() > 0:
             msg = q_task.get()
             print("run task: {}".format(msg))
-            custom_worker.process_task(msg)
-            q_state.put("done")
+            ret = custom_worker.process_task(msg)
+            if isinstance(ret, dict):
+                if ret.get('ret', None):
+                    ret['msg'] = "done"
+                    q_state.put(ret)
+                else:
+                    q_state.put("done")
+            else:
+                q_state.put("done")
 
 
-def wait_for_task(q_state, conn):
+def wait_for_task(q_state, ret_queue, conn):
     idle_count = 0
     while True:
         if q_state.qsize() > 0:
             msg = q_state.get()
             while q_state.qsize() > 0:
                 msg = q_state.get()
+            print(msg)
             if msg == "done":
                 print("task done")
                 return True
+            elif isinstance(msg, dict):
+                if msg.get('msg', None) == "done":
+                    if msg.get('ret', None):
+                        ret_queue.put(json.dumps(msg['ret']))
+                    print("task done")
+                    return True
+                print("message unknown: {}".format(msg))
+                return False
             else:
                 print("message unknown: {}".format(msg))
                 return False
