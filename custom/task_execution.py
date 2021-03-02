@@ -32,7 +32,7 @@ def command(tag, queue, qurl, timeout, loop):
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
 
-    conn = Connection(qurl, heartbeat=120)
+    conn = Connection(qurl, heartbeat=timeout)
     worker = threading.Thread(target=handle_task, args=(q_task, q_state,))
     worker.daemon = True
     worker.start()
