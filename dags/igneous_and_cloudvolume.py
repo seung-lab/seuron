@@ -345,9 +345,9 @@ def mesh(seg_cloudpath, mesh_quality):
 @kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
 def mesh_manifest(seg_cloudpath, bbox, chunk_size):
     from igneous.tasks import MeshManifestTask
-    from chunkiterator import ChunkIterator
     from os.path import commonprefix
     from slack_message import slack_message
+    import math
     #FIXME: should reuse the function in segmentation scripts
     layer = 1
     bits_per_dim = 10
@@ -360,37 +360,37 @@ def mesh_manifest(seg_cloudpath, bbox, chunk_size):
 
     chunk_voxels = 1 << (64-n_bits_for_layer_id-bits_per_dim*3)
 
-    v = ChunkIterator(bbox, chunk_size)
-
     prefix_list = []
-    for c in v:
-        if c.mip_level() == 0:
-            x, y, z = c.coordinate()
-            min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
-            max_id = min_id + chunk_voxels
-            if len(str(min_id)) != len(str(max_id)):
-                raise NotImplementedError("No common prefix, need to split the range")
-            prefix = commonprefix([str(min_id), str(max_id)])
-            if len(prefix) == 0:
-                raise NotImplementedError("No common prefix, need to split the range")
-            digits = len(str(min_id)) - len(prefix) - 1
-            mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
-            #print(int(mid),int(mid)-1)
-            prefix1 = commonprefix([str(min_id), str(mid-1)])
-            prefix2 = commonprefix([str(max_id), str(mid)])
-            if len(prefix1) <= len(prefix):
-                prefix_list.append(prefix)
-            else:
-                prefix_list.append(prefix1)
-                prefix_list.append(prefix2)
+    for x in range(math.ceil((bbox[3]-bbox[0])/chunk_size[0])):
+        for y in range(math.ceil((bbox[4]-bbox[1])/chunk_size[1])):
+            for z in range(math.ceil((bbox[5]-bbox[2])/chunk_size[2])):
+                min_id = layer << layer_offset | x << x_offset | y << y_offset | z << z_offset
+                max_id = min_id + chunk_voxels
+                if len(str(min_id)) != len(str(max_id)):
+                    raise NotImplementedError("No common prefix, need to split the range")
+                prefix = commonprefix([str(min_id), str(max_id)])
+                if len(prefix) == 0:
+                    raise NotImplementedError("No common prefix, need to split the range")
+                digits = len(str(min_id)) - len(prefix) - 1
+                mid = int(prefix+str(max_id)[len(prefix)]+"0"*digits)
+                #print(int(mid),int(mid)-1)
+                prefix1 = commonprefix([str(min_id), str(mid-1)])
+                prefix2 = commonprefix([str(max_id), str(mid)])
+                if len(prefix1) <= len(prefix):
+                    prefix_list.append(prefix)
+                else:
+                    prefix_list.append(prefix1)
+                    prefix_list.append(prefix2)
 
-    task_list = []
     tasks = []
-    for p in sorted(prefix_list, key=len):
-        if any(p.startswith(s) for s in task_list):
-            print("Already considered, skip {}".format(p))
+    prefix_list = sorted(prefix_list)
+    ptask = None
+    for p in prefix_list:
+        if ptask and p.startswith(ptask):
+            print(f"Already considered task {ptask}, skip {p}")
             continue
-        task_list.append(p)
+
+        ptask = p
         t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
         tasks.append(t)
 
