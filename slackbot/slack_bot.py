@@ -107,6 +107,15 @@ def replyto(msg, reply, username=workerid, broadcast=False):
 
 
 def cancel_run(msg):
+    replyto(msg, "Shutting down clusters...")
+    cluster_size = get_variable('cluster_target_size', deserialize_json=True)
+    for k in cluster_size:
+        cluster_size[k] = 0
+    set_variable("cluster_target_size", cluster_size, serialize_json=True)
+    run_dag("cluster_management")
+
+    time.sleep(10)
+
     replyto(msg, "Marking all DAG states to success...")
     dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous', 'custom']
     mark_dags_success(dags)
@@ -114,13 +123,6 @@ def cancel_run(msg):
     #try again because some tasks might already been scheduled
     dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous', 'custom']
     mark_dags_success(dags)
-
-    replyto(msg, "Shutting down clusters...")
-    cluster_size = get_variable('cluster_target_size', deserialize_json=True)
-    for k in cluster_size:
-        cluster_size[k] = 0
-    set_variable("cluster_target_size", cluster_size, serialize_json=True)
-    run_dag("cluster_management")
 
     time.sleep(10)
 
