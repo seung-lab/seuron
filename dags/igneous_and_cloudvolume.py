@@ -58,7 +58,7 @@ def mount_secrets(func):
             os.makedirs(cv_secrets_path)
 
         inner_param = Variable.get("param", deserialize_json=True)
-        mount_secrets = inner_param.get("MOUNT_SECRETES", [])
+        mount_secrets = inner_param.get("MOUNT_SECRETS", [])
 
         for k in mount_secrets:
             v = Variable.get(k)
