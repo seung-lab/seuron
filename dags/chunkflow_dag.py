@@ -112,7 +112,7 @@ def supply_default_parameters():
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
-    mount_secrets = param.get("MOUNT_SECRETES", [])
+    mount_secrets = param.get("MOUNT_SECRETS", [])
 
     for k in mount_secrets:
         v = Variable.get(k)
@@ -288,8 +288,8 @@ def drain_tasks_op(dag, param, queue):
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/drain_tasks.sh")}"'
 
     cm = ['inference_param']
-    if "MOUNT_SECRETES" in param:
-        cm += param["MOUNT_SECRETES"]
+    if "MOUNT_SECRETS" in param:
+        cm += param["MOUNT_SECRETS"]
 
     return DockerWithVariablesOperator(
         cm,
@@ -312,8 +312,8 @@ def setup_env_op(dag, param, queue):
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/setup_env.sh")}"'
 
     cm = ['inference_param']
-    if "MOUNT_SECRETES" in param:
-        cm += param["MOUNT_SECRETES"]
+    if "MOUNT_SECRETS" in param:
+        cm += param["MOUNT_SECRETS"]
 
     return DockerWithVariablesOperator(
         cm,
@@ -355,8 +355,8 @@ def worker_op(dag, param, queue, wid):
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/inference.sh")}"'
 
     cm = ['inference_param']
-    if "MOUNT_SECRETES" in param:
-        cm += param["MOUNT_SECRETES"]
+    if "MOUNT_SECRETS" in param:
+        cm += param["MOUNT_SECRETS"]
 
     return DockerWithVariablesOperator(
         cm,

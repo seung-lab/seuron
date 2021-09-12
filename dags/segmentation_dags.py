@@ -550,8 +550,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         aux_agg_tasks.append(comp_seg_task)
 
     cm = ["param"]
-    if "MOUNT_SECRETES" in param:
-        cm += param["MOUNT_SECRETES"]
+    if "MOUNT_SECRETS" in param:
+        cm += param["MOUNT_SECRETS"]
 
     if top_mip < batch_mip:
         local_batch_mip = top_mip

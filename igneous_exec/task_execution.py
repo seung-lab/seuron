@@ -25,7 +25,7 @@ def command(tag, queue, qurl, timeout, loop):
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
-    mount_secrets = param.get("MOUNT_SECRETES", [])
+    mount_secrets = param.get("MOUNT_SECRETS", [])
 
     for k in mount_secrets:
         v = Variable.get(k)
