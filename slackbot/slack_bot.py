@@ -84,8 +84,8 @@ def report(msg):
 def extract_command(msg):
     cmd = msg["text"].replace(workerid, "").replace(botid, "")
     cmd = cmd.translate(str.maketrans('', '', string.punctuation))
-    cmd = cmd.lower().replace(" ", "")
-    return cmd
+    cmd = cmd.lower()
+    return "".join(cmd.split())
 
 
 def replyto(msg, reply, username=workerid, broadcast=False):
