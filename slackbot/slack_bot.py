@@ -185,13 +185,6 @@ def download_json(msg):
     filetype, content = download_file(msg)
     if not content:
         return None
-    if filetype == "JavaScript/JSON":
-        try:
-            json_obj = json5.loads(content, object_pairs_hook=OrderedDict)
-        except (ValueError, TypeError) as e:
-            replyto(msg, "Cannot load the json file: {}".format(str(e)))
-            return None
-        return json_obj
     if filetype == "Python":
         scope = {}
         try:
@@ -203,6 +196,13 @@ def download_json(msg):
             replyto(msg, "Cannot execute the `submit_parameters` function in the script")
         upload_param(msg, payloads)
         return payloads
+    else: #if filetype == "JavaScript/JSON":
+        try:
+            json_obj = json5.loads(content, object_pairs_hook=OrderedDict)
+        except (ValueError, TypeError) as e:
+            replyto(msg, "Cannot load the json file: {}".format(str(e)))
+            return None
+        return json_obj
 
 
 def update_inference_param(msg):
