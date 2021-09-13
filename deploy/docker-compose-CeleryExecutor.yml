@@ -3,7 +3,7 @@ services:
     rabbitmq:
         image: rabbitmq:3.8-management
         environment:
-            - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600
+            - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
         volumes:
             - /var/lib/rabbitmq:/var/lib/rabbitmq
         ports:
