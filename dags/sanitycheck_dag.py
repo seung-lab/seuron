@@ -155,26 +155,27 @@ def check_cv_data():
             slack_message("""*Use semantic labels in* `{}`""".format(param["SEM_PATH"]))
 
     if param.get("SKIP_AGG", False):
-        if "SEG_PATH" not in param:
-            slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
-            raise ValueError('Must specify path for existing watershed when SKIP_AGG is used')
-        try:
-            vol_seg = CloudVolume(param["SEG_PATH"])
-        except:
-            slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
-            raise
+        if not all((param.get("SKIP_DOWNSAMPLE", False), param.get("SKIP_MESHING", False), param.get("SKIP_SKELETON", False))):
+            if "SEG_PATH" not in param:
+                slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
+                raise ValueError('Must specify path for a existing segmentation when SKIP_AGG is used')
+            try:
+                vol_seg = CloudVolume(param["SEG_PATH"])
+            except:
+                slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
+                raise
 
-        if param.get("SKIP_WS", False):
-            param["AFF_PATH"] = "N/A" if "AFF_PATH" not in param else param["AFF_PATH"]
-            param["WS_PATH"] = "N/A" if "WS_PATH" not in param else param["WS_PATH"]
-        param["AFF_MIP"] = 0
-        param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
-        Variable.set("param", param, serialize_json=True)
-        if "BBOX" not in param:
-            seg_bbox = vol_seg.bounds
-            param["BBOX"] = [int(x) for x in seg_bbox.to_list()]
+            if param.get("SKIP_WS", False):
+                param["AFF_PATH"] = "N/A" if "AFF_PATH" not in param else param["AFF_PATH"]
+                param["WS_PATH"] = "N/A" if "WS_PATH" not in param else param["WS_PATH"]
+            param["AFF_MIP"] = 0
+            param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
             Variable.set("param", param, serialize_json=True)
-            slack_message("*Process the whole segmentation by default* {}".format(param["BBOX"]))
+            if "BBOX" not in param:
+                seg_bbox = vol_seg.bounds
+                param["BBOX"] = [int(x) for x in seg_bbox.to_list()]
+                Variable.set("param", param, serialize_json=True)
+                slack_message("*Process the whole segmentation by default* {}".format(param["BBOX"]))
 
     else:
         if param.get("SKIP_WS", False):
