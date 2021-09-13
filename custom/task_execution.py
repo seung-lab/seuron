@@ -82,13 +82,13 @@ def handle_task(q_task, q_state):
         if q_task.qsize() > 0:
             msg = q_task.get()
             print("run task: {}".format(msg))
-            ret = custom_worker.process_task(msg)
-            if isinstance(ret, dict):
-                if ret.get('ret', None):
-                    ret['msg'] = "done"
-                    q_state.put(ret)
-                else:
-                    q_state.put("done")
+            val = custom_worker.process_task(msg)
+            if val:
+                ret = {
+                    'msg': "done",
+                    'ret': val
+                }
+                q_state.put(ret)
             else:
                 q_state.put("done")
 
@@ -110,8 +110,9 @@ def wait_for_task(q_state, ret_queue, conn):
                         ret_queue.put(json.dumps(msg['ret']))
                     print("task done")
                     return True
-                print("message unknown: {}".format(msg))
-                return False
+                else:
+                    print("message unknown: {}".format(msg))
+                    return False
             else:
                 print("message unknown: {}".format(msg))
                 return False

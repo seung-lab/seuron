@@ -1,18 +1,24 @@
 from functools import wraps
 
-def fetch_worker_messages(ret_queue):
+def process_worker_messages(ret_queue, oc):
     from slack_message import slack_message
     from kombu.simple import SimpleQueue
+    from time import sleep
+    import json
     while True:
         try:
             message = ret_queue.get_nowait()
         except SimpleQueue.Empty:
             break
-        slack_message(f"worker message: {message.payload}")
+        if oc:
+            oc.update(json.loads(message.payload))
+        else:
+            slack_message(f"worker message: {message.payload}")
         message.ack()
+        sleep(1)
 
 
-def check_queue(queue):
+def check_queue(queue, oc=None):
     from airflow import configuration
     import requests
     from time import sleep
@@ -36,7 +42,7 @@ def check_queue(queue):
             count += 1
             if count % 60 == 0:
                 slack_message("{} tasks remain in queue {}".format(nTasks, queue))
-            fetch_worker_messages(ret_queue)
+            process_worker_messages(ret_queue, oc)
 
             if nTasks == 0:
                 nTries -= 1
@@ -110,7 +116,16 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
             broker = configuration.get('celery', 'BROKER_URL')
 
             try:
-                tasks = create_tasks(*args, **kwargs)
+                ret = create_tasks(*args, **kwargs)
+                if isinstance(ret, dict):
+                    tasks = ret.get('tasks', None)
+                    oc = ret.get('outputcollector', None)
+                elif isinstance(ret, list):
+                    task = ret
+                    oc = None
+                else:
+                    slack_message("{} must return a list or a dict".format(create_tasks.__name__))
+                    return
                 if not tasks:
                     slack_message("No tasks submitted by {}".format(create_tasks.__name__))
                     return
@@ -124,8 +139,10 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
 
                 target_size = (1+len(tasks)//worker_factor)
                 ramp_up_cluster(cluster_name, min(target_size, 10) , target_size)
-                check_queue(queue_name)
+                check_queue(queue_name, oc)
                 ramp_down_cluster(cluster_name, 0)
+                if oc:
+                    oc.finalize()
 
                 slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
 
@@ -508,6 +525,14 @@ def submit_custom_tasks():
         raise
 
     slack_message(":arrow_forward: submitting {} custom tasks".format(len(tasks)))
-    return tasks
+
+    if "OutputCollector" in globals() and callable(globals()["OutputCollector"]):
+        oc = globals()["OutputCollector"]()
+        return {
+            'tasks': tasks,
+            'outputcollector': oc
+        }
+    else:
+        return tasks
 
 
