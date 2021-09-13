@@ -387,6 +387,15 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     chunk_size = param["CHUNK_SIZE"]
 
+    v = ChunkIterator(data_bbox, chunk_size)
+    top_mip = v.top_mip_level()
+    batch_mip = param.get("BATCH_MIP", 3)
+    high_mip = param.get("HIGH_MIP", 5)
+    if param.get("OVERLAP_MODE", False):
+        overlap_mip = param.get("OVERLAP_MIP", batch_mip)
+    local_batch_mip = batch_mip
+    aux_queue = "atomic" if top_mip < high_mip else "composite_"+str(top_mip)
+
 
     #data_bbox = [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
     starting_msg ='''*Start Segmenting {name}*
@@ -499,16 +508,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     wait["agg"] = wait_op(dag_manager, "agg_done")
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
-
-    v = ChunkIterator(data_bbox, chunk_size)
-    top_mip = v.top_mip_level()
-    batch_mip = param.get("BATCH_MIP", 3)
-    high_mip = param.get("HIGH_MIP", 5)
-    if param.get("OVERLAP_MODE", False):
-        overlap_mip = param.get("OVERLAP_MIP", batch_mip)
-    local_batch_mip = batch_mip
-    aux_queue = "atomic" if top_mip < high_mip else "composite_"+str(top_mip)
-
 
     check_seg = PythonOperator(
         task_id="Check_Segmentation",
