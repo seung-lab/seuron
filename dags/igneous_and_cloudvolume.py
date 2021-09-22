@@ -121,7 +121,7 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                     tasks = ret.get('tasks', None)
                     oc = ret.get('outputcollector', None)
                 elif isinstance(ret, list):
-                    task = ret
+                    tasks = ret
                     oc = None
                 else:
                     slack_message("{} must return a list or a dict".format(create_tasks.__name__))
