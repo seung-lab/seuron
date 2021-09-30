@@ -8,6 +8,7 @@ services:
             - /var/lib/rabbitmq:/var/lib/rabbitmq
         ports:
             - "5672:5672"
+            - "15672:15672"
         sysctls:
             - net.ipv4.tcp_keepalive_intvl=45
             - net.ipv4.tcp_keepalive_probes=15
