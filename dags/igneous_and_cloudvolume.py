@@ -17,6 +17,26 @@ def process_worker_messages(ret_queue, oc):
         message.ack()
         sleep(1)
 
+def process_worker_errors(err_queue):
+    from slack_message import slack_message
+    from kombu.simple import SimpleQueue
+    import json
+    import base64
+    err_msg = None
+    msg_count = 0
+    while True:
+        try:
+            message = err_queue.get_nowait()
+        except SimpleQueue.Empty:
+            break
+        if not err_msg:
+            err_msg = base64.b64decode(message.payload.encode("UTF-8")).decode("UTF-8")
+        msg_count += 1
+        message.ack()
+
+    if err_msg:
+        slack_message(f"{msg_count} worker errors: {err_msg}")
+
 
 def check_queue(queue, oc=None):
     from airflow import configuration
@@ -30,6 +50,7 @@ def check_queue(queue, oc=None):
     count = 0
     with Connection(broker) as conn:
         ret_queue = conn.SimpleQueue(queue+"_ret")
+        err_queue = conn.SimpleQueue(queue+"_err")
         while True:
             sleep(5)
             ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
@@ -43,6 +64,7 @@ def check_queue(queue, oc=None):
             if count % 60 == 0:
                 slack_message("{} tasks remain in queue {}".format(nTasks, queue))
             process_worker_messages(ret_queue, oc)
+            process_worker_errors(err_queue)
 
             if nTasks == 0:
                 nTries -= 1
