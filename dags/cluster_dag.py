@@ -45,7 +45,7 @@ def check_queue(queue):
     import requests
     ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
     if not ret.ok:
-        slack_message(f"Cannot get info for queue {queue}, assume 0 tasks")
+        slack_message(f"Cannot get info for queue {queue}, assume 0 tasks", channel="#seuron-alerts")
         return 0
     queue_status = ret.json()
     return queue_status["messages"]
