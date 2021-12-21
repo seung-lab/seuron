@@ -308,8 +308,9 @@ def plot_histogram(data, title, xlabel, ylabel, fn):
     import math
     import matplotlib.pyplot as plt
     plt.clf()
+    min_bin = math.floor(math.log10(max(1,min(data))))
     max_bin = math.ceil(math.log10(max(data)))
-    plt.hist(data, bins=np.logspace(0, max_bin, max_bin+1))
+    plt.hist(data, bins=np.logspace(min_bin, max_bin, (max_bin-min_bin)+1))
     plt.xscale('log')
     plt.yscale('log')
     plt.title(title)
