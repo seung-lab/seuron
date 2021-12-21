@@ -259,6 +259,9 @@ def run_igneous_scripts(msg):
     _, payload = download_file(msg)
     if payload:
         if not check_running():
+            drain_messages("amqp://172.31.31.249:5672", "igneous")
+            drain_messages("amqp://172.31.31.249:5672", "igneous_ret")
+            drain_messages("amqp://172.31.31.249:5672", "igneous_err")
             create_run_token(msg)
             update_metadata(msg)
             set_variable('igneous_script', payload)
@@ -274,6 +277,9 @@ def run_custom_scripts(msg):
     _, payload = download_file(msg)
     if payload:
         if not check_running():
+            drain_messages("amqp://172.31.31.249:5672", "custom")
+            drain_messages("amqp://172.31.31.249:5672", "custom_ret")
+            drain_messages("amqp://172.31.31.249:5672", "custom_err")
             create_run_token(msg)
             update_metadata(msg)
             set_variable('custom_script', payload)
