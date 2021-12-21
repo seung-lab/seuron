@@ -293,7 +293,12 @@ def create_info(stage, param):
         commit_info(param['WS_PATH'], metadata_seg, provenance)
     elif stage == "agg":
         commit_info(param['SEG_PATH'], metadata_seg, provenance)
+        if param.get("CHUNKED_AGG_OUTPUT", False):
+            slack_message(""":exclamation:Output chunked segmentation to `{}`.""".format(param["CHUNKED_SEG_PATH"]))
+            commit_info(param["CHUNKED_SEG_PATH"], metadata_seg, provenance)
 
+        for i in range(top_mip):
+            commit_info(os.path.join(param['SEG_PATH'], f'layer_{i+1}'), metadata_seg, provenance)
 
         cv_path = os.path.join(param["SEG_PATH"], "size_map")
         metadata_size = CloudVolume.create_new_info(
@@ -307,6 +312,9 @@ def create_info(stage, param):
             volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]
             )
         commit_info(os.path.join(param['SEG_PATH'], 'size_map'), metadata_size, provenance)
+
+    if stage == "ws" or param.get("CHUNKED_AGG_OUTPUT", False):
+        slack_message(""":exclamation: Write the map from chunked segments to real segments to `{}`.""".format(param["CHUNKMAP_OUTPUT"]))
 
 
 def upload_json(path, filename, content):
