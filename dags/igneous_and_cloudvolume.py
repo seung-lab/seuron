@@ -238,12 +238,43 @@ def check_cloud_path_empty(path):
         raise RuntimeError('Path already exist')
 
 @mount_secrets
+def commit_info(path, info, provenance):
+    from cloudvolume import CloudVolume
+    from slack_message import slack_userinfo
+    vol = CloudVolume(path, mip=0, info=info)
+    vol.provenance.processing.append(provenance)
+
+    try:
+        vol.commit_info()
+        vol.commit_provenance()
+    except:
+        slack_message(""":exclamation:*Error*: Cannot commit cloudvolume info to `{}`, check if the bot have write permission.""".format(cv_path))
+        raise
+
+
 def create_info(stage, param):
     import os
     from time import strftime
     from cloudvolume import CloudVolume
     from airflow.models import Variable
     from slack_message import slack_message, slack_userinfo
+
+    param["CHUNKMAP_OUTPUT"] = os.path.join(param["SCRATCH_PATH"], stage, "chunkmap")
+    if param.get("CHUNKED_AGG_OUTPUT", False):
+        param["CHUNKED_SEG_PATH"] = os.path.join(param['SEG_PATH'], f'chunked')
+
+    Variable.set("param", param, serialize_json=True)
+
+    author = slack_userinfo()
+    if author is None:
+        author = "seuronbot"
+
+    provenance = {
+        'method': param,
+        'by': author,
+        'date': strftime('%Y-%m-%d %H:%M %Z')
+    }
+
     bbox = param["BBOX"]
     resolution = param["AFF_RESOLUTION"]
     cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,64])
@@ -257,30 +288,13 @@ def create_info(stage, param):
         chunk_size      = cv_chunk_size, # This must divide evenly into image length or you won't cover the #
         volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]
         )
-    cv_path = param["WS_PATH"] if stage == "ws" else param["SEG_PATH"]
-    vol = CloudVolume(cv_path, mip=0, info=metadata_seg)
-    author = slack_userinfo()
-    if author is None:
-        author = "seuronbot"
 
-    param["CHUNKMAP_OUTPUT"] = os.path.join(param["SCRATCH_PATH"], stage, "chunkmap")
-    Variable.set("param", param, serialize_json=True)
-    slack_message(""":exclamation: Write the map from chunked segments to real segments to `{}`.""".format(param["CHUNKMAP_OUTPUT"]))
+    if stage == 'ws':
+        commit_info(param['WS_PATH'], metadata_seg, provenance)
+    elif stage == "agg":
+        commit_info(param['SEG_PATH'], metadata_seg, provenance)
 
-    try:
-        vol.commit_info()
-    except:
-        slack_message(""":exclamation:*Error*: Cannot commit cloudvolume info to `{}`, check if the bot have write permission.""".format(cv_path))
-        raise
 
-    vol.provenance.processing.append({
-        'method': param,
-        'by': author,
-        'date': strftime('%Y-%m-%d %H:%M %Z')
-    })
-    vol.commit_provenance()
-
-    if stage == "agg":
         cv_path = os.path.join(param["SEG_PATH"], "size_map")
         metadata_size = CloudVolume.create_new_info(
             num_channels    = 1,
@@ -292,8 +306,7 @@ def create_info(stage, param):
             chunk_size      = cv_chunk_size, # This must divide evenly into image length or you won't cover the #
             volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]
             )
-        vol = CloudVolume(cv_path, mip=0, info=metadata_size)
-        vol.commit_info()
+        commit_info(os.path.join(param['SEG_PATH'], 'size_map'), metadata_size, provenance)
 
 
 def upload_json(path, filename, content):
