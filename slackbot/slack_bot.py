@@ -17,9 +17,14 @@ import logging
 from secrets import token_hex
 import threading
 import queue
+import subprocess
+import sys
 
 param_updated = False
 
+
+def install_package(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def clear_queues():
     with q_payload.mutex:
@@ -291,6 +296,23 @@ def run_custom_scripts(msg):
     return
 
 
+def update_python_packages(msg):
+    _, payload = download_file(msg)
+    replyto(msg, "*WARNING:Extra python packages are available for workers only*")
+    if payload:
+        for l in payload.splitlines():
+            replyto(msg, f"Testing python packages *{l}*")
+            try:
+                install_package(l)
+            except:
+                replyto(msg, f":u7981:Failed to install package *{l}*")
+                replyto(msg, "{}".format(traceback.format_exc()))
+                return
+
+        set_variable('python_packages', payload)
+        replyto(msg, "Packages are ready for *workers*")
+
+
 def supply_default_param(json_obj):
     if not json_obj.get("NAME", ""):
         json_obj["NAME"] = token_hex(16)
@@ -375,6 +397,8 @@ def dispatch_command(cmd, payload):
             replyto(msg, "I am busy right now")
         else:
             run_custom_scripts(msg)
+    elif cmd == "updatepythonpackage" or cmd == "updatepythonpackages":
+        update_python_packages(msg)
     elif cmd == "extractcontactsurfaces":
         state, _ = dag_state("sanity_check")
         if check_running():
