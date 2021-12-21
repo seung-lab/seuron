@@ -51,15 +51,6 @@ def create_run_token(msg):
         print(rc)
 
 
-def gcloud_ip():
-    metadata_url = "http://169.254.169.254/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip"
-    response = requests.get(metadata_url, headers={"Metadata-Flavor": "Google"})
-
-    if response.status_code == 200:
-        return response.content.decode("ascii", "ignore")
-    else:
-        return "Unknown ip address"
-
 def filter_msg(msg):
     if 'subtype' in msg and msg['subtype'] != "thread_broadcast":
         return False
@@ -445,7 +436,7 @@ def process_reaction(**payload):
 def hello_world(**payload):
     client = slack.WebClient(token=slack_token)
 
-    host_ip = gcloud_ip()
+    host_ip = get_instance_data("network-interfaces/0/access-configs/0/external-ip")
     set_variable("webui_ip", host_ip)
 
     if get_instance_data("attributes/redeploy") == 'true':
