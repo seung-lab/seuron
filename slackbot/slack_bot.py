@@ -545,7 +545,6 @@ if __name__ == '__main__':
     q_cmd = queue.Queue()
     batch = threading.Thread(target=handle_batch, args=(q_payload, q_cmd,))
 
-    hello_world()
     batch.start()
     set_redeploy_flag(False)
     #logger.info("subprocess pid: {}".format(batch.pid))
