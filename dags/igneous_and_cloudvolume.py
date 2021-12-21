@@ -13,9 +13,10 @@ def process_worker_messages(ret_queue, oc):
         if oc:
             oc.update(json.loads(message.payload))
         else:
+            sleep(1)
             slack_message(f"worker message: {message.payload}")
+
         message.ack()
-        sleep(1)
 
 def process_worker_errors(err_queue):
     from slack_message import slack_message
