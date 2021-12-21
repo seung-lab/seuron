@@ -376,17 +376,17 @@ def get_files(param, prefix):
 
 def process_infos(param, **kwargs):
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
-    prefix = "agg/info/info"
+    prefix = "agg/info/seg_size"
     content = get_files(param, prefix)
     data = np.frombuffer(content, dtype=dt_count)
     title = "Distribution of the segment sizes"
-    xlabel = "Number of supervoxels in the segments"
+    xlabel = "Number of voxels in the segments"
     ylabel = "Number of segments"
     plot_histogram(data['count'], title, xlabel, ylabel, '/tmp/hist.png')
     order = np.argsort(data['count'])[::-1]
     ntops = min(20,len(data))
     msg = '''*Agglomeration Finished*
-*{nseg}* segments (*{nsv}* supervoxels)
+*{nseg}* segments (*{nsv}* voxels)
 
 Largest segments:
 {top20list}'''.format(
