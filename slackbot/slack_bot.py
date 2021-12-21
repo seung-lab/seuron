@@ -9,6 +9,7 @@ from airflow_api import get_variable, run_segmentation, \
     mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
 from bot_info import slack_token, botid, workerid
 from kombu_helper import drain_messages
+from google_metadata import set_redeploy_flag, get_instance_data
 from copy import deepcopy
 import requests
 import re
@@ -401,6 +402,14 @@ def dispatch_command(cmd, payload):
             run_custom_scripts(msg)
     elif cmd == "updatepythonpackage" or cmd == "updatepythonpackages":
         update_python_packages(msg)
+    elif cmd == "redeploydockerstack":
+        if check_running():
+            replyto(msg, "I am busy right now")
+        else:
+            replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
+            set_redeploy_flag(True)
+            time.sleep(60)
+            replyto(msg, "Failed to restart the bot")
     elif cmd == "extractcontactsurfaces":
         state, _ = dag_state("sanity_check")
         if check_running():
@@ -438,6 +447,12 @@ def hello_world(**payload):
 
     host_ip = gcloud_ip()
     set_variable("webui_ip", host_ip)
+
+    if get_instance_data("attributes/redeploy") == 'true':
+        client.chat_postMessage(
+            channel='#seuron-alerts',
+            username=workerid,
+            text="Bot upgraded!")
 
     client.chat_postMessage(
         channel='#seuron-alerts',
@@ -541,6 +556,7 @@ if __name__ == '__main__':
 
     hello_world()
     batch.start()
+    set_redeploy_flag(False)
     #logger.info("subprocess pid: {}".format(batch.pid))
 
     rtmclient = slack.RTMClient(token=slack_token)
