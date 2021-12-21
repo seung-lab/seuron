@@ -19,6 +19,7 @@ import threading
 import queue
 import subprocess
 import sys
+import traceback
 
 param_updated = False
 
@@ -199,6 +200,7 @@ def download_json(msg):
             payloads = scope['submit_parameters']()
         except:
             replyto(msg, "Cannot execute the `submit_parameters` function in the script")
+            replyto(msg, "{}".format(traceback.format_exc()))
         upload_param(msg, payloads)
         return payloads
     else: #if filetype == "JavaScript/JSON":
