@@ -7,17 +7,17 @@ def read_chunk(f, s_i, t_j, p_ji):
 
     for i in range(count):
         seg, vx = struct.unpack('qq', f.read(16))
-        s_i[seg] += vx
+        s_i[int(seg)] += vx
 
     count, = struct.unpack('q', f.read(8))
     for i in range(count):
         seg, vx = struct.unpack('qq', f.read(16))
-        t_j[seg] += vx
+        t_j[int(seg)] += vx
 
     count, = struct.unpack('q', f.read(8))
     for i in range(count):
         s1, s2, vx = struct.unpack('qqq', f.read(24))
-        p_ji[s1][s2] += vx
+        p_ji[int(s1)][int(s2)] += vx
 
     return True
 
@@ -66,7 +66,7 @@ def evaluate_voi(s_i, t_j, p_ji):
 
     return voi_split, voi_merge
 
-def find_large_diff(s_i, t_j, p_ji, param):
+def find_large_diff(s_i, t_j, p_ji, valid_segs):
     flatten_p_ji = []
     for j in p_ji:
         for i in p_ji[j]:
@@ -79,6 +79,8 @@ def find_large_diff(s_i, t_j, p_ji, param):
     max_entry = 1000
     for item in sorted_p:
         j, i, v = item
+        if (len(valid_segs) != 0 and i not in valid_segs):
+            continue
         v_i = s_i[i]
         v_j = t_j[j]
         if threshold*v_i < v < (1-threshold) * v_i or threshold*v_j < v < (1-threshold) * v_j:

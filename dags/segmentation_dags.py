@@ -226,6 +226,20 @@ def get_atomic_files(param, prefix):
 
     return content
 
+def classify_segmentats(param):
+    prefix = "agg/info/semantic_labels"
+    content = get_files(param, prefix)
+    sem_type = [('s', np.uint64), ('dendrite', np.uint64), ('axon', np.uint64), ('glia', np.uint64)]
+    data = np.frombuffer(content, dtype=sem_type)
+    segs = set()
+    for d in data:
+        if d['glia'] > d['dendrite'] and d['glia'] > d['axon']:
+            continue
+        else:
+            segs.add(int(d['s']))
+
+    return segs
+
 def compare_segmentation(param, **kwargs):
     from io import BytesIO
     import os
@@ -233,6 +247,7 @@ def compare_segmentation(param, **kwargs):
     from evaluate_segmentation import read_chunk, evaluate_rand, evaluate_voi, find_large_diff
     from igneous_and_cloudvolume import upload_json
     from airflow import configuration as conf
+    segs = classify_segmentats(param)
     prefix = "agg/evaluation/evaluation"
     content = get_atomic_files(param, prefix)
     f = BytesIO(content)
@@ -246,7 +261,7 @@ def compare_segmentation(param, **kwargs):
             break
     rand_split, rand_merge = evaluate_rand(s_i, t_j, p_ij)
     voi_split, voi_merge = evaluate_voi(s_i, t_j, p_ij)
-    seg_pairs = find_large_diff(s_i, t_j, p_ij, payload)
+    seg_pairs = find_large_diff(s_i, t_j, p_ij, segs)
     scores = {
         'rand_split': rand_split,
         'rand_merge': rand_merge,
