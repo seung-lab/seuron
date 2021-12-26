@@ -494,9 +494,6 @@ def merge_skeleton_fragments(seg_cloudpath):
     tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
                 dust_threshold=1000,
                 tick_threshold=3500,
-                preshift_bits=9,
-                minishard_bits=4,
-                shard_bits=11,
                 minishard_index_encoding='gzip', # or None
                 data_encoding='gzip', # or None
             )
