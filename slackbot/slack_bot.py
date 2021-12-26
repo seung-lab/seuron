@@ -398,6 +398,7 @@ def dispatch_command(cmd, payload):
             replyto(msg, "I am busy right now")
         else:
             replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
+            update_metadata(msg)
             set_redeploy_flag(True)
             time.sleep(60)
             replyto(msg, "Failed to restart the bot")
@@ -439,16 +440,36 @@ def hello_world(**payload):
     host_ip = get_instance_data("network-interfaces/0/access-configs/0/external-ip")
     set_variable("webui_ip", host_ip)
 
-    if get_instance_data("attributes/redeploy") == 'true':
-        client.chat_postMessage(
-            channel='#seuron-alerts',
-            username=workerid,
-            text="Bot upgraded!")
-
     client.chat_postMessage(
         channel='#seuron-alerts',
         username=workerid,
-        text="Hello world from <https://{}/airflow/admin/|{}>!".format(host_ip, host_ip))
+        text="Hello from <https://{}/airflow/admin/|{}>!".format(host_ip, host_ip))
+
+    if get_instance_data("attributes/redeploy") == 'true':
+        send_reset_message(client)
+
+
+def send_reset_message(client):
+    from airflow.hooks.base_hook import BaseHook
+    SLACK_CONN_ID = "Slack"
+    try:
+        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
+        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
+        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
+    except:
+        return
+
+    slack_username = slack_extra['user']
+    slack_channel = slack_extra['channel']
+    slack_thread = slack_extra['thread_ts']
+
+    client.chat_postMessage(
+        username=slack_workername,
+        channel=slack_channel,
+        thread_ts=slack_thread,
+        reply_broadcast=True,
+        text=f"<@{slack_username}>, bot upgraded/rebooted."
+    )
 
 
 def handle_batch(q_payload, q_cmd):
