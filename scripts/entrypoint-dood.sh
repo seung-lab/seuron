@@ -5,6 +5,9 @@ source scripts/add-user-docker.sh
 sudo sed -i "/$AIRFLOW_USER/d" /etc/sudoers
 
 echo "start script with group $DOCKER_GROUP"
+
+python scripts/install_packages.py
+
 # DOCKER_GROUP from /add-user-docker.sh
 if [ -z ${DOCKER_GROUP} ]; then
     exec "$@"
