@@ -41,7 +41,6 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && pip install airflow/[crypto,celery,mysql,slack,gcp_api] \
     && rm -rf igneous \
     && rm -rf airflow \
-    && pip install -U networkx \
     && cd /usr/local/lib/python3.8/site-packages \
     && patch -p1 < ${AIRFLOW_HOME}/celery.patch \
     && patch -p1 < ${AIRFLOW_HOME}/igneous.patch \
