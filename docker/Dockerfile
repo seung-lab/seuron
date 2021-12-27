@@ -88,9 +88,10 @@ COPY . .
 RUN cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
     && grep $(cat version/COMMIT) .git/refs/tags/* -l | xargs -n 1 -r basename > version/TAGS \
     && mv version/COMMIT version/air-tasks.COMMIT.${BASE_DIST}-${BASE_TAG} \
-    && mv version/TAGS version/air-tasks.TAGS.${BASE_DIST}-${BASE_TAG}
-
+    && mv version/TAGS version/air-tasks.TAGS.${BASE_DIST}-${BASE_TAG} \
+    && mkdir -p ${AIRFLOW_HOME}/.cloudvolume/secrets
 RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/custom
+RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
 
 
 USER ${AIRFLOW_USER}
