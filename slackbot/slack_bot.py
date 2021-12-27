@@ -78,6 +78,7 @@ def report(msg):
         replyto(msg, "{workerid}: idle".format(
             workerid=workerid
         ), username="seuronbot", broadcast=True)
+    hello_world()
 
 
 def extract_command(msg):
