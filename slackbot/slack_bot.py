@@ -1,4 +1,5 @@
-import slack
+import slack_sdk as slack
+from slack_sdk.rtm import RTMClient
 import json
 import json5
 from collections import OrderedDict
@@ -418,7 +419,7 @@ def dispatch_command(cmd, payload):
         replyto(msg, "Sorry I do not understand, please try again.")
 
 
-@slack.RTMClient.run_on(event='message')
+@RTMClient.run_on(event='message')
 def process_message(**payload):
     m = payload['data']
     print(json.dumps(m, indent=4))
@@ -426,14 +427,14 @@ def process_message(**payload):
         cmd = extract_command(m)
         dispatch_command(cmd, payload)
 
-@slack.RTMClient.run_on(event='reaction_added')
+@RTMClient.run_on(event='reaction_added')
 def process_reaction(**payload):
     print("reaction added")
     m = payload['data']
     print(json.dumps(m, indent=4))
 
 
-@slack.RTMClient.run_on(event='hello')
+@RTMClient.run_on(event='hello')
 def hello_world(**payload):
     client = slack.WebClient(token=slack_token)
 
@@ -570,7 +571,7 @@ if __name__ == '__main__':
     set_redeploy_flag(False)
     #logger.info("subprocess pid: {}".format(batch.pid))
 
-    rtmclient = slack.RTMClient(token=slack_token)
+    rtmclient = RTMClient(token=slack_token)
     rtmclient.start()
 
     batch.join()
