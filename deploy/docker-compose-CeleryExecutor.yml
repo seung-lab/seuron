@@ -9,6 +9,11 @@ services:
         ports:
             - "5672:5672"
             - "15672:15672"
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+            interval: 5s
+            retries: 5
+            restart: always
 
     postgres:
         image: postgres:14-alpine
@@ -21,6 +26,11 @@ services:
         volumes:
             - /var/lib/postgresql:/var/lib/postgresql
         command: -c max_connections=10000 -c shared_buffers=${POSTGRES_MEM}MB
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "airflow"]
+            interval: 5s
+            retries: 5
+            restart: always
 
     # single shot initialize the database
     init-seuronbot:
@@ -64,6 +74,11 @@ services:
         #ports:
         #    - "8080:8080"
         command: airflow webserver
+        healthcheck:
+            test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+            interval: 10s
+            timeout: 10s
+            retries: 5
         deploy:
             restart_policy:
                 condition: any
@@ -84,6 +99,11 @@ services:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
         command: airflow scheduler
+        healthcheck:
+            test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+            interval: 10s
+            timeout: 10s
+            retries: 5
         deploy:
             restart_policy:
                 condition: any
@@ -106,6 +126,13 @@ services:
             - REMOTE_LOG_FOLDER
             - AIRFLOW__CELERY__CELERYD_CONCURRENCY=4
         command: airflow celery worker -q manager
+        healthcheck:
+            test:
+              - "CMD-SHELL"
+              - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+            interval: 10s
+            timeout: 10s
+            retries: 5
         deploy:
             restart_policy:
                 condition: any
