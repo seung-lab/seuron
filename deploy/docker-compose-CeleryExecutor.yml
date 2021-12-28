@@ -60,8 +60,12 @@ services:
         image: ${SEURON_TAG}
         restart: always
         depends_on:
-            - init-db
-            - rabbitmq
+            init-seuronbot:
+                condition: service_completed_successfully
+            rabbitmq:
+                condition: service_healthy
+            postgres:
+                condition: service_healthy
         environment:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
@@ -87,8 +91,12 @@ services:
         image: ${SEURON_TAG}
         restart: always
         depends_on:
-            - init-db
-            - rabbitmq
+            init-seuronbot:
+                condition: service_completed_successfully
+            rabbitmq:
+                condition: service_healthy
+            postgres:
+                condition: service_healthy
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -112,8 +120,12 @@ services:
         image: ${SEURON_TAG}
         restart: always
         depends_on:
-            - init-db
-            - rabbitmq
+            init-seuronbot:
+                condition: service_completed_successfully
+            rabbitmq:
+                condition: service_healthy
+            postgres:
+                condition: service_healthy
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -141,7 +153,12 @@ services:
         image: ${SEURON_TAG}
         restart: always
         depends_on:
-            - init-db
+            init-seuronbot:
+                condition: service_completed_successfully
+            rabbitmq:
+                condition: service_healthy
+            postgres:
+                condition: service_healthy
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -169,8 +186,10 @@ services:
               protocol: tcp
               mode: host
         depends_on:
-            - webserver
-            - rabbitmq
+            rabbitmq:
+                condition: service_healthy
+            webserver:
+                condition: service_healthy
         deploy:
             restart_policy:
                 condition: any
