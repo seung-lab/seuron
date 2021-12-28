@@ -57,13 +57,6 @@ services:
     webserver:
         image: ${SEURON_TAG}
         restart: always
-        depends_on:
-            init-seuronbot:
-                condition: service_completed_successfully
-            rabbitmq:
-                condition: service_healthy
-            postgres:
-                condition: service_healthy
         environment:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
@@ -88,13 +81,6 @@ services:
     scheduler:
         image: ${SEURON_TAG}
         restart: always
-        depends_on:
-            init-seuronbot:
-                condition: service_completed_successfully
-            rabbitmq:
-                condition: service_healthy
-            postgres:
-                condition: service_healthy
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -117,13 +103,6 @@ services:
     worker-manager:
         image: ${SEURON_TAG}
         restart: always
-        depends_on:
-            init-seuronbot:
-                condition: service_completed_successfully
-            rabbitmq:
-                condition: service_healthy
-            postgres:
-                condition: service_healthy
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -150,13 +129,6 @@ services:
     slackbot:
         image: ${SEURON_TAG}
         restart: always
-        depends_on:
-            init-seuronbot:
-                condition: service_completed_successfully
-            rabbitmq:
-                condition: service_healthy
-            postgres:
-                condition: service_healthy
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -183,11 +155,6 @@ services:
               published: 443
               protocol: tcp
               mode: host
-        depends_on:
-            rabbitmq:
-                condition: service_healthy
-            webserver:
-                condition: service_healthy
         deploy:
             restart_policy:
                 condition: any
