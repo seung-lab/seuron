@@ -23,38 +23,16 @@ services:
         command: -c max_connections=10000 -c shared_buffers=${POSTGRES_MEM}MB
 
     # single shot initialize the database
-    init-db:
-        image: ${SEURON_TAG}
-        restart: on-failure
-        depends_on:
-            - postgres
-            - rabbitmq
-        environment:
-            - FERNET_KEY
-            - REMOTE_LOG_FOLDER
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-        #ports:
-            #- "8080:8080"
-        command: airflow upgradedb
-        deploy:
-            restart_policy:
-                condition: on-failure
-
     init-seuronbot:
         image: ${SEURON_TAG}
         restart: on-failure
-        depends_on:
-            - init-db
         environment:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
             - DEPLOYMENT
             - ZONE
+            - _AIRFLOW_WWW_USER_USERNAME=${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+            - _AIRFLOW_WWW_USER_PASSWORD=${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
         #volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -63,7 +41,7 @@ services:
             #- /var/run/docker.sock:/var/run/docker.sock
         #ports:
             #- "8080:8080"
-        command: python pipeline/init_pipeline.py
+        command: bash pipeline/init_pipeline.sh
         deploy:
             restart_policy:
                 condition: on-failure
