@@ -114,7 +114,7 @@ services:
             - FERNET_KEY
             - REMOTE_LOG_FOLDER
             - AIRFLOW__CELERY__CELERYD_CONCURRENCY=4
-        command: airflow celery worker -q manager
+        command: airflow celery worker --without-gossip --without-mingle -q manager
         healthcheck:
             test:
               - "CMD-SHELL"
