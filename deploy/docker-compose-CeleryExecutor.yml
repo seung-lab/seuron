@@ -192,18 +192,9 @@ services:
                         auth_basic $${AUTH_BASIC_STRING};\\n
                         auth_basic_user_file \\/etc\\/nginx\\/\.htpasswd;\\n
                         $${SSL_BLOCK}\\n
-                        proxy_set_header Host \\$$host;\\n
+                        proxy_set_header Host \\$$http_host;\\n
                         proxy_set_header X-Real-IP \\$$remote_addr;\\n
                         proxy_set_header X-Forwarded-For \\$$proxy_add_x_forwarded_for;\\n
-                        if (\\$$http_referer ~* \\\"\\/airflow\\/*.*\\\") {\\n
-                            set \\$$is_airflow \\\"A\\\";\\n
-                        }\\n
-                        if (\\$$request_uri !~* ^\\/airflow\\/.*) {\\n
-                            set \\$$is_airflow \\\"\\$${is_airflow}B\\\";\\n
-                        }\\n
-                        if (\\$$is_airflow ~* AB) { \\n
-                            rewrite ^\\/*(.*) \\/airflow\\/\\$$1 permanent;\\n
-                        }\\n
                         if (\\$$http_referer ~* \\\".*\\/rabbitmq\\/*.*\\\") {\\n
                             set \\$$is_rabbitmq \\\"A\\\";\\n
                         }\\n
@@ -213,9 +204,12 @@ services:
                         if (\\$$is_rabbitmq = AB) { \\n
                             rewrite ^\\/*(.*) \\/rabbitmq\\/\\$$1 permanent;\\n
                         }\\n
-                        location ^~ \\/airflow\\/ {\\n
-                            proxy_redirect http:\\/\\/\\$$host \\$$scheme:\\/\\/\\$$host;\\n
-                            proxy_pass http:\\/\\/webserver:8080\\/;\\n
+                        location \\/airflow\\/ {\\n
+                            proxy_pass http:\\/\\/webserver:8080;\\n
+                            proxy_redirect off;\\n
+                            proxy_http_version 1.1; \\n
+                            proxy_set_header Upgrade \\$$http_upgrade; \\n
+                            proxy_set_header Connection \\\"upgrade\\\"; \\n
                         }\\n
                         location ^~ \\/rabbitmq\\/ {\\n
                             proxy_pass http:\\/\\/rabbitmq:15672\\/;\\n
