@@ -11,7 +11,7 @@ services:
             - "15672:15672"
         healthcheck:
             test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-            interval: 5s
+            interval: 60s
             retries: 5
 
     postgres:
@@ -27,7 +27,7 @@ services:
         command: -c max_connections=10000 -c shared_buffers=${POSTGRES_MEM}MB
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
-            interval: 5s
+            interval: 60s
             retries: 5
 
     # single shot initialize the database
@@ -71,7 +71,7 @@ services:
         command: airflow webserver
         healthcheck:
             test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/health"]
-            interval: 10s
+            interval: 60s
             timeout: 10s
             retries: 5
         deploy:
@@ -93,7 +93,7 @@ services:
         command: airflow scheduler
         healthcheck:
             test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
-            interval: 10s
+            interval: 60s
             timeout: 10s
             retries: 5
         deploy:
@@ -119,7 +119,7 @@ services:
             test:
               - "CMD-SHELL"
               - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
-            interval: 10s
+            interval: 60s
             timeout: 10s
             retries: 5
         deploy:
