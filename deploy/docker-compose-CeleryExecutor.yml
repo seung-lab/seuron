@@ -20,15 +20,26 @@ services:
             - POSTGRES_USER=airflow
             - POSTGRES_PASSWORD=airflow
             - POSTGRES_DB=airflow
-        ports:
-            - "5432:5432"
         volumes:
             - /var/lib/postgresql/data:/var/lib/postgresql/data
-        command: -c max_connections=10000 -c shared_buffers=${POSTGRES_MEM}MB
+        command: -c max_connections=100 -c shared_buffers=${POSTGRES_MEM}MB
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
             interval: 60s
             retries: 5
+
+    pgbouncer:
+        image: ranlu/pgbouncer:1.16.1
+        environment:
+            - DB_USER=airflow
+            - DB_PASSWORD=airflow
+            - DB_HOST=postgres
+            - DB_NAME=airflow
+            - MAX_CLIENT_CONN=10000
+            - DEFAULT_POOL_SIZE=100
+            - POOL_MODE=transaction
+        ports:
+            - "5432:5432"
 
     # single shot initialize the database
     init-seuronbot:
