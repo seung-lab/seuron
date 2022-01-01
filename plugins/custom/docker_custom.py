@@ -238,7 +238,7 @@ class DockerConfigurableOperator(DockerOperator):
             host_args.update(self.host_args)
 
             container_args = {
-                'command': self.get_command(),
+                'command': self.format_command(self.command),
                 'environment': self.environment,
                 'host_config': self.cli.create_host_config(**host_args),
                 'image': image,
@@ -271,7 +271,7 @@ class DockerConfigurableOperator(DockerOperator):
             if exit_code != 0:
                 raise AirflowException('docker container failed')
 
-            if self.xcom_push_flag:
+            if self.do_xcom_push:
                 return self.cli.logs(
                     container=self.container['Id']) if self.xcom_all else str(
                         line)
