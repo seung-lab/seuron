@@ -260,11 +260,13 @@ class DockerConfigurableOperator(DockerOperator):
             log_reader.start()
 
             line = ''
+            res_lines = []
             for line in self.cli.logs(
                     container=self.container['Id'], stream=True):
-                line = line.strip()
                 if hasattr(line, 'decode'):
                     line = line.decode('utf-8')
+                line = line.strip()
+                res_lines.append(line)
                 self.log.info(line)
 
             exit_code = self.cli.wait(self.container['Id'])['StatusCode']
@@ -272,9 +274,7 @@ class DockerConfigurableOperator(DockerOperator):
                 raise AirflowException('docker container failed')
 
             if self.do_xcom_push:
-                return self.cli.logs(
-                    container=self.container['Id']) if self.xcom_all else str(
-                        line)
+                return res_lines if self.xcom_all else line
 
 
 class DockerRemovableContainer(DockerConfigurableOperator):
