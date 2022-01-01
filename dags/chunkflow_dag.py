@@ -377,8 +377,8 @@ def process_output(**kwargs):
     import re
     param = Variable.get("inference_param", deserialize_json=True)
     ti = kwargs['ti']
-    output = ti.xcom_pull(task_ids="setup_env").decode("utf-8")
-    for l in output.split("\n"):
+    output = ti.xcom_pull(task_ids="setup_env")
+    for l in output:
         if l.startswith("patch number:"):
             m = re.search("\((\d+),\s*(\d+),\s*(\d+)\)", l)
             patch_number = list(m.group(1,2,3))
