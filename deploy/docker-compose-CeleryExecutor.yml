@@ -70,6 +70,7 @@ services:
         restart: always
         environment:
             - FERNET_KEY
+            - SECRET_KEY
             - REMOTE_LOG_FOLDER
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
