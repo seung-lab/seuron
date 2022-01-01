@@ -273,7 +273,7 @@ def compare_segmentation(param, **kwargs):
         "ng_payload": payload,
         "seg_pairs": seg_pairs
     }
-    gs_log_path = conf.get('core', 'remote_log_folder')
+    gs_log_path = conf.get('logging', 'remote_base_log_folder')
     bucket_name = gs_log_path[5:].split('/')[0]
 
     upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
