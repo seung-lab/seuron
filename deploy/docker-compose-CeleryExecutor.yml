@@ -210,6 +210,7 @@ services:
                             proxy_http_version 1.1; \\n
                             proxy_set_header Upgrade \\$$http_upgrade; \\n
                             proxy_set_header Connection \\\"upgrade\\\"; \\n
+                            proxy_set_header X-Forwarded-Proto \\$$scheme; \\n
                         }\\n
                         location ^~ \\/rabbitmq\\/ {\\n
                             proxy_pass http:\\/\\/rabbitmq:15672\\/;\\n
