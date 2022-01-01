@@ -497,31 +497,31 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     wait = dict()
     mark_done = dict()
 
-    triggers["ws"] = TriggerDagRunOperator(
-        task_id="trigger_ws",
-        trigger_dag_id="watershed",
-        python_callable=confirm_dag_run,
-        params={'skip_flag': "SKIP_WS",
-                'op': "watershed"},
-        queue="manager",
-        dag=dag_manager
-    )
-
-    wait["ws"] = wait_op(dag_manager, "ws_done")
+    if param.get("SKIP_WS", False):
+        triggers["ws"] = slack_message_op(dag_manager, "skip_ws", ":exclamation: Skip watershed")
+        wait["ws"] = placeholder_op(dag_manager, "ws_done")
+    else:
+        triggers["ws"] = TriggerDagRunOperator(
+            task_id="trigger_ws",
+            trigger_dag_id="watershed",
+            queue="manager",
+            dag=dag_manager
+        )
+        wait["ws"] = wait_op(dag_manager, "ws_done")
 
     mark_done["ws"] = mark_done_op(dag["ws"], "ws_done")
 
-    triggers["agg"] = TriggerDagRunOperator(
-        task_id="trigger_agg",
-        trigger_dag_id="agglomeration",
-        python_callable=confirm_dag_run,
-        params={'skip_flag': "SKIP_AGG",
-                'op': "agglomeration"},
-        queue="manager",
-        dag=dag_manager
-    )
-
-    wait["agg"] = wait_op(dag_manager, "agg_done")
+    if param.get("SKIP_AGG", False):
+        triggers["agg"] = slack_message_op(dag_manager, "skip_agg", ":exclamation: Skip agglomeration")
+        wait["agg"] = placeholder_op(dag_manager, "agg_done")
+    else:
+        triggers["agg"] = TriggerDagRunOperator(
+            task_id="trigger_agg",
+            trigger_dag_id="agglomeration",
+            queue="manager",
+            dag=dag_manager
+        )
+        wait["agg"] = wait_op(dag_manager, "agg_done")
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
