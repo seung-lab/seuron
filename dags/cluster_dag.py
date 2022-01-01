@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 from airflow.utils.weight_rule import WeightRule
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
-from airflow.operators.python_operator import PythonOperator
-from airflow.operators.latest_only_operator import LatestOnlyOperator
+from airflow.operators.python import PythonOperator
+from airflow.operators.latest_only import LatestOnlyOperator
 
 from slack_message import slack_message
 import google_api_helper as gapi

@@ -1,6 +1,6 @@
 from igneous_and_cloudvolume import submit_igneous_tasks, submit_custom_tasks
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import datetime
 from slack_message import task_failure_alert

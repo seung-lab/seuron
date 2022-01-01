@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from custom.docker_custom import DockerWithVariablesOperator
-from airflow.operators.python_operator import PythonOperator, ShortCircuitOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import inference_param_default, default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels
 from datetime import datetime
