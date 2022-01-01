@@ -292,12 +292,10 @@ def drain_tasks_op(dag, param, queue):
         cm += param["MOUNT_SECRETS"]
 
     return DockerWithVariablesOperator(
-        cm,
+        variables=cm,
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='drain_tasks',
         command=cmdlist,
-        xcom_push=True,
-        xcom_all=True,
         force_pull=True,
         on_failure_callback=task_failure_alert,
         image=param["CHUNKFLOW_IMAGE"],
@@ -316,11 +314,11 @@ def setup_env_op(dag, param, queue):
         cm += param["MOUNT_SECRETS"]
 
     return DockerWithVariablesOperator(
-        cm,
+        variables=cm,
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='setup_env',
         command=cmdlist,
-        xcom_push=True,
+        do_xcom_push=True,
         xcom_all=True,
         force_pull=True,
         on_failure_callback=task_failure_alert,
@@ -359,7 +357,7 @@ def worker_op(dag, param, queue, wid):
         cm += param["MOUNT_SECRETS"]
 
     return DockerWithVariablesOperator(
-        cm,
+        variables=cm,
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='worker_{}'.format(wid),
         command=cmdlist,
