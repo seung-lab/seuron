@@ -66,11 +66,11 @@ def set_variable(key, value):
     Variable.set(key, value)
 
 
-def mark_done_op(dag, var):
+def mark_done_op(dag, process):
     return PythonOperator(
-        task_id="mark_{}".format(var),
+        task_id="mark_{}_done".format(process),
         python_callable=set_variable,
-        op_args=(var, "yes"),
+        op_args=(process, "yes"),
         dag=dag,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
@@ -78,22 +78,22 @@ def mark_done_op(dag, var):
     )
 
 
-def wait(var):
-    Variable.setdefault(var, "no")
+def wait(process):
+    Variable.setdefault(process, "no")
 
     while True:
-        cond = Variable.get(var)
+        cond = Variable.get(process)
         if cond == "yes":
             return
         else:
             sleep(30)
 
 
-def wait_op(dag, var):
+def wait_op(dag, process):
     return PythonOperator(
-        task_id="waiting_for_{}".format(var),
+        task_id="waiting_for_{}".format(process),
         python_callable=wait,
-        op_args=(var,),
+        op_args=(process,),
         dag=dag,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
