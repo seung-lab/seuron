@@ -3,6 +3,7 @@ import shutil
 import json
 from time import sleep
 from docker import APIClient as Client
+from docker.types import Mount
 import docker
 from airflow.exceptions import AirflowException
 from airflow.plugins_manager import AirflowPlugin
@@ -224,10 +225,12 @@ class DockerConfigurableOperator(DockerOperator):
 
         with TemporaryDirectory(prefix='airflowtmp') as host_tmp_dir:
             self.environment['AIRFLOW_TMP_DIR'] = self.tmp_dir
-            self.volumes.append('{0}:{1}'.format(host_tmp_dir, self.tmp_dir))
+            self.mounts.append(
+                Mount(source=host_tmp_dir, target=self.tmp_dir, type='bind')
+            )
 
             host_args = {
-                'binds': self.volumes,
+                'mounts': self.mounts,
                 'cpu_shares': cpu_shares,
                 'mem_limit': self.mem_limit,
                 'network_mode': self.network_mode
@@ -320,8 +323,9 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
                     # import pdb
                     # pdb.set_trace()
                     value_file.write(value)
-            self.volumes.append('{0}:{1}'.format(tmp_var_dir,
-                                                 self.mount_point))
+            self.mounts.append(
+                Mount(source=tmp_var_dir, target=self.mount_point, type='bind')
+            )
             return super().execute(context)
 
 
