@@ -4,7 +4,7 @@ from bot_info import workerid
 
 from airflow import settings
 from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
-from airflow.api.common.experimental.mark_tasks import set_dag_run_state
+from airflow.api.common.experimental.mark_tasks import set_dag_run_state_to_success
 from airflow.utils.state import State
 
 from sqlalchemy.orm import exc
@@ -21,7 +21,7 @@ def mark_dags_success(dags):
             state, exec_date = dag_state(d)
             if state == "running":
                 dag = dagbag.dags[d]
-                set_dag_run_state(dag, dag.latest_execution_date, commit=True)
+                set_dag_run_state_to_success(dag, dag.latest_execution_date, commit=True)
 
 
 def update_slack_connection(payload, token):
@@ -187,4 +187,4 @@ def dag_state(dag_id):
     else:
         latest_run = runs[-1]
         #start_date = ((latest_run.start_date or '') and latest_run.start_date.isoformat())
-        return latest_run.state, latest_run.execution_date.isoformat()
+        return latest_run.state, latest_run.execution_date
