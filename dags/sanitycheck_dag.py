@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 from custom.docker_custom import DockerWithVariablesOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import datetime, timedelta

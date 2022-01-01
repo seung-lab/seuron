@@ -1,8 +1,8 @@
 from airflow import DAG
 
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 
-from airflow.operators.dagrun_operator import TriggerDagRunOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.utils.weight_rule import WeightRule
 from airflow.models import Variable
 

@@ -12,8 +12,8 @@ For Infrakit, the following environment variables must be set:
 from airflow import DAG
 from airflow.models import DagRun
 from datetime import datetime
-from airflow.operators.python_operator import PythonOperator
-from airflow.operators.latest_only_operator import LatestOnlyOperator
+from airflow.operators.python import PythonOperator
+from airflow.operators.latest_only import LatestOnlyOperator
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
 from airflow import models
