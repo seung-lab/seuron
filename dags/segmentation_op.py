@@ -16,7 +16,7 @@ def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op, par
     cmdlist = f'export OVERLAP={overlap} && export STAGE={stage} && {os.path.join(workspace_path, "scripts/run_wrapper.sh")} . composite_chunk_{op} {tag}'
 
     return DockerWithVariablesOperator(
-        config_mounts,
+        variables=config_mounts,
         mount_point=params.get("MOUNT_PATH", default_mount_path),
         task_id='composite_chunk_{}_{}'.format(stage, tag),
         command=cmd_proto.format(cmdlist),
@@ -36,7 +36,7 @@ def composite_chunks_overlap_op(img, dag, config_mounts, queue, tag, params):
     cmdlist = f'export STAGE=agg && {os.path.join(workspace_path, "scripts/run_wrapper.sh")} . composite_chunk_overlap {tag}'
 
     return DockerWithVariablesOperator(
-        config_mounts,
+        variables=config_mounts,
         mount_point=params.get("MOUNT_PATH", default_mount_path),
         task_id='composite_chunk_overlap_{}'.format(tag),
         command=cmd_proto.format(cmdlist),
@@ -57,7 +57,7 @@ def composite_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, o
     cmdlist = f'export OVERLAP={overlap} && export STAGE={stage} && {os.path.join(workspace_path, "scripts/run_batch.sh")} {op} {mip} {tag}'
 
     return DockerWithVariablesOperator(
-        config_mounts,
+        variables=config_mounts,
         mount_point=params.get("MOUNT_PATH", default_mount_path),
         task_id='batch_chunk_{}_{}'.format(stage, tag),
         command=cmd_proto.format(cmdlist),
@@ -76,7 +76,7 @@ def remap_chunks_batch_op(img, dag, config_mounts, queue, mip, tag, stage, op, p
     workspace_path = params.get("WORKSPACE_PATH", "/root/seg")
     cmdlist = f'export STAGE={stage} && {os.path.join(workspace_path, "scripts/remap_batch.sh")} {stage} {mip} {tag}'
     return DockerWithVariablesOperator(
-        config_mounts,
+        variables=config_mounts,
         mount_point=params.get("MOUNT_PATH", "/root/.cloudvolume/secrets"),
         task_id='remap_chunk_{}_{}'.format(stage, tag),
         command=cmd_proto.format(cmdlist),

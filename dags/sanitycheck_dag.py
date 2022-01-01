@@ -245,7 +245,7 @@ def check_worker_image_op(dag):
     workspace_path = param.get("WORKSPACE_PATH", default_seg_workspace)
     cmdline = f'/bin/bash -c "ls {os.path.join(workspace_path, "scripts/init.sh")}"'
     return DockerWithVariablesOperator(
-        [],
+        variables=[],
         task_id='check_worker_image',
         command=cmdline,
         default_args=default_args,
