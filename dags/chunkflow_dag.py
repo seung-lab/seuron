@@ -403,7 +403,7 @@ def process_output(**kwargs):
 
     Variable.set("inference_param", param, serialize_json=True)
 
-    gs_log_path = conf.get('core', 'remote_log_folder')
+    gs_log_path = conf.get('logging', 'remote_base_log_folder')
 
     upload_json(os.path.join(gs_log_path,"param"), "{}.json".format(param["NAME"]), param)
 
