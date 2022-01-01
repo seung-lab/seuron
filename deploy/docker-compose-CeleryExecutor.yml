@@ -126,13 +126,6 @@ services:
             - REMOTE_LOG_FOLDER
             - AIRFLOW__CELERY__CELERYD_CONCURRENCY=4
         command: airflow celery worker --without-gossip --without-mingle -q manager
-        healthcheck:
-            test:
-              - "CMD-SHELL"
-              - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
-            interval: 60s
-            timeout: 10s
-            retries: 5
         deploy:
             restart_policy:
                 condition: any
