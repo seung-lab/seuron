@@ -1,11 +1,8 @@
-from airflow.hooks.base_hook import BaseHook
-from slack import WebClient
-from airflow.models import Variable
-from param_default import SLACK_CONN_ID
-import json
-
-
 def slack_message(msg, channel=None, broadcast=False, attachment=None):
+    from param_default import SLACK_CONN_ID
+    from airflow.hooks.base_hook import BaseHook
+    import slack_sdk as slack
+    import json
     try:
         slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
@@ -13,7 +10,7 @@ def slack_message(msg, channel=None, broadcast=False, attachment=None):
     except:
         return
 
-    sc = WebClient(slack_token, timeout=300)
+    sc = slack.WebClient(slack_token, timeout=300)
     slack_username = slack_extra['user']
     slack_channel = slack_extra['channel']
     slack_thread = slack_extra['thread_ts']
@@ -54,6 +51,10 @@ def slack_message(msg, channel=None, broadcast=False, attachment=None):
 
 
 def slack_userinfo():
+    from param_default import SLACK_CONN_ID
+    from airflow.hooks.base_hook import BaseHook
+    import slack_sdk as slack
+    import json
     try:
         slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
@@ -62,7 +63,7 @@ def slack_userinfo():
 
     slack_username = slack_extra['user']
 
-    sc = WebClient(slack_token, timeout=600)
+    sc = slack.WebClient(slack_token, timeout=600)
     rc = sc.users_info(
         user=slack_username
     )
@@ -90,6 +91,8 @@ def task_start_alert(context):
 
 
 def task_retry_alert(context):
+    from airflow.models import Variable
+    import urllib.parse
     ti = context.get('task_instance')
     last_try = ti.try_number - 1
     if last_try > 0 and last_try % 5 == 0:
@@ -104,6 +107,8 @@ def task_retry_alert(context):
         slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), None, context)
 
 def task_failure_alert(context):
+    from airflow.models import Variable
+    import urllib.parse
     ti = context.get('task_instance')
     iso = urllib.parse.quote(ti.execution_date.isoformat())
     webui_ip = Variable.get("webui_ip")
