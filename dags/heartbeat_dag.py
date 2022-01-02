@@ -23,7 +23,7 @@ from slack_message import slack_message
 DAG_ID = 'pipeline_heartbeat'
 
 default_args = {
-    'owner': 'airflow',
+    'owner': 'seuronbot',
     'depends_on_past': False,
     'start_date': datetime(2019, 2, 8),
     'catchup': False,

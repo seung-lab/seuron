@@ -6,7 +6,7 @@ from datetime import datetime
 from slack_message import task_failure_alert
 
 igneous_default_args = {
-    'owner': 'airflow',
+    'owner': 'seuronbot',
     'depends_on_past': False,
     'start_date': datetime(2019, 2, 8),
     'catchup': False,
