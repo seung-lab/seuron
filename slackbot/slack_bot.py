@@ -445,7 +445,7 @@ def hello_world(**payload):
     client.chat_postMessage(
         channel='#seuron-alerts',
         username=workerid,
-        text="Hello from <https://{}/airflow/admin/|{}>!".format(host_ip, host_ip))
+        text="Hello from <https://{}/airflow/home|{}>!".format(host_ip, host_ip))
 
     if get_instance_data("attributes/redeploy") == 'true':
         send_reset_message(client)

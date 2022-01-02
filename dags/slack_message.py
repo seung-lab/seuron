@@ -93,10 +93,10 @@ def task_retry_alert(context):
     ti = context.get('task_instance')
     last_try = ti.try_number - 1
     if last_try > 0 and last_try % 5 == 0:
-        iso = ti.execution_date.isoformat()
+        iso = urllib.parse.quote(ti.execution_date.isoformat())
         webui_ip = Variable.get("webui_ip")
         log_url = "https://"+webui_ip + (
-            "/airflow/admin/airflow/log"
+            "/airflow/log"
             "?dag_id={ti.dag_id}"
             "&task_id={ti.task_id}"
             "&execution_date={iso}"
@@ -105,10 +105,10 @@ def task_retry_alert(context):
 
 def task_failure_alert(context):
     ti = context.get('task_instance')
-    iso = ti.execution_date.isoformat()
+    iso = urllib.parse.quote(ti.execution_date.isoformat())
     webui_ip = Variable.get("webui_ip")
     log_url = "https://"+webui_ip + (
-        "/airflow/admin/airflow/log"
+        "/airflow/log"
         "?dag_id={ti.dag_id}"
         "&task_id={ti.task_id}"
         "&execution_date={iso}"
