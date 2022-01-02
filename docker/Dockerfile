@@ -32,7 +32,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && apt-get -y install --no-install-recommends $buildDeps sudo \
     && pip install -U pip \
     && pip install "apache-airflow[celery,postgres,rabbitmq,docker,slack,google]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
-    && pip install -U joblib psutil matplotlib aiohttp oauth2client==2.0.2 \
+    && pip install -U joblib psutil matplotlib oauth2client==2.0.2 \
     && pip install -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install -U cloud-volume \
     && pip install -U igneous-pipeline \
