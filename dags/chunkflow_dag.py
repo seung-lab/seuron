@@ -415,7 +415,7 @@ def process_output(**kwargs):
     slack_message('Output path: `{}`'.format(param["OUTPUT_PATH"]), broadcast=True)
 
 generator_default_args = {
-    'owner': 'airflow',
+    'owner': 'seuronbot',
     'depends_on_past': False,
     'start_date': datetime(2019, 2, 8),
     'catchup': False,
