@@ -527,7 +527,7 @@ def submit_igneous_tasks():
         slack_message(":exclamation:*Error* cannot find the submit_tasks function")
         return
 
-    tasks = globals()["submit_tasks"]()
+    tasks = list(globals()["submit_tasks"]())
 
     if not tasks:
         return
@@ -557,7 +557,7 @@ def submit_custom_tasks():
         slack_message(":exclamation:*Error* cannot find the process_task function")
         return
 
-    tasks = globals()["submit_tasks"]()
+    tasks = list(globals()["submit_tasks"]())
 
     if not tasks:
         return
