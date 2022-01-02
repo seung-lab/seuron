@@ -1,5 +1,5 @@
 import slack_sdk as slack
-from slack_sdk.rtm import RTMClient
+from slack_sdk.rtm_v2 import RTMClient
 import json
 import json5
 from collections import OrderedDict
@@ -24,6 +24,7 @@ import sys
 import traceback
 
 param_updated = False
+rtmclient = RTMClient(token=slack_token)
 
 
 def install_package(package):
@@ -330,9 +331,8 @@ def update_ip_address():
     return host_ip
 
 
-def dispatch_command(cmd, payload):
+def dispatch_command(cmd, msg):
     global param_updated
-    msg = payload['data']
     print(cmd)
     if cmd == "parameters":
         param = get_variable("param", deserialize_json=True)
@@ -429,34 +429,32 @@ def dispatch_command(cmd, payload):
         replyto(msg, "Sorry I do not understand, please try again.")
 
 
-@RTMClient.run_on(event='message')
-def process_message(**payload):
-    m = payload['data']
-    print(json.dumps(m, indent=4))
-    if filter_msg(m):
-        cmd = extract_command(m)
-        dispatch_command(cmd, payload)
+@rtmclient.on('message')
+def process_message(client: RTMClient, event: dict):
+    print(json.dumps(event, indent=4))
+    if filter_msg(event):
+        cmd = extract_command(event)
+        dispatch_command(cmd, event)
 
-@RTMClient.run_on(event='reaction_added')
-def process_reaction(**payload):
+@rtmclient.on('reaction_added')
+def process_reaction(client: RTMClient, event: dict):
     print("reaction added")
-    m = payload['data']
-    print(json.dumps(m, indent=4))
+    print(json.dumps(event, indent=4))
 
 
-@RTMClient.run_on(event='hello')
-def hello_world(**payload):
-    client = slack.WebClient(token=slack_token)
+@rtmclient.on('hello')
+def hello_world(client: RTMClient, event: dict):
+    web_client = client.web_client
 
     host_ip = update_ip_address()
 
-    client.chat_postMessage(
+    web_client.chat_postMessage(
         channel='#seuron-alerts',
         username=workerid,
         text="Hello from <https://{}/airflow/home|{}>!".format(host_ip, host_ip))
 
     if get_instance_data("attributes/redeploy") == 'true':
-        send_reset_message(client)
+        send_reset_message(web_client)
 
 
 def send_reset_message(client):
@@ -576,13 +574,10 @@ if __name__ == '__main__':
     q_cmd = queue.Queue()
     batch = threading.Thread(target=handle_batch, args=(q_payload, q_cmd,))
 
-    hello_world()
-
     batch.start()
     set_redeploy_flag(False)
     #logger.info("subprocess pid: {}".format(batch.pid))
 
-    rtmclient = RTMClient(token=slack_token)
     rtmclient.start()
 
     batch.join()
