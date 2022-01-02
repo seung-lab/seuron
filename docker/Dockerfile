@@ -17,35 +17,29 @@ ARG AIRFLOW_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME ${AIRFLOW_HOME}
 ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
+ARG AIRFLOW_VERSION=2.2.3
+ENV AIRFLOW_VERSION ${AIRFLOW_VERSION}
 
 WORKDIR ${AIRFLOW_HOME}
 
-COPY ./setup_airflow.py ./celery.patch ./igneous.patch ./
-
 RUN savedAptMark="$(apt-mark showmanual)" \
     && apt-get -y update \
-    && apt-get -y install --no-install-recommends apt-transport-https ca-certificates gnupg curl \
+    && apt-get -y install --no-install-recommends apt-transport-https ca-certificates gnupg curl parallel \
     && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-sdk -y \
-    && buildDeps='git build-essential libmariadb-dev libxml2-dev libxslt1-dev' \
+    && buildDeps='git build-essential' \
+    && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
+    && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && apt-get -y install --no-install-recommends $buildDeps sudo \
     && pip install -U pip \
-    && pip install -U numpy joblib psutil matplotlib \
-    && pip install -U cloud-volume json5 \
-    && CFLAGS="-Os -g0 -Wl,--strip-all" pip install -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
-    && git clone https://github.com/seung-lab/airflow --depth 1 -b v1-9-stable-3-ranl_cherrypick \
-    && git clone https://github.com/seung-lab/igneous --depth 1 \
+    && pip install "apache-airflow[celery,postgres,rabbitmq,docker,slack,google]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
+    && pip install -U joblib psutil matplotlib aiohttp oauth2client==2.0.2 \
+    && pip install -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
+    && pip install -U cloud-volume \
+    && pip install -U igneous-pipeline \
     # Deleting this symlink not handled correctly by shutil.copy
-    && rm -rf airflow/airflow/www/static/docs \
-    && mv setup_airflow.py airflow/setup.py \
-    && pip install igneous/ \
-    && pip install airflow/[crypto,celery,mysql,slack,gcp_api] \
-    && rm -rf igneous \
-    && rm -rf airflow \
-    && cd /usr/local/lib/python3.8/site-packages \
-    && patch -p1 < ${AIRFLOW_HOME}/celery.patch \
-    && patch -p1 < ${AIRFLOW_HOME}/igneous.patch \
+    && cd /usr/local/lib/python${PYTHON_VERSION}/site-packages \
     && apt-mark auto '.*' > /dev/null \
-    && apt-mark manual libmariadb3 libxml2 libxslt1.1 sudo google-cloud-sdk\
+    && apt-mark manual sudo curl google-cloud-sdk parallel \
     && apt-mark manual $savedAptMark \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf \
