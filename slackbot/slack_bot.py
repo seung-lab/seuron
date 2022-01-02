@@ -321,6 +321,15 @@ def supply_default_param(json_obj):
             json_obj["{}_PREFIX".format(p)] = json_obj.get("NG_PREFIX", "gs://ng_scratch_ranl/make_cv_happy/") + p.lower() + "/"
 
 
+def update_ip_address():
+    host_ip = get_instance_data("network-interfaces/0/access-configs/0/external-ip")
+    try:
+        set_variable("webui_ip", host_ip)
+    except:
+        sys.exit("database not ready")
+    return host_ip
+
+
 def dispatch_command(cmd, payload):
     global param_updated
     msg = payload['data']
@@ -439,8 +448,7 @@ def process_reaction(**payload):
 def hello_world(**payload):
     client = slack.WebClient(token=slack_token)
 
-    host_ip = get_instance_data("network-interfaces/0/access-configs/0/external-ip")
-    set_variable("webui_ip", host_ip)
+    host_ip = update_ip_address()
 
     client.chat_postMessage(
         channel='#seuron-alerts',
@@ -567,6 +575,8 @@ if __name__ == '__main__':
     q_payload = queue.Queue()
     q_cmd = queue.Queue()
     batch = threading.Thread(target=handle_batch, args=(q_payload, q_cmd,))
+
+    hello_world()
 
     batch.start()
     set_redeploy_flag(False)
