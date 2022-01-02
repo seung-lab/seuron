@@ -143,12 +143,16 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                 if isinstance(ret, dict):
                     tasks = ret.get('tasks', None)
                     oc = ret.get('outputcollector', None)
-                elif isinstance(ret, list):
+                else:
                     tasks = ret
                     oc = None
-                else:
-                    slack_message("{} must return a list or a dict".format(create_tasks.__name__))
+
+                try:
+                    tasks = list(tasks)
+                except TypeError:
+                    slack_message("{} must return a list of tasks".format(create_tasks.__name__))
                     return
+
                 if not tasks:
                     slack_message("No tasks submitted by {}".format(create_tasks.__name__))
                     return
