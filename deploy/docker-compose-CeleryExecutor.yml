@@ -170,7 +170,7 @@ services:
             BASIC_AUTH_PASSWORD=$$(cat /run/secrets/basic_auth_password) &&
             [ -n \"$$BASIC_AUTH_PASSWORD\" ] &&
                    AUTH_BASIC_STRING=\\\"AirflowAuthorization\\\" &&
-                   htpasswd -b -c /etc/nginx/.htpasswd $${BASIC_AUTH_USERNAME} $$(cat /run/secrets/basic_auth_username) ||
+                   htpasswd -b -c /etc/nginx/.htpasswd $$(cat /run/secrets/basic_auth_username) $${BASIC_AUTH_PASSWORD} ||
             AUTH_BASIC_STRING=off &&
             SSL_CERTIFICATE=$$(cat /run/secrets/ssl_certificate) &&
             [ -n \"$$SSL_CERTIFICATE\" ] &&
