@@ -50,6 +50,7 @@ services:
             - REMOTE_LOG_FOLDER
             - DEPLOYMENT
             - ZONE
+            - _AIRFLOW_DB_UPGRADE='true'
             - _AIRFLOW_WWW_USER_USERNAME=${_AIRFLOW_WWW_USER_USERNAME:-airflow}
             - _AIRFLOW_WWW_USER_PASSWORD=${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
         #volumes:
