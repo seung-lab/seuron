@@ -17,9 +17,9 @@ services:
     postgres:
         image: postgres:13-alpine
         environment:
-            - POSTGRES_USER=airflow
-            - POSTGRES_PASSWORD=airflow
-            - POSTGRES_DB=airflow
+            - POSTGRES_USER
+            - POSTGRES_PASSWORD
+            - POSTGRES_DB
         volumes:
             - /var/lib/postgresql/data:/var/lib/postgresql/data
         command: -c max_connections=100 -c shared_buffers=${POSTGRES_MEM}MB
@@ -31,10 +31,10 @@ services:
     pgbouncer:
         image: ranlu/pgbouncer:1.16.1
         environment:
-            - DB_USER=airflow
-            - DB_PASSWORD=airflow
+            - DB_USER=${POSTGRES_USER}
+            - DB_PASSWORD=${POSTGRES_PASSWORD}
+            - DB_NAME=${POSTGRES_DB}
             - DB_HOST=postgres
-            - DB_NAME=airflow
             - MAX_CLIENT_CONN=10000
             - DEFAULT_POOL_SIZE=100
             - POOL_MODE=transaction
