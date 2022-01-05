@@ -27,18 +27,3 @@ def set_instance_metadata(project, zone, instance, data):
     service = discovery.build('compute', 'v1', credentials=credentials)
     request = service.instances().setMetadata(body=data, project=project, zone=zone, instance=instance)
     return request.execute()
-
-def set_redeploy_flag(value):
-    project_id = get_project_data("project-id")
-    vm_name = get_instance_data("name")
-    vm_zone = get_instance_data("zone").split('/')[-1]
-    data = get_instance_metadata(project_id, vm_zone, vm_name)
-    key_exist = False
-    for item in data['items']:
-        if item['key'] == 'redeploy':
-            item['value'] = value
-            key_exist = True
-
-    if not key_exist:
-        data['items'].append({'key': 'redeploy', 'value':value})
-    set_instance_metadata(project_id, vm_zone, vm_name, data)
