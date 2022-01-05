@@ -27,6 +27,13 @@ function create_www_user() {
        --password "${local_password}" || true
 }
 
+function upgrade_db() {
+    # Runs airflow db upgrade
+    airflow db upgrade || true
+}
+
+upgrade_db
+
 create_www_user
 
 python pipeline/init_pipeline.py
