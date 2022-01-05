@@ -22,7 +22,7 @@ submit_igneous_tasks = PythonOperator(
     priority_weight=100000,
     on_failure_callback=task_failure_alert,
     weight_rule=WeightRule.ABSOLUTE,
-    queue="manager",
+    queue="cluster",
     dag=dag_igneous
 )
 
@@ -36,7 +36,7 @@ submit_custom_tasks = PythonOperator(
     priority_weight=100000,
     on_failure_callback=task_failure_alert,
     weight_rule=WeightRule.ABSOLUTE,
-    queue="manager",
+    queue="cluster",
     dag=dag_custom
 )
 

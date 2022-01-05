@@ -113,6 +113,25 @@ services:
             restart_policy:
                 condition: any
 
+    worker-cluster:
+        image: ${SEURON_TAG}
+        restart: always
+        volumes:
+            # Warning mounting dags/plugins not working for autoscaler
+            #- ../dags/:/usr/local/airflow/dags
+            #- ../plugins:/usr/local/airflow/plugins
+            #- ../config:/usr/local/airflow/config
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /tmp:/tmp
+        environment:
+            - FERNET_KEY
+            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CELERY__WORKER_CONCURRENCY=1
+        command: airflow celery worker --without-gossip --without-mingle -q cluster
+        deploy:
+            restart_policy:
+                condition: any
+
     worker-manager:
         image: ${SEURON_TAG}
         restart: always

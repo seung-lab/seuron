@@ -601,13 +601,13 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         slack_ops['ws']['remap'] >> reset_cluster_after_ws
 
 
-    scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "manager")
+    scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size)
 
-    scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0, "manager")
+    scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0)
 
-    scaling_cs_start = scale_up_cluster_op(dag_cs, "cs_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "manager")
+    scaling_cs_start = scale_up_cluster_op(dag_cs, "cs_start", CLUSTER_1_CONN_ID, 20, cluster1_size)
 
-    scaling_cs_finish = scale_down_cluster_op(dag_cs, "cs_finish", CLUSTER_1_CONN_ID, 0, "manager")
+    scaling_cs_finish = scale_down_cluster_op(dag_cs, "cs_finish", CLUSTER_1_CONN_ID, 0)
 
     scaling_cs_start >> init['cs']
     slack_ops['cs'][top_mip] >> summary_cs >> scaling_cs_finish
@@ -618,13 +618,12 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     igneous_tasks = create_igneous_ops(param, dag_manager)
 
-    scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0, "manager")
+    scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0)
 
-    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_tasks[0]
+    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> igneous_tasks[0]
     igneous_tasks[-1] >> ending_op
     reset_flags >> scaling_global_start
     igneous_tasks[-1]>> scaling_igneous_finish
-    wait["agg"] >> scaling_global_finish
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
@@ -652,22 +651,22 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     if min(high_mip, top_mip) - batch_mip > 2:
         for stage in ["ws", "agg", "cs"]:
             dsize = len(generate_chunks[stage][batch_mip+2])*2
-            scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize, "manager")
+            scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize)
             scaling_ops[stage]["extra_down"].set_upstream(slack_ops[stage][batch_mip+1])
 
     if top_mip >= high_mip:
         for stage in ["ws", "agg", "cs"]:
-            scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0, "manager")
+            scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0)
             scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
 
 
             cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
-            scaling_ops[stage]["up_long"] = scale_up_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 2, cluster2_size, "manager")
+            scaling_ops[stage]["up_long"] = scale_up_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 2, cluster2_size)
 
             for k in generate_chunks[stage][high_mip-1]:
                 scaling_ops[stage]["up_long"].set_upstream(generate_chunks[stage][high_mip-1][k])
 
-            scaling_ops[stage]["down_long"] = scale_down_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0, "manager")
+            scaling_ops[stage]["down_long"] = scale_down_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0)
             if stage == "cs":
                 scaling_ops[stage]["down_long"].set_upstream(summary_cs)
             elif stage == "agg":
@@ -677,6 +676,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     if min(high_mip, top_mip) - batch_mip > 2 or top_mip >= high_mip:
         for stage in ["ws", "agg"]:
-            scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 20, cluster1_size, "manager")
+            scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 20, cluster1_size)
             scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
 

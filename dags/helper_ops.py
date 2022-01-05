@@ -101,7 +101,7 @@ def wait_op(dag, process):
     )
 
 
-def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue):
+def scale_up_cluster_op(dag, stage, key, initial_size, total_size):
     return PythonOperator(
         task_id='resize_{}_{}'.format(stage, total_size),
         python_callable=ramp_up_cluster,
@@ -110,12 +110,12 @@ def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue):
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         trigger_rule="one_success",
-        queue=queue,
+        queue='cluster',
         dag=dag
     )
 
 
-def scale_down_cluster_op(dag, stage, key, size, queue):
+def scale_down_cluster_op(dag, stage, key, size):
     return PythonOperator(
         task_id='resize_{}_{}'.format(stage, size),
         python_callable=ramp_down_cluster,
@@ -124,7 +124,7 @@ def scale_down_cluster_op(dag, stage, key, size, queue):
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         trigger_rule="all_success",
-        queue=queue,
+        queue='cluster',
         dag=dag
     )
 
@@ -138,6 +138,6 @@ def reset_cluster_op(dag, stage, key, initial_size):
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         trigger_rule="all_success",
-        queue='manager',
+        queue='cluster',
         dag=dag
     )
