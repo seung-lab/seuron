@@ -459,6 +459,7 @@ def hello_world(client=None):
         text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 
     if get_instance_data("attributes/redeploy") == 'true':
+        set_redeploy_flag(False)
         send_reset_message(client)
 
 
@@ -595,7 +596,7 @@ if __name__ == '__main__':
     batch = threading.Thread(target=handle_batch, args=(q_payload, q_cmd,))
 
     batch.start()
-    set_redeploy_flag(False)
+
     #logger.info("subprocess pid: {}".format(batch.pid))
 
     rtmclient.start()
