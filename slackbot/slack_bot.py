@@ -10,7 +10,7 @@ from airflow_api import get_variable, run_segmentation, \
     mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
 from bot_info import slack_token, botid, workerid
 from kombu_helper import drain_messages
-from google_metadata import set_redeploy_flag, get_instance_data
+from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 from copy import deepcopy
 import requests
 import re
@@ -558,6 +558,21 @@ def handle_batch(q_payload, q_cmd):
                 break
 
         replyto(msg, "*Batch process finished*")
+
+def set_redeploy_flag(value):
+    project_id = get_project_data("project-id")
+    vm_name = get_instance_data("name")
+    vm_zone = get_instance_data("zone").split('/')[-1]
+    data = get_instance_metadata(project_id, vm_zone, vm_name)
+    key_exist = False
+    for item in data['items']:
+        if item['key'] == 'redeploy':
+            item['value'] = value
+            key_exist = True
+
+    if not key_exist:
+        data['items'].append({'key': 'redeploy', 'value':value})
+    set_instance_metadata(project_id, vm_zone, vm_name, data)
 
 def wait_for_airflow():
     while check_running():
