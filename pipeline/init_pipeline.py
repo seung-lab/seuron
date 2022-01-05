@@ -1,65 +1,42 @@
 from airflow.utils import db as db_utils
 from airflow.models import Variable
 from airflow import models
+from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 import os
 import requests
+import re
 import json
+from collections import defaultdict
 
 
-def gcloud_metadata(key):
-    metadata_url = "http://169.254.169.254/computeMetadata/v1/{}".format(key)
-    response = requests.get(metadata_url, headers={"Metadata-Flavor": "Google"})
+def get_clusters(deployment):
+    re_ig = deployment+r'''-(\w+)-workers-([\w-]+)'''
 
-    if response.status_code == 200:
-        return response.content.decode("ascii", "ignore")
-    else:
-        return None
+    project_id = get_project_data("project-id")
+    vm_name = get_instance_data("name")
+    vm_zone = get_instance_data("zone").split('/')[-1]
+    data = get_instance_metadata(project_id, vm_zone, vm_name)
+    instance_groups = defaultdict(list)
+    for item in data['items']:
+        m = re.match(re_ig, item['key'])
+        if m:
+            cluster = m[1]
+            zone = m[2]
+            instance_groups[cluster].append(
+                {
+                    'name': item['key'],
+                    'zone': zone,
+                    'max_size': int(item['value']),
+                },
+            )
+
+    return instance_groups
 
 
 deployment = os.environ["DEPLOYMENT"]
 zone = os.environ["ZONE"]
 
-project_id = gcloud_metadata("project/project-id")
-if project_id is None:
-    project_id = "unknown"
-
-host_ip = gcloud_metadata("instance/network-interfaces/0/access-configs/0/external-ip")
-if host_ip is None:
-    host_ip = "unknown"
-
-gpu_worker_group = "{deployment}-gpu-workers-{zone}".format(deployment=deployment, zone=zone)
-atomic_worker_group = "{deployment}-atomic-workers-{zone}".format(deployment=deployment, zone=zone)
-composite_worker_group = "{deployment}-composite-workers-{zone}".format(deployment=deployment, zone=zone)
-igneous_worker_group = "{deployment}-igneous-workers-{zone}".format(deployment=deployment, zone=zone)
-custom_worker_group = "{deployment}-custom-workers-{zone}".format(deployment=deployment, zone=zone)
-
-instance_groups = {
-    'gpu': [{
-        'name': gpu_worker_group,
-        'zone': zone,
-        'max_size': 100
-    }],
-    'atomic': [{
-        'name': atomic_worker_group,
-        'zone': zone,
-        'max_size': 100
-    }],
-    'composite': [{
-        'name': composite_worker_group,
-        'zone': zone,
-        'max_size': 1
-    }],
-    'igneous': [{
-        'name': igneous_worker_group,
-        'zone': zone,
-        'max_size': 50
-    }],
-    'custom': [{
-        'name': custom_worker_group,
-        'zone': zone,
-        'max_size': 50
-    }]
-}
+instance_groups = get_clusters(deployment)
 
 target_sizes = {
     'gpu': 0,
