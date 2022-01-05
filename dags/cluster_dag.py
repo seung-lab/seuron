@@ -118,7 +118,7 @@ queue_sizes_task = PythonOperator(
     python_callable=cluster_control,
     priority_weight=100000,
     weight_rule=WeightRule.ABSOLUTE,
-    queue="manager",
+    queue="cluster",
     dag=dag)
 
 latest.set_downstream(queue_sizes_task)
