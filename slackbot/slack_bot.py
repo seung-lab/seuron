@@ -443,18 +443,23 @@ def process_reaction(client: RTMClient, event: dict):
 
 
 @rtmclient.on('hello')
-def hello_world(client: RTMClient, event: dict):
-    web_client = client.web_client
+def process_hello(client: RTMClient, event: dict):
+    hello_world(client.web_client)
+
+
+def hello_world(client=None):
+    if not client:
+        client = slack.WebClient(token=slack_token)
 
     host_ip = update_ip_address()
 
-    web_client.chat_postMessage(
+    client.chat_postMessage(
         channel='#seuron-alerts',
         username=workerid,
-        text="Hello from <https://{}/airflow/home|{}>!".format(host_ip, host_ip))
+        text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 
     if get_instance_data("attributes/redeploy") == 'true':
-        send_reset_message(web_client)
+        send_reset_message(client)
 
 
 def send_reset_message(client):
