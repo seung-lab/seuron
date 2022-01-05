@@ -37,6 +37,7 @@ dag = DAG(
     schedule_interval=SCHEDULE_INTERVAL,
     default_args=default_args,
     catchup=False,
+    tags=['maintenance'],
 )
 
 # To use infrakit with > 1 queue, we will have to modify this code to use

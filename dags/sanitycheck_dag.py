@@ -32,6 +32,7 @@ dag = DAG(
     schedule_interval=None,
     default_args=default_args,
     catchup=False,
+    tags=['segmentation'],
 )
 
 def cv_check_alert(context):

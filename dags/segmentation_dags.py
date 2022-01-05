@@ -102,15 +102,15 @@ def generate_link(param, broadcast, **kwargs):
     slack_message(url, broadcast=broadcast)
 
 
-dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None)
+dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None, tags=['segmentation'])
 
 dag = dict()
 
-dag["ws"] = DAG("watershed", default_args=default_args, schedule_interval=None)
+dag["ws"] = DAG("watershed", default_args=default_args, schedule_interval=None, tags=['segmentation'])
 
-dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=None)
+dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=None, tags=['segmentation'])
 
-dag["cs"] = DAG("contact_surface", default_args=default_args, schedule_interval=None)
+dag["cs"] = DAG("contact_surface", default_args=default_args, schedule_interval=None, tags=['segmentation'])
 
 dag_ws = dag["ws"]
 dag_agg = dag["agg"]
