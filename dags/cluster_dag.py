@@ -39,6 +39,7 @@ dag = DAG(
     schedule_interval=SCHEDULE_INTERVAL,
     default_args=default_args,
     catchup=False,
+    tags=['maintenance'],
 )
 
 def check_queue(queue):

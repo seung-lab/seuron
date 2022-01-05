@@ -13,7 +13,7 @@ igneous_default_args = {
     'retries': 0,
 }
 
-dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule_interval=None)
+dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule_interval=None, tags=['igneous tasks'])
 
 
 submit_igneous_tasks = PythonOperator(
@@ -27,7 +27,7 @@ submit_igneous_tasks = PythonOperator(
 )
 
 
-dag_custom = DAG("custom", default_args=igneous_default_args, schedule_interval=None)
+dag_custom = DAG("custom", default_args=igneous_default_args, schedule_interval=None, tags=['custom tasks'])
 
 
 submit_custom_tasks = PythonOperator(

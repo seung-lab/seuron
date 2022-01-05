@@ -423,8 +423,8 @@ generator_default_args = {
 }
 
 
-dag_generator = DAG("chunkflow_generator", default_args=generator_default_args, schedule_interval=None)
-dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interval=None)
+dag_generator = DAG("chunkflow_generator", default_args=generator_default_args, schedule_interval=None, tags=['inference'])
+dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interval=None, tags=['inference'])
 
 image_parameters = PythonOperator(
     task_id="setup_image_parameters",
