@@ -1,25 +1,89 @@
 imports:
-    - path: deploy-template.jinja
+    - path: common.py
+    - path: networks.py
+    - path: workers.py
+    - path: manager.py
+    - path: deployment.py
 
 resources:
-    - name: deploy
-      type: deploy-template.jinja
+    - name: deployment
+      type: deployment.py
       properties:
-          zone: us-central1-a
-          subnetwork: us-central1
-          user: ranl
-          #password:
-          slackToken: token_for_slack_bot
-          fernetKey: fernetKey_for_airflow
-          secretKey: secretKey_for_airflow_webserver
-          botUserID: slack_bot_id
-          remoteLogFolder: gs_bucket_for_the_logs
+          zone: us-east1-c
+          subnetwork: us-east1
+          user: # username for nginx
+          password: # password for nginx, set it to null if you do not want a password
+          slackToken: # token for slack bot
+          fernetKey: # fernet key for airflow
+          secretKey: # secret key for airflow web service
+          botUserID: # slack id for the bot user
+          remoteLogFolder: # gs location to save airflow logs
           seuronImage: ranlu/air-tasks:airflow2
           project: segmentation
-          managerIP0: 172.31.31.249
-          instanceTypeManager: e2-standard-4
-          instanceTypeGPUWorker: n1-highmem-4
-          instanceTypeAtomicWorker: e2-standard-32
-          instanceTypeCompositeWorker: n2-highmem-96
-          gpuWorkerAcceleratorType: nvidia-tesla-t4
+          managerMachineType: e2-standard-2
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/airflow2/deploy/docker-compose-CeleryExecutor.yml
+          postgresUser: # user name for postgresql
+          postgresPassword: # password for postgresql
+          postgresDB: # name for airflow database
+          workerInstanceGroups:
+            - type: gpu
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: n1-highmem-4
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 4
+            - type: gpu
+              zone: us-central1-c
+              subnetwork: us-central1
+              machineType: n1-highmem-4
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 4
+            - type: gpu
+              zone: us-west1-b
+              subnetwork: us-west1
+              machineType: n1-highmem-4
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 4
+            - type: gpu
+              zone: us-west2-b
+              subnetwork: us-west2
+              machineType: n1-highmem-4
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 4
+            - type: gpu
+              zone: us-east4-b
+              subnetwork: us-east4
+              machineType: n1-highmem-4
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 4
+            - type: atomic
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: e2-standard-32
+              preemptible: True
+              sizeLimit: 100
+            - type: composite
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: e2-standard-32
+              preemptible: False
+              sizeLimit: 1
+            - type: igneous
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: e2-standard-32
+              preemptible: True
+              sizeLimit: 50
+            - type: custom
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: e2-standard-32
+              preemptible: True
+              sizeLimit: 50
+          firewallIPRanges:
+              - 128.112.0.0/16
