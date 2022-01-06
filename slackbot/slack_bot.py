@@ -8,7 +8,7 @@ from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
     sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
     mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
-from bot_info import slack_token, botid, workerid
+from bot_info import slack_token, botid, workerid, broker_url
 from kombu_helper import drain_messages
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 from copy import deepcopy
@@ -128,9 +128,9 @@ def cancel_run(msg):
     time.sleep(10)
 
     replyto(msg, "Draining tasks from the queues...")
-    drain_messages("amqp://172.31.31.249:5672", "igneous")
-    drain_messages("amqp://172.31.31.249:5672", "custom")
-    drain_messages("amqp://172.31.31.249:5672", "chunkflow")
+    drain_messages(broker_url, "igneous")
+    drain_messages(broker_url, "custom")
+    drain_messages(broker_url, "chunkflow")
 
     replyto(msg, "*Current run cancelled*", broadcast=True)
 
@@ -213,7 +213,7 @@ def update_inference_param(msg):
     if json_obj:
         if not check_running():
             clear_queues()
-            drain_messages("amqp://172.31.31.249:5672", "chunkflow")
+            drain_messages(broker_url, "chunkflow")
 
             if isinstance(json_obj, list):
                 replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
@@ -261,9 +261,9 @@ def run_igneous_scripts(msg):
     _, payload = download_file(msg)
     if payload:
         if not check_running():
-            drain_messages("amqp://172.31.31.249:5672", "igneous")
-            drain_messages("amqp://172.31.31.249:5672", "igneous_ret")
-            drain_messages("amqp://172.31.31.249:5672", "igneous_err")
+            drain_messages(broker_url, "igneous")
+            drain_messages(broker_url, "igneous_ret")
+            drain_messages(broker_url, "igneous_err")
             create_run_token(msg)
             update_metadata(msg)
             set_variable('igneous_script', payload)
@@ -279,9 +279,9 @@ def run_custom_scripts(msg):
     _, payload = download_file(msg)
     if payload:
         if not check_running():
-            drain_messages("amqp://172.31.31.249:5672", "custom")
-            drain_messages("amqp://172.31.31.249:5672", "custom_ret")
-            drain_messages("amqp://172.31.31.249:5672", "custom_err")
+            drain_messages(broker_url, "custom")
+            drain_messages(broker_url, "custom_ret")
+            drain_messages(broker_url, "custom_err")
             create_run_token(msg)
             update_metadata(msg)
             set_variable('custom_script', payload)
