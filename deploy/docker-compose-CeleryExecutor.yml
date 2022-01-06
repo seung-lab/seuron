@@ -1,4 +1,22 @@
-version: '3.3'
+version: '3.7'
+x-airflow-common:
+    &airflow-common
+    image: ${SEURON_TAG}
+    restart: always
+    environment:
+        &airflow-common-env
+        AIRFLOW__CORE__SQL_ALCHEMY_CONN:
+        AIRFLOW__CORE__FERNET_KEY:
+        AIRFLOW__CELERY__BROKER_URL:
+        AIRFLOW__CELERY__RESULT_BACKEND:
+        AIRFLOW__WEBSERVER__SECRET_KEY:
+        AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER:
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /tmp:/tmp
+
+
+
 services:
     rabbitmq:
         image: rabbitmq:3.8-management
@@ -43,51 +61,22 @@ services:
 
     # single shot initialize the database
     init-seuronbot:
-        image: ${SEURON_TAG}
+        <<: *airflow-common
         restart: on-failure
         environment:
-            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
-            - AIRFLOW__CORE__FERNET_KEY
-            - AIRFLOW__CELERY__BROKER_URL
-            - AIRFLOW__CELERY__RESULT_BACKEND
-            - AIRFLOW__WEBSERVER__SECRET_KEY
-            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
-            - DEPLOYMENT
-            - ZONE
-            - _AIRFLOW_DB_UPGRADE='true'
-            - _AIRFLOW_WWW_USER_USERNAME=${_AIRFLOW_WWW_USER_USERNAME:-airflow}
-            - _AIRFLOW_WWW_USER_PASSWORD=${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-        #volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            #- /var/run/docker.sock:/var/run/docker.sock
-        #ports:
-            #- "8080:8080"
+            <<: *airflow-common-env
+            DEPLOYMENT:
+            ZONE:
+            _AIRFLOW_DB_UPGRADE: 'true'
+            _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+            _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
         command: bash pipeline/init_pipeline.sh
         deploy:
             restart_policy:
                 condition: on-failure
 
     webserver:
-        image: ${SEURON_TAG}
-        restart: always
-        environment:
-            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
-            - AIRFLOW__CORE__FERNET_KEY
-            - AIRFLOW__CELERY__BROKER_URL
-            - AIRFLOW__CELERY__RESULT_BACKEND
-            - AIRFLOW__WEBSERVER__SECRET_KEY
-            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-        #ports:
-        #    - "8080:8080"
+        <<: *airflow-common
         command: airflow webserver
         healthcheck:
             test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/health"]
@@ -99,21 +88,7 @@ services:
                 condition: any
 
     scheduler:
-        image: ${SEURON_TAG}
-        restart: always
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-        environment:
-            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
-            - AIRFLOW__CORE__FERNET_KEY
-            - AIRFLOW__CELERY__BROKER_URL
-            - AIRFLOW__CELERY__RESULT_BACKEND
-            - AIRFLOW__WEBSERVER__SECRET_KEY
-            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
+        <<: *airflow-common
         command: airflow scheduler
         healthcheck:
             test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
@@ -125,71 +100,32 @@ services:
                 condition: any
 
     worker-cluster:
-        image: ${SEURON_TAG}
-        restart: always
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /tmp:/tmp
+        <<: *airflow-common
         environment:
-            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
-            - AIRFLOW__CORE__FERNET_KEY
-            - AIRFLOW__CELERY__BROKER_URL
-            - AIRFLOW__CELERY__RESULT_BACKEND
-            - AIRFLOW__WEBSERVER__SECRET_KEY
-            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
-            - AIRFLOW__CELERY__WORKER_CONCURRENCY=1
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
         command: airflow celery worker --without-gossip --without-mingle -q cluster
         deploy:
             restart_policy:
                 condition: any
 
     worker-manager:
-        image: ${SEURON_TAG}
-        restart: always
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /tmp:/tmp
+        <<: *airflow-common
         environment:
-            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
-            - AIRFLOW__CORE__FERNET_KEY
-            - AIRFLOW__CELERY__BROKER_URL
-            - AIRFLOW__CELERY__RESULT_BACKEND
-            - AIRFLOW__WEBSERVER__SECRET_KEY
-            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
-            - AIRFLOW__CELERY__WORKER_CONCURRENCY=4
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 4
         command: airflow celery worker --without-gossip --without-mingle -q manager
         deploy:
             restart_policy:
                 condition: any
 
     slackbot:
-        image: ${SEURON_TAG}
-        restart: always
-        volumes:
-            # Warning mounting dags/plugins not working for autoscaler
-            #- ../dags/:/usr/local/airflow/dags
-            #- ../plugins:/usr/local/airflow/plugins
-            #- ../config:/usr/local/airflow/config
-            - /var/run/docker.sock:/var/run/docker.sock
-            - /tmp:/tmp
+        <<: *airflow-common
         environment:
-            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
-            - AIRFLOW__CORE__FERNET_KEY
-            - AIRFLOW__CELERY__BROKER_URL
-            - AIRFLOW__CELERY__RESULT_BACKEND
-            - AIRFLOW__WEBSERVER__SECRET_KEY
-            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
-            - SLACK_TOKEN
-            - BOTUSERID
-            - DEPLOYMENT
+            <<: *airflow-common-env
+            SLACK_TOKEN:
+            BOTUSERID:
+            DEPLOYMENT:
         command: python slackbot/slack_bot.py
         deploy:
             restart_policy:
