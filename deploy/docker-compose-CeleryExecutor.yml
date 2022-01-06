@@ -46,8 +46,12 @@ services:
         image: ${SEURON_TAG}
         restart: on-failure
         environment:
-            - FERNET_KEY
-            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
+            - AIRFLOW__CORE__FERNET_KEY
+            - AIRFLOW__CELERY__BROKER_URL
+            - AIRFLOW__CELERY__RESULT_BACKEND
+            - AIRFLOW__WEBSERVER__SECRET_KEY
+            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
             - DEPLOYMENT
             - ZONE
             - _AIRFLOW_DB_UPGRADE='true'
@@ -70,9 +74,12 @@ services:
         image: ${SEURON_TAG}
         restart: always
         environment:
-            - FERNET_KEY
-            - SECRET_KEY
-            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
+            - AIRFLOW__CORE__FERNET_KEY
+            - AIRFLOW__CELERY__BROKER_URL
+            - AIRFLOW__CELERY__RESULT_BACKEND
+            - AIRFLOW__WEBSERVER__SECRET_KEY
+            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
         volumes:
             # Warning mounting dags/plugins not working for autoscaler
             #- ../dags/:/usr/local/airflow/dags
@@ -101,8 +108,12 @@ services:
             #- ../config:/usr/local/airflow/config
             - /var/run/docker.sock:/var/run/docker.sock
         environment:
-            - FERNET_KEY
-            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
+            - AIRFLOW__CORE__FERNET_KEY
+            - AIRFLOW__CELERY__BROKER_URL
+            - AIRFLOW__CELERY__RESULT_BACKEND
+            - AIRFLOW__WEBSERVER__SECRET_KEY
+            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
         command: airflow scheduler
         healthcheck:
             test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
@@ -124,8 +135,12 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY
-            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
+            - AIRFLOW__CORE__FERNET_KEY
+            - AIRFLOW__CELERY__BROKER_URL
+            - AIRFLOW__CELERY__RESULT_BACKEND
+            - AIRFLOW__WEBSERVER__SECRET_KEY
+            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
             - AIRFLOW__CELERY__WORKER_CONCURRENCY=1
         command: airflow celery worker --without-gossip --without-mingle -q cluster
         deploy:
@@ -143,8 +158,12 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY
-            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
+            - AIRFLOW__CORE__FERNET_KEY
+            - AIRFLOW__CELERY__BROKER_URL
+            - AIRFLOW__CELERY__RESULT_BACKEND
+            - AIRFLOW__WEBSERVER__SECRET_KEY
+            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
             - AIRFLOW__CELERY__WORKER_CONCURRENCY=4
         command: airflow celery worker --without-gossip --without-mingle -q manager
         deploy:
@@ -162,8 +181,12 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
         environment:
-            - FERNET_KEY
-            - REMOTE_LOG_FOLDER
+            - AIRFLOW__CORE__SQL_ALCHEMY_CONN
+            - AIRFLOW__CORE__FERNET_KEY
+            - AIRFLOW__CELERY__BROKER_URL
+            - AIRFLOW__CELERY__RESULT_BACKEND
+            - AIRFLOW__WEBSERVER__SECRET_KEY
+            - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER
             - SLACK_TOKEN
             - BOTUSERID
             - DEPLOYMENT
