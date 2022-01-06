@@ -17,10 +17,11 @@ import custom_worker
 @click.command()
 @click.option('--tag', default='',  help='kind of task to execute')
 @click.option('--queue', default="",  help='Name of pull queue to use.')
-@click.option('--qurl', default="",  help='SQS Queue URL if using SQS')
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
 @click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
-def command(tag, queue, qurl, timeout, loop):
+def command(tag, queue, timeout, loop):
+    qurl = os.environ['AIRFLOW__CELERY__BROKER_URL']
+
     param = Variable.get("param", deserialize_json=True)
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
