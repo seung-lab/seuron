@@ -27,3 +27,9 @@ def set_instance_metadata(project, zone, instance, data):
     service = discovery.build('compute', 'v1', credentials=credentials)
     request = service.instances().setMetadata(body=data, project=project, zone=zone, instance=instance)
     return request.execute()
+
+def gce_external_ip():
+    return get_instance_data("network-interfaces/0/access-configs/0/external-ip")
+
+def gce_internal_ip():
+    return get_instance_data("network-interfaces/0/access-configs/0/internal-ip")
