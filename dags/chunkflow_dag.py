@@ -284,8 +284,10 @@ def supply_default_parameters():
         os.remove(os.path.join(cv_secrets_path, k))
 
 def drain_tasks_op(dag, param, queue):
+    from airflow import configuration as conf
+    broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
-    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/drain_tasks.sh")}"'
+    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/drain_tasks.sh")} {broker_url}"'
 
     cm = ['inference_param']
     if "MOUNT_SECRETS" in param:
@@ -306,8 +308,10 @@ def drain_tasks_op(dag, param, queue):
     )
 
 def setup_env_op(dag, param, queue):
+    from airflow import configuration as conf
+    broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
-    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/setup_env.sh")}"'
+    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/setup_env.sh")} {broker_url}"'
 
     cm = ['inference_param']
     if "MOUNT_SECRETS" in param:
@@ -349,8 +353,10 @@ def skip_worker_op(dag, queue, wid):
 
 
 def worker_op(dag, param, queue, wid):
+    from airflow import configuration as conf
+    broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
-    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/inference.sh")}"'
+    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/inference.sh")} {broker_url}"'
 
     cm = ['inference_param']
     if "MOUNT_SECRETS" in param:
