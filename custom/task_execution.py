@@ -1,4 +1,5 @@
 from airflow.models import Variable
+from airflow.configuration import conf
 import os
 import time
 import traceback
@@ -20,7 +21,7 @@ import custom_worker
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
 @click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
 def command(tag, queue, timeout, loop):
-    qurl = os.environ['AIRFLOW__CELERY__BROKER_URL']
+    qurl = conf.get('celery', 'broker_url')
 
     param = Variable.get("param", deserialize_json=True)
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
