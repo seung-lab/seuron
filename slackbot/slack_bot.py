@@ -10,7 +10,7 @@ from airflow_api import get_variable, run_segmentation, \
     mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
 from bot_info import slack_token, botid, workerid, broker_url
 from kombu_helper import drain_messages
-from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
+from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
 from copy import deepcopy
 import requests
 import re
@@ -323,7 +323,7 @@ def supply_default_param(json_obj):
 
 
 def update_ip_address():
-    host_ip = get_instance_data("network-interfaces/0/access-configs/0/external-ip")
+    host_ip = gce_external_ip()
     try:
         set_variable("webui_ip", host_ip)
     except:
