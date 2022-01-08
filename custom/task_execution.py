@@ -1,4 +1,5 @@
 from airflow.models import Variable
+from airflow.stats import Stats
 from airflow.configuration import conf
 import os
 import time
@@ -41,7 +42,7 @@ def command(tag, queue, timeout, loop):
         pass
 
     conn = Connection(qurl, heartbeat=timeout)
-    worker = threading.Thread(target=handle_task, args=(q_task, q_state,))
+    worker = threading.Thread(target=handle_task, args=(q_task, q_state, queue))
     worker.daemon = True
     worker.start()
     execute(conn, tag, queue, qurl, timeout, loop)
@@ -83,7 +84,7 @@ def execute(conn, tag, queue_name, qurl, timeout, loop):
             break
 
 
-def handle_task(q_task, q_state):
+def handle_task(q_task, q_state, q_name):
     while True:
         if q_task.qsize() == 0:
             time.sleep(1)
@@ -91,9 +92,12 @@ def handle_task(q_task, q_state):
         if q_task.qsize() > 0:
             msg = q_task.get()
             print("run task: {}".format(msg))
+            Stats.incr(f'ti.start.{q_name}.process_task')
             try:
-                val = custom_worker.process_task(msg)
+                with Stats.timer(f'dag.{q_name}.process_task.duration'):
+                    val = custom_worker.process_task(msg)
             except BaseException as e:
+                Stats.incr('ti_failures')
                 val = traceback.format_exc()
                 ret = {
                     'msg': "error",
@@ -101,6 +105,8 @@ def handle_task(q_task, q_state):
                 }
                 q_state.put(ret)
                 return
+            finally:
+                Stats.incr('ti.finish.{q_name}.process_task')
 
             if val:
                 ret = {
@@ -110,6 +116,7 @@ def handle_task(q_task, q_state):
                 q_state.put(ret)
             else:
                 q_state.put("done")
+            Stats.incr('ti_successes')
 
 
 def wait_for_task(q_state, ret_queue, err_queue, conn):
