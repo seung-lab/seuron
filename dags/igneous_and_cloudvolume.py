@@ -256,7 +256,7 @@ def commit_info(path, info, provenance):
         raise
 
 
-def create_info(stage, param):
+def create_info(stage, param, top_mip):
     import os
     from time import strftime
     from cloudvolume import CloudVolume
@@ -300,6 +300,9 @@ def create_info(stage, param):
         if param.get("CHUNKED_AGG_OUTPUT", False):
             slack_message(""":exclamation:Output chunked segmentation to `{}`.""".format(param["CHUNKED_SEG_PATH"]))
             commit_info(param["CHUNKED_SEG_PATH"], metadata_seg, provenance)
+
+        for i in range(top_mip):
+            commit_info(os.path.join(param['SEG_PATH'], f'layer_{i+1}'), metadata_seg, provenance)
 
         cv_path = os.path.join(param["SEG_PATH"], "size_map")
         metadata_size = CloudVolume.create_new_info(
