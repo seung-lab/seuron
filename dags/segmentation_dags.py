@@ -215,8 +215,10 @@ def generate_batches(param):
 
 
 def get_atomic_files(param, prefix):
+    from multiprocessing import current_process
     from joblib import Parallel, delayed
 
+    current_process()._config['daemon'] = False
     high_mip_chunks, batch_chunks = generate_batches(param)
     contents = Parallel(n_jobs=-2)(delayed(get_atomic_files_job)(sv, param, prefix) for sv in batch_chunks)
 
@@ -360,8 +362,10 @@ output location: `{url}`
 
 
 def get_files(param, prefix):
+    from multiprocessing import current_process
     from joblib import Parallel, delayed
 
+    current_process()._config['daemon'] = False
     high_mip_chunks, batch_chunks = generate_batches(param)
     print("get {} high mip files".format(len(high_mip_chunks)))
     content = get_files_job(high_mip_chunks, param, prefix)
