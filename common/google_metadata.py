@@ -32,4 +32,4 @@ def gce_external_ip():
     return get_instance_data("network-interfaces/0/access-configs/0/external-ip")
 
 def gce_internal_ip():
-    return get_instance_data("network-interfaces/0/access-configs/0/internal-ip")
+    return get_instance_data("network-interfaces/0/ip")
