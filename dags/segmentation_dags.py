@@ -362,6 +362,7 @@ output location: `{url}`
 
 
 def get_files(param, prefix):
+    from igneous_and_cloudvolume import get_files_job, put_file_job
     from multiprocessing import current_process
     from joblib import Parallel, delayed
 
@@ -374,6 +375,8 @@ def get_files(param, prefix):
 
     for c in contents:
         content+=c
+
+    put_file_job(content, param, prefix)
 
     return content
 
