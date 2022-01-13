@@ -134,6 +134,9 @@ def check_cv_data():
             except:
                 slack_message(":u7981:*ERROR: Cannot access the ground truth layer* `{}` *at resolution {}*".format(param["GT_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Ground truth layer does not exist')
+            if not cv_has_data(param["GT_PATH"], mip=param["AFF_RESOLUTION"]):
+                slack_message(":u7981:*ERROR: No data in* `{}`  *at resolution {} (mip {})*".format(param["GT_PATH"], param["AFF_RESOLUTION"], param["AFF_MIP"]))
+                raise ValueError('No data available')
             gt_bbox = gt_vol.bounds
             if not gt_bbox.contains_bbox(target_bbox):
                 slack_message(":u7981:*ERROR: Bounding box is outside of the ground truth volume, gt: {} vs bbox: {}*".format([int(x) for x in gt_bbox.to_list()], param["BBOX"]))
@@ -148,6 +151,9 @@ def check_cv_data():
             except:
                 slack_message(":u7981:*ERROR: Cannot access the semantic layer* `{}` *at resolution {}*".format(param["SEM_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Semantic layer does not exist')
+            if not cv_has_data(param["SEM_PATH"], mip=param["AFF_RESOLUTION"]):
+                slack_message(":u7981:*ERROR: No data in* `{}`  *at resolution {} (mip {})*".format(param["SEM_PATH"], param["AFF_RESOLUTION"], param["AFF_MIP"]))
+                raise ValueError('No data available')
             sem_bbox = sem_vol.bounds
             if not sem_bbox.contains_bbox(target_bbox):
                 slack_message(":u7981:*ERROR: Bounding box is outside of the semantic label volume, sem: {} vs bbox: {}*".format([int(x) for x in sem_bbox.to_list()], param["BBOX"]))
