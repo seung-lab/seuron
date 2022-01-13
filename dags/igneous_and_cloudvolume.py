@@ -227,11 +227,11 @@ def mip_for_mesh_and_skeleton(path):
 
 def check_cloud_path_empty(path):
     import traceback
-    from cloudvolume import Storage
+    from cloudfiles import CloudFiles
     from slack_message import slack_message
     try:
-        s = Storage(path)
-        obj = next(s.list_files(), None)
+        cf = CloudFiles(path)
+        obj = next(cf.list(), None)
     except:
         slack_message(""":exclamation:*Error*: Check cloud path failed:
 ```{}``` """.format(traceback.format_exc()))
@@ -322,32 +322,32 @@ def create_info(stage, param, top_mip):
 
 
 def upload_json(path, filename, content):
-    from cloudvolume import Storage
-    with Storage(path) as storage:
-        storage.put_json(filename, content)
+    from cloudfiles import CloudFiles
+    cf = CloudFiles(path)
+    cf.put_json(filename, content)
 
 
 def get_atomic_files_job(v, param, prefix):
-    from cloudvolume import Storage
+    from cloudfiles import CloudFiles
     content = b''
-    with Storage(param["SCRATCH_PATH"]) as storage:
-        for c in v:
-            if c.mip_level() != 0:
-                continue
-            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-            content += storage.get_file('{}_{}.data'.format(prefix, tag))
+    cf = CloudFiles(param["SCRATCH_PATH"])
+    for c in v:
+        if c.mip_level() != 0:
+            continue
+        tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+        content += cf[f'{prefix}_{tag}.data']
 
     return content
 
 
 def get_files_job(v, param, prefix):
-    from cloudvolume import Storage
+    from cloudfiles import CloudFiles
 #    try:
     content = b''
-    with Storage(param["SCRATCH_PATH"]) as storage:
-        for c in v:
-            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-            content += storage.get_file('{}_{}.data'.format(prefix, tag))
+    cf = CloudFiles(param["SCRATCH_PATH"])
+    for c in v:
+        tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+        content += cf[f'{prefix}_{tag}.data']
 
     return content
 
