@@ -351,6 +351,14 @@ def get_files_job(v, param, prefix):
 
     return content
 
+def put_file_job(content, param, prefix):
+    from cloudfiles import CloudFiles
+#    try:
+    cf = CloudFiles(param["SCRATCH_PATH"])
+    cf[f'{prefix}_all.data'] = content
+
+    return content
+
 #    except:
 #        print("Cannot read all the info files")
 #        return None
