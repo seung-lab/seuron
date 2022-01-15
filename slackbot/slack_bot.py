@@ -132,6 +132,8 @@ def cancel_run(msg):
     drain_messages(broker_url, "custom")
     drain_messages(broker_url, "chunkflow")
 
+    time.sleep(30)
+
     replyto(msg, "*Current run cancelled*", broadcast=True)
 
 
@@ -249,6 +251,7 @@ def update_param(msg):
             replyto(msg, "Running sanity check, please wait")
             update_metadata(msg)
             set_variable('param', json_obj, serialize_json=True)
+            time.sleep(30)
             sanity_check()
             param_updated = True
         else:
@@ -411,7 +414,7 @@ def dispatch_command(cmd, msg):
             replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
             update_metadata(msg)
             set_redeploy_flag(True)
-            time.sleep(60)
+            time.sleep(300)
             replyto(msg, "Failed to restart the bot")
     elif cmd == "extractcontactsurfaces":
         state, _ = dag_state("sanity_check")
