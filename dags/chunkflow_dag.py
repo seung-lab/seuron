@@ -352,7 +352,7 @@ def skip_worker_op(dag, queue, wid):
     )
 
 
-def worker_op(dag, param, queue, wid):
+def inference_op(dag, param, queue, wid):
     from airflow import configuration as conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
@@ -497,7 +497,7 @@ workers = []
 skips = []
 
 for i in range(min(param.get("TASK_NUM", 1), total_gpus*3)):
-    workers.append(worker_op(dag_worker, param, "gpu", i))
+    workers.append(inference_op(dag_worker, param, queue, i))
 
 scale_up_cluster_task >> workers >> scale_down_cluster_task
 
