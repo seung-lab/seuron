@@ -466,8 +466,8 @@ process_output_task = PythonOperator(
 cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
 
-scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), min(total_gpus, param.get("TASK_NUM",2)//2+1))
-scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0)
+scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), min(total_gpus, param.get("TASK_NUM",2)//2+1), "cluster")
+scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "cluster")
 
 wait_for_chunkflow_task = PythonOperator(
     task_id="wait_for_chunkflow",
