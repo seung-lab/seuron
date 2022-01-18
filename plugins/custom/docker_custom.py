@@ -308,7 +308,10 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
                  mount_point=DEFAULT_MOUNT_POINT,
                  *args, **kwargs):
         self.variables = variables
-        self.mount_point = mount_point
+        if mount_point:
+            self.mount_point = mount_point
+        else:
+            self.mount_point=self.DEFAULT_MOUNT_POINT,
         super().__init__(*args, **kwargs)
 
     def execute(self, context):
@@ -323,9 +326,11 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
                     # import pdb
                     # pdb.set_trace()
                     value_file.write(value)
-            self.mounts.append(
-                Mount(source=tmp_var_dir, target=self.mount_point, type='bind')
-            )
+
+            if self.variables:
+                self.mounts.append(
+                    Mount(source=tmp_var_dir, target=self.mount_point, type='bind')
+                )
             return super().execute(context)
 
 

@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
-from custom.docker_custom import DockerWithVariablesOperator
+from worker_op import worker_op
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import inference_param_default, default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels
@@ -293,7 +293,7 @@ def drain_tasks_op(dag, param, queue):
     if "MOUNT_SECRETS" in param:
         cm += param["MOUNT_SECRETS"]
 
-    return DockerWithVariablesOperator(
+    return worker_op(
         variables=cm,
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='drain_tasks',
@@ -317,7 +317,7 @@ def setup_env_op(dag, param, queue):
     if "MOUNT_SECRETS" in param:
         cm += param["MOUNT_SECRETS"]
 
-    return DockerWithVariablesOperator(
+    return worker_op(
         variables=cm,
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='setup_env',
@@ -362,7 +362,7 @@ def inference_op(dag, param, queue, wid):
     if "MOUNT_SECRETS" in param:
         cm += param["MOUNT_SECRETS"]
 
-    return DockerWithVariablesOperator(
+    return worker_op(
         variables=cm,
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='worker_{}'.format(wid),
