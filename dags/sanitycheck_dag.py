@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from custom.docker_custom import DockerWithVariablesOperator
+from worker_op import worker_op
 from airflow.utils.weight_rule import WeightRule
 from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
@@ -251,7 +251,7 @@ def check_path_exists_op(dag, tag, path):
 def check_worker_image_op(dag):
     workspace_path = param.get("WORKSPACE_PATH", default_seg_workspace)
     cmdline = f'/bin/bash -c "ls {os.path.join(workspace_path, "scripts/init.sh")}"'
-    return DockerWithVariablesOperator(
+    return worker_op(
         variables=[],
         task_id='check_worker_image',
         command=cmdline,
