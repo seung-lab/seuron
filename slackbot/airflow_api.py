@@ -1,11 +1,14 @@
 import json
-from datetime import datetime
 from bot_info import workerid
+
+import pendulum
 
 from airflow import settings
 from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
+from airflow.models.dagrun import DagRun, DagRunType
 from airflow.api.common.experimental.mark_tasks import set_dag_run_state_to_success
 from airflow.utils.state import State
+from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
 
@@ -98,15 +101,22 @@ def chunkflow_set_env():
 
 def run_dag(dag_id):
     print("run dag {}".format(dag_id))
-    run_id='trig__' + datetime.utcnow().isoformat()
+    execution_date = timezone.utcnow()
+    run_id = 'trig__' + execution_date.isoformat()
     dbag = DagBag()
     trigger_dag = dbag.get_dag(dag_id)
     session = settings.Session()
 
     dr = trigger_dag.create_dagrun(
+        run_type=DagRunType.MANUAL,
         run_id=run_id,
-        state=State.RUNNING,
+        execution_date=execution_date,
+        state=State.QUEUED,
         conf=None,
+        data_interval=trigger_dag.timetable.infer_manual_data_interval(
+            run_after=pendulum.instance(execution_date)
+        ),
+        dag_hash=dbag.dags_hash.get(dag_id),
         external_trigger=True)
     print("Creating DagRun {}".format(dr))
     session.add(dr)
