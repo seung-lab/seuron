@@ -6,7 +6,7 @@ CELERY_CONFIG = {
     'task_acks_late': True,
     'task_reject_on_worker_lost': True,
     'broker_url': configuration.get('celery', 'broker_url'),
-    'result_backend': configuration.get('celery', 'result_backend'),
+    'result_backend': configuration.get('celery', 'celery_result_backend'),
     'worker_concurrency':
         configuration.getint('celery', 'celeryd_concurrency'),
     'task_default_queue': configuration.get('operators', 'default_queue'),
