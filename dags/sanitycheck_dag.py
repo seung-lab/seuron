@@ -326,6 +326,13 @@ Region graph and friends: `{scratch}`
         scratch = paths["SCRATCH_PATH"],
     )
 
+    if param.get("SEM_PATH", None):
+        msg += '''
+Semantic labels: `{sem_path}`
+'''.format(
+            sem_path = param["SEM_PATH"],
+        )
+
     if not param.get("SKIP_WS", False):
         msg += '''
 Watershed parameters: {ws_param}
