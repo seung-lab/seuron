@@ -1,6 +1,6 @@
 from functools import wraps
 
-def process_worker_messages(ret_queue, oc):
+def process_worker_messages(ret_queue, agg):
     from slack_message import slack_message
     from kombu.simple import SimpleQueue
     from time import sleep
@@ -10,8 +10,8 @@ def process_worker_messages(ret_queue, oc):
             message = ret_queue.get_nowait()
         except SimpleQueue.Empty:
             break
-        if oc:
-            oc.update(json.loads(message.payload))
+        if agg:
+            agg.update(json.loads(message.payload))
         else:
             sleep(1)
             slack_message(f"worker message: {message.payload}")
@@ -39,7 +39,7 @@ def process_worker_errors(err_queue):
         slack_message(f"{msg_count} worker errors: {err_msg}")
 
 
-def check_queue(queue, oc=None):
+def check_queue(queue, agg=None):
     from airflow import configuration
     import requests
     from time import sleep
@@ -64,7 +64,7 @@ def check_queue(queue, oc=None):
             count += 1
             if count % 60 == 0:
                 slack_message("{} tasks remain in queue {}".format(nTasks, queue))
-            process_worker_messages(ret_queue, oc)
+            process_worker_messages(ret_queue, agg)
             process_worker_errors(err_queue)
 
             if nTasks == 0:
@@ -142,10 +142,11 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                 ret = create_tasks(*args, **kwargs)
                 if isinstance(ret, dict):
                     tasks = ret.get('tasks', None)
-                    oc = ret.get('outputcollector', None)
+                    agg = ret.get('aggregator', None)
                 else:
                     tasks = ret
-                    oc = None
+                    agg = None
+
 
                 try:
                     tasks = list(tasks)
@@ -166,10 +167,10 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
 
                 target_size = (1+len(tasks)//worker_factor)
                 ramp_up_cluster(cluster_name, min(target_size, 10) , target_size)
-                check_queue(queue_name, oc)
+                check_queue(queue_name, agg)
                 ramp_down_cluster(cluster_name, 0)
-                if oc:
-                    oc.finalize()
+                if agg:
+                    agg.finalize()
 
                 slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
 
