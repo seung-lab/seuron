@@ -569,24 +569,8 @@ def submit_custom_tasks():
         slack_message(":exclamation:*Error* cannot find the process_task function")
         return
 
-    tasks = list(globals()["submit_tasks"]())
+    tasks = globals()["submit_tasks"]()
 
-    if not tasks:
-        return
-
-    if len(tasks) > 1000000:
-        slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
-        raise
-
-    slack_message(":arrow_forward: submitting {} custom tasks".format(len(tasks)))
-
-    if "OutputCollector" in globals() and callable(globals()["OutputCollector"]):
-        oc = globals()["OutputCollector"]()
-        return {
-            'tasks': tasks,
-            'outputcollector': oc
-        }
-    else:
-        return tasks
+    return tasks
 
 
