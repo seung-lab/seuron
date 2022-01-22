@@ -391,26 +391,53 @@ def downsample(*args):
 
 @mount_secrets
 @kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
-def mesh(seg_cloudpath, mesh_quality):
+def mesh(seg_cloudpath, mesh_quality, sharded):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
     from cloudvolume import CloudVolume
     from slack_message import slack_message
-    mesh_mip = mip_for_mesh_and_skeleton(seg_cloudpath)
-    simplification = True
-    max_simplification_error = 40
+
     if mesh_quality == "PERFECT":
         simplification = False
         max_simplification_error = 0
         mesh_mip = 0
+    else:
+        mesh_mip = mip_for_mesh_and_skeleton(seg_cloudpath)
+        simplification = True
+        max_simplification_error = 40
+
+    if sharded:
+        spatial_index=True
+    else:
+        spatial_index=False
+
 
     vol = CloudVolume(seg_cloudpath)
 
     slack_message("Mesh at resolution: {}".format(vol.scales[mesh_mip]['key']))
 
-    tasks = tc.create_meshing_tasks(seg_cloudpath, mip=mesh_mip, simplification=simplification, max_simplification_error=max_simplification_error, shape=Vec(256, 256, 256))
+    tasks = tc.create_meshing_tasks(seg_cloudpath,
+                                    mip=mesh_mip,
+                                    simplification=simplification,
+                                    max_simplification_error=max_simplification_error,
+                                    cdn_cache=False,
+                                    fill_missing=False,
+                                    encoding='precomputed',
+                                    spatial_index=spatial_index,
+                                    sharded=sharded,
+                                    shape=Vec(256, 256, 256))
     slack_message(":arrow_forward: Start meshing `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
+    return tasks
+
+
+@mount_secrets
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=4)
+def merge_mesh_fragments(seg_cloudpath):
+    import igneous.task_creation as tc
+    from slack_message import slack_message
+    tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath)
+    slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
     return tasks
 
 
