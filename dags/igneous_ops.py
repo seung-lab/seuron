@@ -1,7 +1,7 @@
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from slack_message import task_retry_alert
-from igneous_and_cloudvolume import downsample, downsample_for_meshing, mesh, mesh_manifest, create_skeleton_fragments, merge_skeleton_fragments
+from igneous_and_cloudvolume import downsample, downsample_for_meshing, mesh, mesh_manifest, merge_mesh_fragments, create_skeleton_fragments, merge_skeleton_fragments
 from helper_ops import placeholder_op
 
 def create_igneous_ops(param, dag):
@@ -28,7 +28,7 @@ def create_igneous_ops(param, dag):
         current_op = PythonOperator(
             task_id="mesh",
             python_callable=mesh,
-            op_args = [seg_cloudpath, param.get("MESH_QUALITY", "NORMAL"), ],
+            op_args = [seg_cloudpath, param.get("MESH_QUALITY", "NORMAL"), param.get("SHARDED_MESH", False), ],
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
             queue="manager",
@@ -38,15 +38,26 @@ def create_igneous_ops(param, dag):
         ops[-1] >> current_op
         ops.append(current_op)
 
-        current_op = PythonOperator(
-            task_id="mesh_manifest",
-            python_callable=mesh_manifest,
-            op_args = [seg_cloudpath, param["BBOX"], param["CHUNK_SIZE"], ],
-            on_retry_callback=task_retry_alert,
-            weight_rule=WeightRule.ABSOLUTE,
-            queue="manager",
-            dag=dag
-        )
+        if param.get("SHARDED_MESH", False):
+            current_op = PythonOperator(
+                task_id="merge_mesh_fragments",
+                python_callable=merge_mesh_fragments,
+                op_args = [seg_cloudpath, ],
+                on_retry_callback=task_retry_alert,
+                weight_rule=WeightRule.ABSOLUTE,
+                queue="manager",
+                dag=dag
+            )
+        else:
+            current_op = PythonOperator(
+                task_id="mesh_manifest",
+                python_callable=mesh_manifest,
+                op_args = [seg_cloudpath, param["BBOX"], param["CHUNK_SIZE"], ],
+                on_retry_callback=task_retry_alert,
+                weight_rule=WeightRule.ABSOLUTE,
+                queue="manager",
+                dag=dag
+            )
 
         ops[-1] >> current_op
         ops.append(current_op)
