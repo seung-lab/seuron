@@ -10,6 +10,7 @@ x-airflow-common:
         AIRFLOW__CELERY__BROKER_URL:
         AIRFLOW__CELERY__CELERY_RESULT_BACKEND:
         AIRFLOW__WEBSERVER__SECRET_KEY:
+        AIRFLOW__LOGGING__BASE_LOG_FOLDER:
         AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
