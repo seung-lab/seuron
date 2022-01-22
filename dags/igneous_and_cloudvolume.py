@@ -147,15 +147,14 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                     tasks = ret
                     agg = None
 
+                if not tasks:
+                    slack_message("No tasks submitted by {}".format(create_tasks.__name__))
+                    return
 
                 try:
                     tasks = list(tasks)
                 except TypeError:
                     slack_message("{} must return a list of tasks".format(create_tasks.__name__))
-                    return
-
-                if not tasks:
-                    slack_message("No tasks submitted by {}".format(create_tasks.__name__))
                     return
 
                 with Connection(broker, connect_timeout=60) as conn:
