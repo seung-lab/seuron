@@ -370,7 +370,7 @@ def downsample_for_meshing(seg_cloudpath, mask):
     import igneous.task_creation as tc
     from slack_message import slack_message
     mip, _ = cv_scale_with_data(seg_cloudpath)
-    tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=True, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True)
+    tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True)
     slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
     return tasks
 
@@ -383,7 +383,7 @@ def downsample(*args):
     total_tasks = []
     for seg_cloudpath in args:
         mip, _ = cv_scale_with_data(seg_cloudpath)
-        tasks = list(tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=True, preserve_chunk_size=True))
+        tasks = list(tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True))
         slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
         total_tasks += tasks
     return total_tasks
