@@ -23,6 +23,8 @@ import subprocess
 import sys
 import traceback
 
+ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
+
 param_updated = False
 rtmclient = RTMClient(token=slack_token)
 
@@ -209,6 +211,19 @@ def download_json(msg):
         return json_obj
 
 
+def check_advanced_settings(params):
+    if not isinstance(params, list):
+        params = [params,]
+
+    kw = []
+    for p in params:
+        for k in p:
+            if k in ADVANCED_PARAMETERS:
+                kw.append(k)
+
+    return kw
+
+
 def update_inference_param(msg):
     global param_updated
     json_obj = download_json(msg)
@@ -234,9 +249,15 @@ def update_inference_param(msg):
     return
 
 
-def update_param(msg):
+def update_param(msg, advanced=False):
     global param_updated
     json_obj = download_json(msg)
+    if not advanced:
+        kw = check_advanced_settings(json_obj)
+        if kw:
+            replyto(msg, f'You are trying to change advanced parameters: {",".join("`"+x+"`" for x in kw)}')
+            replyto(msg, "Use `please update parameters` to confirm that you know what you are doing")
+            return
     if json_obj:
         if not check_running():
             clear_queues()
@@ -341,7 +362,9 @@ def dispatch_command(cmd, msg):
         param = get_variable("param", deserialize_json=True)
         upload_param(msg, param)
     elif cmd == "updateparameters":
-        update_param(msg)
+        update_param(msg, advanced=False)
+    elif cmd == "pleaseupdateparameters":
+        update_param(msg, advanced=True)
     elif cmd == "updateinferenceparameters":
         update_inference_param(msg)
     elif cmd.startswith("cancelrun"):
