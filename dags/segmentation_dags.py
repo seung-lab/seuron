@@ -89,14 +89,14 @@ def generate_ng_payload(param):
     return payload
 
 def generate_link(param, broadcast, **kwargs):
-    ng_host = param.get("NG_HOST", "https://neuromancer-seung-import.appspot.com")
+    ng_host = param.get("NG_HOST", "neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
 
     if not param.get("SKIP_AGG", False):
         seglist = Variable.get("topsegs")
         payload["layers"]["seg"]["hiddenSegments"] = seglist.split(' ')
 
-    url = "<{host}/#!{payload}|*view the results in neuroglancer*>".format(
+    url = "<https://{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,
         payload=urllib.parse.quote(json.dumps(payload)))
     slack_message(url, broadcast=broadcast)
@@ -256,6 +256,7 @@ def compare_segmentation(param, **kwargs):
     s_i = defaultdict(int)
     t_j = defaultdict(int)
     p_ij = defaultdict(lambda: defaultdict(int))
+    ng_host = param.get("NG_HOST", "neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
     payload['layers']['size']['visible'] = False
     while True:
@@ -272,6 +273,7 @@ def compare_segmentation(param, **kwargs):
     }
     Variable.set("seg_eval", scores, serialize_json=True)
     output = {
+        "ng_host": ng_host,
         "ng_payload": payload,
         "seg_pairs": seg_pairs
     }
