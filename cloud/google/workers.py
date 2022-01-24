@@ -15,6 +15,7 @@ def GenerateWorkerStartupScript(context, env_variables, cmd, use_gpu=False):
 #!/bin/bash
 set -e
 mount -t tmpfs -o size=80%,noatime tmpfs /tmp
+mkdir -p /var/log/airflow/logs
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 {INSTALL_DOCKER_CMD}
 '''
@@ -50,12 +51,13 @@ def GenerateWorkers(context, hostname_manager, worker):
     docker_env = [f'-e {k}' for k in env_variables]
 
     if worker['type'] == 'gpu':
-        cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env, queue=worker['type'], concurrency=2)
+        cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=2)
     elif worker['type'] == 'atomic':
-        cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env, queue=worker['type'], concurrency=1)
+        cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     elif worker['type'] == 'composite':
+        atomic_cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
         workers = [(5, 4), (6, 2), (7, 1), (8, 1)]
-        cmd = "\n".join([GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
+        cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
     elif worker['type'] == 'igneous':
         cmd = GenerateDockerCommand(context.properties['seuronImage'], docker_env) + ' ' + PARALLEL_CMD % {'cmd': "python custom/task_execution.py --queue igneous"}
     elif worker['type'] == 'custom':

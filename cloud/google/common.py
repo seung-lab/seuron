@@ -36,7 +36,7 @@ EOF
 systemctl restart docker
 '''
 
-DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp %(args)s %(image)s'
+DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v ${AIRFLOW__LOGGING__BASE_LOG_FOLDER}:/var/log/airflow/logs %(args)s %(image)s'
 
 CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concurrency)s -q %(queue)s'
 
@@ -59,11 +59,13 @@ def GenerateAirflowVar(context, hostname_manager):
     postgres_db = context.properties['postgresDB']
     sqlalchemy_conn = f'''postgresql+psycopg2://{postgres_user}:{postgres_password}@{hostname_manager}/{postgres_db}'''
     airflow_variable = {
+        'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'google_metadata.gce_internal_ip',
         'AIRFLOW__CORE__SQL_ALCHEMY_CONN': sqlalchemy_conn,
         'AIRFLOW__CORE__FERNET_KEY': context.properties['fernetKey'],
         'AIRFLOW__CELERY__BROKER_URL': f'amqp://{hostname_manager}',
         'AIRFLOW__CELERY__RESULT_BACKEND': f'db+{sqlalchemy_conn}',
         'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['secretKey'],
+        'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
         'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{context.properties["remoteLogFolder"]}/{context.env["deployment"]}',
         'AIRFLOW__METRICS__STATSD_ON': 'False',
         'AIRFLOW__METRICS__STATSD_HOST': hostname_manager,
