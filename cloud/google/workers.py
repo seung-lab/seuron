@@ -38,9 +38,9 @@ def GenerateDockerCommand(image, args):
 
 
 def GenerateCeleryWorkerCommand(image, docker_env, queue, concurrency):
-    docker_env.append(f'-e AIRFLOW__CELERY__WORKER_CONCURRENCY={concurrency}')
     return GenerateDockerCommand(image, docker_env) + ' ' + CELERY_CMD % {
-        'queue': queue
+        'queue': queue,
+        'concurrency': concurrency
     }
 
 

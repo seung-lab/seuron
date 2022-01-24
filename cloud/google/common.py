@@ -38,7 +38,7 @@ systemctl restart docker
 
 DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp %(args)s %(image)s'
 
-CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -q %(queue)s &'
+CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concurrency)s -q %(queue)s'
 
 PARALLEL_CMD = 'parallel --retries 100 -j32 -N0 %(cmd)s ::: {0..32} &'
 
