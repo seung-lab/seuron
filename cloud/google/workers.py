@@ -30,9 +30,9 @@ DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -
     return startup_script
 
 
-def GenerateDockerCommand(image, docker_env):
+def GenerateDockerCommand(image, args):
     return DOCKER_CMD % {
-        'env': ' '.join(docker_env),
+        'args': ' '.join(args),
         'image': image,
     }
 

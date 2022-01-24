@@ -36,7 +36,7 @@ EOF
 systemctl restart docker
 '''
 
-DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp %(env)s %(image)s'
+DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp %(args)s %(image)s'
 
 CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -q %(queue)s &'
 
