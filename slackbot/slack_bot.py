@@ -492,7 +492,6 @@ def send_reset_message(client):
     SLACK_CONN_ID = "Slack"
     try:
         slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
-        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
         slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
     except:
         return
