@@ -56,7 +56,7 @@ def create_run_token(msg):
 
 
 def filter_msg(msg):
-    if 'subtype' in msg and msg['subtype'] != "thread_broadcast":
+    if 'subtype' in msg and msg['subtype'] != "file_share":
         return False
     text = msg["text"].strip('''_*~"'`''')
 
