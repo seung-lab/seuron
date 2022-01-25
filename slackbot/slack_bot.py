@@ -604,6 +604,7 @@ def set_redeploy_flag(value):
     set_instance_metadata(project_id, vm_zone, vm_name, data)
 
 def wait_for_airflow():
+    time.sleep(60)
     while check_running():
         logger.debug("waiting for airflow")
         time.sleep(60)
