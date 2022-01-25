@@ -104,6 +104,7 @@ def run_dag(dag_id):
     execution_date = timezone.utcnow()
     run_id = 'trig__' + execution_date.isoformat()
     dbag = DagBag()
+    dbag.sync_to_db()
     trigger_dag = dbag.get_dag(dag_id)
     session = settings.Session()
 
