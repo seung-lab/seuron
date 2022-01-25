@@ -120,12 +120,10 @@ def cancel_run(msg):
     time.sleep(10)
 
     replyto(msg, "Marking all DAG states to success...")
-    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous', 'custom']
-    mark_dags_success(dags)
+    mark_dags_success()
     time.sleep(10)
     #try again because some tasks might already been scheduled
-    dags = ['segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'igneous', 'custom']
-    mark_dags_success(dags)
+    mark_dags_success()
 
     time.sleep(10)
 

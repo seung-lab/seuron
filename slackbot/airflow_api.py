@@ -12,14 +12,16 @@ from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
 
+seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom"]
+
 
 def latest_task():
     state, exec_date = dag_state("sanity_check")
 
 
-def mark_dags_success(dags):
+def mark_dags_success():
     dagbag = DagBag()
-    for d in dags:
+    for d in seuron_dags:
         if d in dagbag.dags:
             state, exec_date = dag_state(d)
             if state == "running":
@@ -63,9 +65,7 @@ def update_user_info(userid):
 
 
 def check_running():
-    dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom"]
-
-    for d in dags:
+    for d in seuron_dags:
         state, exec_date = dag_state(d)
         if state == "running":
             return True
