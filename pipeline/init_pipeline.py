@@ -10,7 +10,7 @@ from collections import defaultdict
 
 
 def get_clusters(deployment):
-    re_ig = deployment+r'''-(\w+)-workers-([\w-]+)'''
+    re_ig = deployment+r'''-([\w-]+)-workers-([\w-]+)'''
 
     project_id = get_project_data("project-id")
     vm_name = get_instance_data("name")
@@ -43,7 +43,8 @@ target_sizes = {
     'atomic': 0,
     'composite': 0,
     'igneous': 0,
-    'custom': 0,
+    'custom-cpu': 0,
+    'custom-gpu': 0,
 }
 
 Variable.setdefault("cluster_target_size", target_sizes, deserialize_json=True)

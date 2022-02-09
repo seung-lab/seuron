@@ -579,8 +579,8 @@ def submit_igneous_tasks():
 
 
 @mount_secrets
-@kombu_tasks(queue_name="custom", cluster_name="custom", worker_factor=32)
-def submit_custom_tasks():
+@kombu_tasks(queue_name="custom-cpu", cluster_name="custom-cpu", worker_factor=32)
+def submit_custom_cpu_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
@@ -600,3 +600,23 @@ def submit_custom_tasks():
     return tasks
 
 
+@mount_secrets
+@kombu_tasks(queue_name="custom-gpu", cluster_name="custom-gpu", worker_factor=2)
+def submit_custom_gpu_tasks():
+    from airflow.models import Variable
+    from slack_message import slack_message
+    python_string = Variable.get("custom_script")
+
+    exec(python_string, globals())
+
+    if "submit_tasks" not in globals() or not callable(globals()["submit_tasks"]):
+        slack_message(":exclamation:*Error* cannot find the submit_tasks function")
+        return
+
+    if "process_task" not in globals() or not callable(globals()["process_task"]):
+        slack_message(":exclamation:*Error* cannot find the process_task function")
+        return
+
+    tasks = globals()["submit_tasks"]()
+
+    return tasks
