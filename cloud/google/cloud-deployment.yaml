@@ -79,11 +79,18 @@ resources:
               machineType: e2-standard-32
               preemptible: True
               sizeLimit: 50
-            - type: custom
+            - type: custom-cpu
               zone: us-east1-c
               subnetwork: us-east1
               machineType: e2-standard-32
               preemptible: True
               sizeLimit: 50
+            - type: custom-gpu
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: n1-highmem-8
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 4
           firewallIPRanges:
               - 128.112.0.0/16

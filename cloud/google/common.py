@@ -40,7 +40,7 @@ DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/r
 
 CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concurrency)s -q %(queue)s'
 
-PARALLEL_CMD = 'parallel --retries 100 -j32 -N0 %(cmd)s ::: {0..32} &'
+PARALLEL_CMD = 'parallel --retries 100 -j%(jobs)d -N0 %(cmd)s ::: {0..%(jobs)d} &'
 
 
 def GlobalComputeUrl(project, collection, name):
