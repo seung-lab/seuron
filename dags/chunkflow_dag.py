@@ -142,11 +142,11 @@ def supply_default_parameters():
         raise ValueError('chunkflow image missing')
 
 
-    if "IMAGE_MASK_PATH" in param and (not check_matching_mip(param["IMAGE_PATH"], param["IMAGE_MASK_PATH"])):
+    if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["IMAGE_MASK_PATH"])):
         raise ValueError('Resolution mismatch')
 
 
-    if "OUTPUT_MASK_PATH" in param and (not check_matching_mip(param["IMAGE_PATH"], param["OUTPUT_MASK_PATH"])):
+    if param.get("OUTPUT_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["OUTPUT_MASK_PATH"])):
         raise ValueError('Resolution mismatch')
 
 
