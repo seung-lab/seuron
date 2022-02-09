@@ -129,7 +129,8 @@ def cancel_run(msg):
 
     replyto(msg, "Draining tasks from the queues...")
     drain_messages(broker_url, "igneous")
-    drain_messages(broker_url, "custom")
+    drain_messages(broker_url, "custom-cpu")
+    drain_messages(broker_url, "custom-gpu")
     drain_messages(broker_url, "chunkflow")
 
     time.sleep(30)
@@ -297,18 +298,19 @@ def run_igneous_scripts(msg):
     return
 
 
-def run_custom_scripts(msg):
+def run_custom_scripts(msg, task_type):
     _, payload = download_file(msg)
     if payload:
         if not check_running():
-            drain_messages(broker_url, "custom")
-            drain_messages(broker_url, "custom_ret")
-            drain_messages(broker_url, "custom_err")
+            for t in ['gpu', 'cpu']:
+                drain_messages(broker_url, f"custom-{t}")
+                drain_messages(broker_url, f"custom-{t}_ret")
+                drain_messages(broker_url, f"custom-{t}_err")
             create_run_token(msg)
             update_metadata(msg)
             set_variable('custom_script', payload)
             replyto(msg, "Execute `submit_tasks` function")
-            run_custom_tasks()
+            run_custom_tasks(task_type)
         else:
             replyto(msg, "Busy right now")
 
@@ -421,11 +423,16 @@ def dispatch_command(cmd, msg):
             replyto(msg, "I am busy right now")
         else:
             run_igneous_scripts(msg)
-    elif cmd == "runcustomtask" or cmd == "runcustomtasks":
+    elif cmd == "runcustomcputask" or cmd == "runcustomcputasks":
         if check_running():
             replyto(msg, "I am busy right now")
         else:
-            run_custom_scripts(msg)
+            run_custom_scripts(msg, "cpu")
+    elif cmd == "runcustomgputask" or cmd == "runcustomgputasks":
+        if check_running():
+            replyto(msg, "I am busy right now")
+        else:
+            run_custom_scripts(msg, "gpu")
     elif cmd == "updatepythonpackage" or cmd == "updatepythonpackages":
         update_python_packages(msg)
     elif cmd == "redeploydockerstack":

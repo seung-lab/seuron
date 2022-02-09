@@ -12,7 +12,7 @@ from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
 
-seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom"]
+seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu"]
 
 
 def latest_task():
@@ -135,8 +135,8 @@ def run_igneous_tasks():
     return True
 
 
-def run_custom_tasks():
-    dag_id = "custom"
+def run_custom_tasks(task_type):
+    dag_id = f"custom-{task_type}"
 
     if check_running():
         return False
