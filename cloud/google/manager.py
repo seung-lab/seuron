@@ -9,6 +9,8 @@ def GenerateEnvironVar(context, hostname_manager):
         'DEPLOYMENT': context.env['deployment'],
         'ZONE': context.properties['zone'],
         'SEURON_TAG': context.properties['seuronImage'],
+        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflowUser'],
+        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflowPassword'],
         'POSTGRES_USER': context.properties['postgresUser'],
         'POSTGRES_PASSWORD': context.properties['postgresPassword'],
         'POSTGRES_DB': context.properties['postgresDB'],

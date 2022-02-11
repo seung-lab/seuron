@@ -22,6 +22,8 @@ resources:
           project: segmentation
           managerMachineType: e2-standard-2
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/airflow2/deploy/docker-compose-CeleryExecutor.yml
+          airflowUser: # user name for airflow web interface
+          airflowPassword: # password for airflow web interface
           postgresUser: # user name for postgresql
           postgresPassword: # password for postgresql
           postgresDB: # name for airflow database
