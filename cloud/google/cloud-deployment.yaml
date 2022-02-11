@@ -92,5 +92,5 @@ resources:
               gpuWorkerAcceleratorType: nvidia-tesla-t4
               preemptible: True
               sizeLimit: 4
-          firewallIPRanges:
+          firewallAllowedIPRanges:
               - 128.112.0.0/16

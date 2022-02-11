@@ -31,7 +31,7 @@ def GenerateExternalFirewallRules(context, network):
                         ]
                     }
                 ],
-                'sourceRanges': context.properties['firewallIPRanges'],
+                'sourceRanges': context.properties['firewallAllowedIPRanges'],
                 'network': f'$(ref.{network}.selfLink)',
             }
         },
@@ -47,7 +47,7 @@ def GenerateExternalFirewallRules(context, network):
                         ]
                     }
                 ],
-                'sourceRanges': context.properties['firewallIPRanges'],
+                'sourceRanges': context.properties['firewallAllowedIPRanges'],
                 'network': f'$(ref.{network}.selfLink)',
             }
         },
@@ -84,6 +84,7 @@ def GenerateNetworks(context, subnetworks):
 
     resources += GenerateInternalFirewallRules(context, network_name, sourceRanges)
 
-    resources += GenerateExternalFirewallRules(context, network_name)
+    if context.properties.get('firewallAllowedIPRanges', None):
+        resources += GenerateExternalFirewallRules(context, network_name)
 
     return resources
