@@ -50,20 +50,22 @@ def GenerateWorkers(context, hostname_manager, worker):
 
     docker_env = [f'-e {k}' for k in env_variables]
 
+    docker_image = worker.get('workerImage', context.properties['seuronImage'])
+
     if worker['type'] == 'gpu':
-        cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=2)
+        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=2)
     elif worker['type'] == 'atomic':
-        cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     elif worker['type'] == 'composite':
-        atomic_cmd = GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+        atomic_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
         workers = [(5, 4), (6, 2), (7, 1), (8, 1)]
-        cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(context.properties['seuronImage'], docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
+        cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
     elif worker['type'] == 'igneous':
-        cmd = GenerateDockerCommand(context.properties['seuronImage'], docker_env) + ' ' + PARALLEL_CMD % {'cmd': "python custom/task_execution.py --queue igneous", 'jobs': 32}
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "python custom/task_execution.py --queue igneous", 'jobs': 32}
     elif worker['type'] == 'custom-cpu':
-        cmd = GenerateDockerCommand(context.properties['seuronImage'], docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': 32}
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': 32}
     elif worker['type'] == 'custom-gpu':
-        cmd = GenerateDockerCommand(context.properties['seuronImage'], docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
 
     startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in ['gpu', 'custom-gpu'] and worker['gpuWorkerAcceleratorType']))
 

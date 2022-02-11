@@ -92,6 +92,7 @@ resources:
               subnetwork: us-east1
               machineType: n1-highmem-8
               gpuWorkerAcceleratorType: nvidia-tesla-t4
+              workerImage: ranlu/air-tasks:airflow2
               preemptible: True
               sizeLimit: 4
           firewallAllowedIPRanges:
