@@ -105,7 +105,7 @@ def mount_secrets(func):
     return inner
 
 
-def kombu_tasks(queue_name, cluster_name, worker_factor):
+def kombu_tasks(queue_name, cluster_name, init_workers, worker_factor):
     import tenacity
 
     retry = tenacity.retry(
@@ -165,7 +165,7 @@ def kombu_tasks(queue_name, cluster_name, worker_factor):
                     queue.close()
 
                 target_size = (1+len(tasks)//worker_factor)
-                ramp_up_cluster(cluster_name, min(target_size, 10) , target_size)
+                ramp_up_cluster(cluster_name, min(target_size, init_workers) , target_size)
                 check_queue(queue_name, agg)
                 ramp_down_cluster(cluster_name, 0)
                 if agg:
@@ -365,7 +365,7 @@ def put_file_job(content, param, prefix):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=8, worker_factor=32)
 def downsample_for_meshing(seg_cloudpath, mask):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -376,7 +376,7 @@ def downsample_for_meshing(seg_cloudpath, mask):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=8, worker_factor=32)
 def downsample(*args):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -390,7 +390,7 @@ def downsample(*args):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=8, worker_factor=32)
 def mesh(seg_cloudpath, mesh_quality, sharded):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
@@ -432,7 +432,7 @@ def mesh(seg_cloudpath, mesh_quality, sharded):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=4)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=8, worker_factor=4)
 def merge_mesh_fragments(seg_cloudpath):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -442,7 +442,7 @@ def merge_mesh_fragments(seg_cloudpath):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=4, worker_factor=32)
 def mesh_manifest(seg_cloudpath, bbox, chunk_size):
     from igneous.tasks import MeshManifestTask
     from os.path import commonprefix
@@ -499,7 +499,7 @@ def mesh_manifest(seg_cloudpath, bbox, chunk_size):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=8, worker_factor=32)
 def create_skeleton_fragments(seg_cloudpath, teasar_param):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
@@ -526,7 +526,7 @@ def create_skeleton_fragments(seg_cloudpath, teasar_param):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=4, worker_factor=32)
 def merge_skeleton_fragments(seg_cloudpath):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -553,7 +553,7 @@ def downsample_and_mesh(param):
 
 
 @mount_secrets
-@kombu_tasks(queue_name="igneous", cluster_name="igneous", worker_factor=32)
+@kombu_tasks(queue_name="igneous", cluster_name="igneous", init_workers=4, worker_factor=32)
 def submit_igneous_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
@@ -579,7 +579,7 @@ def submit_igneous_tasks():
 
 
 @mount_secrets
-@kombu_tasks(queue_name="custom-cpu", cluster_name="custom-cpu", worker_factor=32)
+@kombu_tasks(queue_name="custom-cpu", cluster_name="custom-cpu", init_workers=4, worker_factor=32)
 def submit_custom_cpu_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
@@ -601,7 +601,7 @@ def submit_custom_cpu_tasks():
 
 
 @mount_secrets
-@kombu_tasks(queue_name="custom-gpu", cluster_name="custom-gpu", worker_factor=2)
+@kombu_tasks(queue_name="custom-gpu", cluster_name="custom-gpu", init_workers=4, worker_factor=2)
 def submit_custom_gpu_tasks():
     from airflow.models import Variable
     from slack_message import slack_message
