@@ -494,7 +494,7 @@ set_env_task = setup_env_op(dag_generator, param, "manager")
 drain_tasks = drain_tasks_op(dag_generator, param, "manager")
 
 workers = []
-skips = []
+queue = 'gpu'
 
 for i in range(min(param.get("TASK_NUM", 1), total_gpus*3)):
     workers.append(inference_op(dag_worker, param, queue, i))
