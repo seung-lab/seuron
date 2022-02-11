@@ -9,43 +9,45 @@ RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/archive/re
     GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v
 
 
-# VERSION 0.0.6-customAF
-# AUTHOR: Will Wong
-# DESCRIPTION: Docker airflow with ECR registry and DooD (Docker outside of Dkr)
-# BUILD: docker build --rm -t wongwill86/air-tasks .
-# SOURCE: https://github.com/wongwill86/air-tasks
-
-ARG BASE_DIST=slim
-ARG BASE_TAG=0.0.8-customAF
-ARG BASE_TEST=
-
-FROM ranlu/air-tasks:base-${BASE_DIST}-${BASE_TAG}${BASE_TEST}
+FROM ubuntu:20.04
 MAINTAINER ranlu
 
-ARG BASE_DIST
-ARG BASE_TAG
 ARG AIRFLOW_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME ${AIRFLOW_HOME}
 ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
 ARG AIRFLOW_VERSION=2.2.3
 ENV AIRFLOW_VERSION ${AIRFLOW_VERSION}
+ENV PATH /opt/conda/bin:${PATH}
 
 WORKDIR ${AIRFLOW_HOME}
 
 RUN savedAptMark="$(apt-mark showmanual)" \
-    && apt-get -y update \
     && buildDeps='git build-essential' \
+    && apt-get -y update \
+    && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends apt-transport-https ca-certificates software-properties-common gnupg curl wget lsb-release parallel sudo $buildDeps \
+    && mkdir -p /opt \
+    && wget -O ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py38_4.10.3-Linux-x86_64.sh \
+    && chmod +x ~/miniconda.sh \
+    && ~/miniconda.sh -b -p /opt/conda \
+    && rm ~/miniconda.sh \
+    && find /opt/conda/ -follow -type f -name '*.a' -delete \
+    && find /opt/conda/ -follow -type f -name '*.js.map' -delete \
+    && /opt/conda/bin/conda clean -yaf \
     && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
-    && apt-get -y install --no-install-recommends $buildDeps sudo \
     && pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
     && pip install --no-cache-dir -U joblib psutil matplotlib oauth2client==2.0.2 \
     && pip install --no-cache-dir -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install --no-cache-dir -U igneous-pipeline \
+    && mkdir -p ${AIRFLOW_HOME}/version \
+    && groupadd -r docker \
+    && groupadd -r ${AIRFLOW_USER} \
+    && useradd -r -d ${AIRFLOW_HOME} -g ${AIRFLOW_USER} -G docker -s /bin/bash ${AIRFLOW_USER} \
+    && chown -R ${AIRFLOW_USER}: /opt/conda \
+    && chown -R ${AIRFLOW_USER}: ${AIRFLOW_HOME} \
     # Deleting this symlink not handled correctly by shutil.copy
-    && cd /usr/local/lib/python${PYTHON_VERSION}/site-packages \
     && apt-mark auto '.*' > /dev/null \
     && apt-mark manual sudo curl parallel \
     && apt-mark manual $savedAptMark \
@@ -58,7 +60,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
         /usr/share/man \
         /usr/share/doc \
         /usr/share/doc-base \
-    && find /usr/local -depth \
+    && find /opt/conda -depth \
          \( \
              \( -type d -a \( -name test -o -name tests \) \) \
              -o \
@@ -67,16 +69,9 @@ RUN savedAptMark="$(apt-mark showmanual)" \
 
 # Move base version information directly into airflow home directory
 RUN mkdir -p ${AIRFLOW_HOME}/version
-RUN cp -r /version ${AIRFLOW_HOME}
 
 # prepare airflow user
-RUN groupadd -r ${AIRFLOW_USER} \
-    && useradd -r -d ${AIRFLOW_HOME} -g ${AIRFLOW_USER} -s /bin/bash ${AIRFLOW_USER} \
-    && chown -R ${AIRFLOW_USER}: ${AIRFLOW_HOME} \
-    && usermod -aG docker ${AIRFLOW_USER} \
-    # unfortunately this is required to update the container docker gid to match the
-    # host's gid, we remove this permission from entrypoint-dood.sh script
-    && echo "${AIRFLOW_USER} ALL=NOPASSWD: ALL" >> /etc/sudoers
+RUN echo "${AIRFLOW_USER} ALL=NOPASSWD: ALL" >> /etc/sudoers
 
 COPY --from=builder /usr/src/myapp/docker-credential-gcr /usr/bin/docker-credential-gcr
 # Docker config (i.e. credentials helper from base image)
@@ -90,8 +85,6 @@ COPY . .
 # .git/HEAD
 RUN cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
     && grep $(cat version/COMMIT) .git/refs/tags/* -l | xargs -n 1 -r basename > version/TAGS \
-    && mv version/COMMIT version/air-tasks.COMMIT.${BASE_DIST}-${BASE_TAG} \
-    && mv version/TAGS version/air-tasks.TAGS.${BASE_DIST}-${BASE_TAG} \
     && mkdir -p ${AIRFLOW_HOME}/.cloudvolume/secrets
 RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/custom
 RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
@@ -99,5 +92,6 @@ RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
 
 USER ${AIRFLOW_USER}
 RUN docker-credential-gcr configure-docker
+ENV NVIDIA_VISIBLE_DEVICES all
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["scripts/entrypoint-dood.sh"]
