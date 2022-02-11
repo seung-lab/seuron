@@ -39,12 +39,11 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && apt-get -y install --no-install-recommends $buildDeps sudo \
-    && pip install -U pip \
-    && pip install "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
-    && pip install -U joblib psutil matplotlib oauth2client==2.0.2 \
-    && pip install -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
-    && pip install -U cloud-volume \
-    && pip install -U igneous-pipeline \
+    && pip install --no-cache-dir -U pip \
+    && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
+    && pip install --no-cache-dir -U joblib psutil matplotlib oauth2client==2.0.2 \
+    && pip install --no-cache-dir -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
+    && pip install --no-cache-dir -U igneous-pipeline \
     # Deleting this symlink not handled correctly by shutil.copy
     && cd /usr/local/lib/python${PYTHON_VERSION}/site-packages \
     && apt-mark auto '.*' > /dev/null \
