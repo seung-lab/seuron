@@ -26,8 +26,9 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && buildDeps='git build-essential' \
     && apt-get -y update \
     && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends apt-transport-https ca-certificates software-properties-common gnupg curl wget lsb-release parallel sudo $buildDeps \
+    && MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py38_4.10.3-Linux-x86_64.sh" \
     && mkdir -p /opt \
-    && wget -O ~/miniconda.sh https://repo.anaconda.com/miniconda/Miniconda3-py38_4.10.3-Linux-x86_64.sh \
+    && wget -O ~/miniconda.sh ${MINICONDA_URL} \
     && chmod +x ~/miniconda.sh \
     && ~/miniconda.sh -b -p /opt/conda \
     && rm ~/miniconda.sh \
