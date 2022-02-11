@@ -1,3 +1,14 @@
+FROM golang:buster AS builder
+
+WORKDIR /usr/src/myapp
+
+SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
+
+RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/archive/refs/tags/v2.1.0.tar.gz" && \
+    curl -L "${URL}" | tar -zx --strip-components 1 && \
+    GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -v
+
+
 # VERSION 0.0.6-customAF
 # AUTHOR: Will Wong
 # DESCRIPTION: Docker airflow with ECR registry and DooD (Docker outside of Dkr)
@@ -24,8 +35,6 @@ WORKDIR ${AIRFLOW_HOME}
 
 RUN savedAptMark="$(apt-mark showmanual)" \
     && apt-get -y update \
-    && apt-get -y install --no-install-recommends apt-transport-https ca-certificates gnupg curl parallel \
-    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-sdk -y \
     && buildDeps='git build-essential' \
     && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
@@ -39,7 +48,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     # Deleting this symlink not handled correctly by shutil.copy
     && cd /usr/local/lib/python${PYTHON_VERSION}/site-packages \
     && apt-mark auto '.*' > /dev/null \
-    && apt-mark manual sudo curl google-cloud-sdk parallel \
+    && apt-mark manual sudo curl parallel \
     && apt-mark manual $savedAptMark \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf \
@@ -70,6 +79,7 @@ RUN groupadd -r ${AIRFLOW_USER} \
     # host's gid, we remove this permission from entrypoint-dood.sh script
     && echo "${AIRFLOW_USER} ALL=NOPASSWD: ALL" >> /etc/sudoers
 
+COPY --from=builder /usr/src/myapp/docker-credential-gcr /usr/bin/docker-credential-gcr
 # Docker config (i.e. credentials helper from base image)
 #RUN cp /.docker/ .docker -r
 # Copy repo contents into docker image ( see .dockerignore to see skipped folders )
@@ -89,6 +99,6 @@ RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
 
 
 USER ${AIRFLOW_USER}
-RUN gcloud auth --quiet configure-docker
+RUN docker-credential-gcr configure-docker
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["scripts/entrypoint-dood.sh"]
