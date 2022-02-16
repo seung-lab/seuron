@@ -11,22 +11,26 @@ resources:
       properties:
           zone: us-east1-c
           subnetwork: us-east1
-          user: # username for nginx
-          password: # password for nginx, set it to null if you do not want a password
-          slackToken: # token for slack bot
-          fernetKey: # fernet key for airflow
-          secretKey: # secret key for airflow web service
-          botUserID: # slack id for the bot user
-          remoteLogFolder: # gs location to save airflow logs
           seuronImage: ranlu/air-tasks:airflow2
           project: segmentation
           managerMachineType: e2-standard-2
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/airflow2/deploy/docker-compose-CeleryExecutor.yml
-          airflowUser: # user name for airflow web interface
-          airflowPassword: # password for airflow web interface
-          postgresUser: # user name for postgresql
-          postgresPassword: # password for postgresql
-          postgresDB: # name for airflow database
+          slack:
+            botToken: # bot token for slack
+            botUserID: # slack id of the bot user
+          nginx:
+            user: # nginx username
+            password: # nginx password, set it to null if you do not want a password
+          airflow:
+            fernetKey: FERNET_KEY
+            secretKey: SECRET_KEY
+            remoteLogFolder: # GCS path to save airflow logs
+            user: # username for airflow services
+            password: # password for airflow services
+          postgres:
+            user: # postgres username
+            password: # postgres password
+            database: # postgres database for airflow
           workerInstanceGroups:
             - type: gpu
               zone: us-east1-c

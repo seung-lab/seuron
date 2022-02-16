@@ -4,16 +4,16 @@ from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PA
 
 def GenerateEnvironVar(context, hostname_manager):
     env_variables = {
-        'SLACK_TOKEN': context.properties['slackToken'],
-        'BOTUSERID': context.properties['botUserID'],
+        'SLACK_TOKEN': context.properties['slack']['botToken'],
+        'BOTUSERID': context.properties['slack']['botUserID'],
         'DEPLOYMENT': context.env['deployment'],
         'ZONE': context.properties['zone'],
         'SEURON_TAG': context.properties['seuronImage'],
-        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflowUser'],
-        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflowPassword'],
-        'POSTGRES_USER': context.properties['postgresUser'],
-        'POSTGRES_PASSWORD': context.properties['postgresPassword'],
-        'POSTGRES_DB': context.properties['postgresDB'],
+        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflow']['user'],
+        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflow']['password'],
+        'POSTGRES_USER': context.properties['postgres']['user'],
+        'POSTGRES_PASSWORD': context.properties['postgres']['password'],
+        'POSTGRES_DB': context.properties['postgres']['database'],
         'POSTGRES_MEM': """$(free -m|grep Mem|awk '{print int($2/4)}')""",
     }
 
@@ -44,8 +44,8 @@ echo "0 0 * * * docker system prune -f"|crontab -
 
 docker swarm init
 
-echo '{str(context.properties["user"] or "")}' | docker secret create basic_auth_username -
-echo '{str(context.properties["password"] or "")}' | docker secret create basic_auth_password -
+echo '{str(context.properties["nginx"]["user"] or "")}' | docker secret create basic_auth_username -
+echo '{str(context.properties["nginx"]["password"] or "")}' | docker secret create basic_auth_password -
 
 sudo openssl genrsa 2048 | tee >(
     docker secret create ssl_certificate_key -) |

@@ -54,19 +54,19 @@ def ZonalComputeUrl(project, zone, collection, name):
 
 
 def GenerateAirflowVar(context, hostname_manager):
-    postgres_user = context.properties['postgresUser']
-    postgres_password = context.properties['postgresPassword']
-    postgres_db = context.properties['postgresDB']
+    postgres_user = context.properties['postgres']['user']
+    postgres_password = context.properties['postgres']['password']
+    postgres_db = context.properties['postgres']['database']
     sqlalchemy_conn = f'''postgresql+psycopg2://{postgres_user}:{postgres_password}@{hostname_manager}/{postgres_db}'''
     airflow_variable = {
         'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'google_metadata.gce_internal_ip',
         'AIRFLOW__CORE__SQL_ALCHEMY_CONN': sqlalchemy_conn,
-        'AIRFLOW__CORE__FERNET_KEY': context.properties['fernetKey'],
+        'AIRFLOW__CORE__FERNET_KEY': context.properties['airflow']['fernetKey'],
         'AIRFLOW__CELERY__BROKER_URL': f'amqp://{hostname_manager}',
         'AIRFLOW__CELERY__CELERY_RESULT_BACKEND': f'db+{sqlalchemy_conn}',
-        'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['secretKey'],
+        'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['airflow']['secretKey'],
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
-        'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{context.properties["remoteLogFolder"]}/{context.env["deployment"]}',
+        'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{context.properties["airflow"]["remoteLogFolder"]}/{context.env["deployment"]}',
         'AIRFLOW__METRICS__STATSD_ON': 'False',
         'AIRFLOW__METRICS__STATSD_HOST': hostname_manager,
     }
