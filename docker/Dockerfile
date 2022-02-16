@@ -32,6 +32,8 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && chmod +x ~/miniconda.sh \
     && ~/miniconda.sh -b -p /opt/conda \
     && rm ~/miniconda.sh \
+    && conda install -y nomkl \
+    && conda install -y numpy scipy \
     && find /opt/conda/ -follow -type f -name '*.a' -delete \
     && find /opt/conda/ -follow -type f -name '*.js.map' -delete \
     && /opt/conda/bin/conda clean -yaf \
