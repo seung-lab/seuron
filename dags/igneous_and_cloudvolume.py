@@ -177,6 +177,8 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
             except Exception as e:
                 slack_message("Failed to submit tasks using {}".format(create_tasks.__name__))
                 raise e
+            finally:
+                ramp_down_cluster(cluster_name, 0)
 
         return inner
 
