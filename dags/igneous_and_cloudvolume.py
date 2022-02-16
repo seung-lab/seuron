@@ -136,6 +136,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
             from kombu import Connection
             from google_api_helper import ramp_up_cluster, ramp_down_cluster
             from slack_message import slack_message
+            import traceback
             broker = configuration.get('celery', 'BROKER_URL')
             queue_name = cluster_name
 
@@ -176,6 +177,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
 
             except Exception as e:
                 slack_message("Failed to submit tasks using {}".format(create_tasks.__name__))
+                slack_message(f"backtrace: {traceback.format_exc()}")
                 raise e
             finally:
                 ramp_down_cluster(cluster_name, 0)
