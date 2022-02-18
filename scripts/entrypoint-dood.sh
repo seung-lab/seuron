@@ -10,7 +10,7 @@ export PYTHONPATH=$AIRFLOW_HOME/common:$PYTHONPATH
 
 echo "start script with group $DOCKER_GROUP"
 
-if [[ -z "${_AIRFLOW_DB_UPGRADE=}"   ]] ; then
+if [[ -z "${_AIRFLOW_DB_UPGRADE=}" ]] ; then
     python scripts/install_packages.py
 fi
 
