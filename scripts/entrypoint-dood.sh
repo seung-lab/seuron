@@ -14,6 +14,11 @@ if [[ -z "${_AIRFLOW_DB_UPGRADE=}" ]] ; then
     python scripts/install_packages.py
 fi
 
+if [[ -n "${CONDA_INSTALL_PYTORCH=}" ]] ; then
+    conda uninstall -y nomkl
+    conda install -y pytorch cudatoolkit=11.3 -c pytorch
+fi
+
 # DOCKER_GROUP from /add-user-docker.sh
 if [ -z ${DOCKER_GROUP} ]; then
     exec "$@"
