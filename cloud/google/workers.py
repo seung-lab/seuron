@@ -65,7 +65,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     elif worker['type'] == 'custom-cpu':
         cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': 32}
     elif worker['type'] == 'custom-gpu':
-        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
+        cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
 
     startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in ['gpu', 'custom-gpu'] and worker['gpuWorkerAcceleratorType']))
 
