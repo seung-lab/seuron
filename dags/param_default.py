@@ -51,6 +51,10 @@ inference_param_default = {
     "BBOX": [7168, 20480, 1500, 8608, 21920, 1764],
 }
 
+default_synaptor_param = """
+[Workflow]
+maxclustersize = 1
+"""
 
 default_args = {
     'owner': 'seuronbot',
