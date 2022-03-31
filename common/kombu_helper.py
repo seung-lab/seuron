@@ -11,8 +11,9 @@ def check_queue(queue):
     return queue_status
 
 
-def drain_messages(conn, queue):
-    with Connection(conn) as conn:
+# Can't use the variable name "conn" as an argument bc it's reserved by airflow
+def drain_messages(broker_url, queue):
+    with Connection(broker_url) as conn:
         simple_queue = conn.SimpleQueue(queue)
         while True:
             try:
