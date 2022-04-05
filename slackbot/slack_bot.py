@@ -111,22 +111,25 @@ def replyto(msg, reply, username=workerid, broadcast=False):
         print(rc)
 
 
-def cancel_run(msg):
-    replyto(msg, "Shutting down clusters...")
+def shut_down_clusters():
     cluster_size = get_variable('cluster_target_size', deserialize_json=True)
     for k in cluster_size:
         cluster_size[k] = 0
     set_variable("cluster_target_size", cluster_size, serialize_json=True)
     run_dag("cluster_management")
 
+
+def cancel_run(msg):
+    replyto(msg, "Shutting down clusters...")
+    shut_down_clusters()
     time.sleep(10)
 
     replyto(msg, "Marking all DAG states to success...")
     mark_dags_success()
     time.sleep(10)
+
     #try again because some tasks might already been scheduled
     mark_dags_success()
-
     time.sleep(10)
 
     replyto(msg, "Draining tasks from the queues...")
@@ -135,7 +138,12 @@ def cancel_run(msg):
     drain_messages(broker_url, "custom-gpu")
     drain_messages(broker_url, "chunkflow")
     drain_messages(broker_url, "synaptor")
+    time.sleep(10)
 
+    # Shutting down clusters again in case a scheduled task
+    # scales a cluster back up
+    replyto(msg, "Making sure the clusters are shut down...")
+    shut_down_clusters()
     time.sleep(30)
 
     replyto(msg, "*Current run cancelled*", broadcast=True)
