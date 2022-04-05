@@ -65,6 +65,7 @@ def update_user_info(userid):
 
 
 def check_running():
+    """Checks whether the DAGs within the seuron_dags list (above) is running."""
     for d in seuron_dags:
         state, exec_date = dag_state(d)
         if state == "running":
