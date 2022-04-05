@@ -12,7 +12,7 @@ from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
 
-seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg"]
+seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg", "synaptor_assignment"]
 
 
 def latest_task():
@@ -195,6 +195,15 @@ def run_synaptor_db_seg():
         return False
 
     run_dag("synaptor_db_seg")
+    return True
+
+
+def run_synaptor_assignment():
+    """Runs the synaptor assignment DAG."""
+    if check_running():
+        return False
+
+    run_dag("synaptor_assignment")
     return True
 
 
