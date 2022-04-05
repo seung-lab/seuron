@@ -7,7 +7,9 @@ import string
 from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
     sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
-    mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
+    mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks, \
+    synaptor_sanity_check, run_synaptor_file_seg, run_synaptor_db_seg, \
+    run_synaptor_assignment
 from bot_info import slack_token, botid, workerid, broker_url
 from kombu_helper import drain_messages
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
@@ -132,6 +134,7 @@ def cancel_run(msg):
     drain_messages(broker_url, "custom-cpu")
     drain_messages(broker_url, "custom-gpu")
     drain_messages(broker_url, "chunkflow")
+    drain_messages(broker_url, "synaptor")
 
     time.sleep(30)
 
@@ -278,6 +281,62 @@ def update_param(msg, advanced=False):
             replyto(msg, "Busy right now")
 
     return
+
+
+def update_synaptor_params(msg):
+    """Parses the synaptor configuration file to check for simple errors."""
+    # Current file format is ini/toml, not json
+    _, content = download_file(msg)
+
+    if content is not None:  # download_file returns None if there's a problem
+        if check_running():
+            replyto(msg, "Busy right now")
+            return
+
+        replyto(msg, "Running synaptor sanity check. Please wait.")
+
+        update_metadata(msg)
+        set_variable("synaptor_param", content)
+        synaptor_sanity_check()
+
+    else:
+        replyto(msg, "Error reading file")
+
+
+def synaptor_file_seg(msg):
+    """Runs the file segmentation DAG."""
+    if check_running():
+        replyto(msg, "Busy right now")
+        return
+
+    replyto(msg, "Running synaptor file segmentation. Please wait.")
+    create_run_token(msg)
+    update_metadata(msg)
+    run_synaptor_file_seg()
+
+
+def synaptor_db_seg(msg):
+    """Runs the file segmentation DAG."""
+    if check_running():
+        replyto(msg, "Busy right now")
+        return
+
+    replyto(msg, "Running synaptor file segmentation. Please wait.")
+    create_run_token(msg)
+    update_metadata(msg)
+    run_synaptor_db_seg()
+
+
+def synaptor_assignment(msg):
+    """Runs the file segmentation DAG."""
+    if check_running():
+        replyto(msg, "Busy right now")
+        return
+
+    replyto(msg, "Running synaptor synapse assignment. Please wait.")
+    create_run_token(msg)
+    update_metadata(msg)
+    run_synaptor_assignment()
 
 
 def run_igneous_scripts(msg):
@@ -456,6 +515,19 @@ def dispatch_command(cmd, msg):
             update_metadata(msg)
             param_updated = False
             run_contact_surface()
+    elif cmd in ["updatesynaptorparams", "updatesynaptorparameters"]:
+        update_synaptor_params(msg)
+    elif cmd in ["runsynaptorfileseg",
+                 "runsynaptorfilesegmentation"]:
+        synaptor_file_seg(msg)
+    elif cmd in ["runsynaptordbseg",
+                 "runsynaptordatabaseseg",
+                 "runsynaptordbsegmentation",
+                 "runsynaptordatabasesegmentation"]:
+        synaptor_db_seg(msg)
+    elif cmd in ["runsynaptorassignment",
+                 "runsynaptorsynapseassignment"]:
+        synaptor_assignment(msg)
     else:
         replyto(msg, "Sorry I do not understand, please try again.")
 

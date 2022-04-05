@@ -12,7 +12,7 @@ from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
 
-seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu"]
+seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg", "synaptor_assignment"]
 
 
 def latest_task():
@@ -65,6 +65,7 @@ def update_user_info(userid):
 
 
 def check_running():
+    """Checks whether the DAGs within the seuron_dags list (above) is running."""
     for d in seuron_dags:
         state, exec_date = dag_state(d)
         if state == "running":
@@ -92,6 +93,11 @@ def trigger_or_clear_dag(dag_id):
 def sanity_check():
     dag_id = "sanity_check"
     trigger_or_clear_dag(dag_id)
+
+
+def synaptor_sanity_check():
+    """Runs the synaptor sanity check DAG."""
+    trigger_or_clear_dag("synaptor_sanity_check")
 
 
 def chunkflow_set_env():
@@ -172,6 +178,33 @@ def run_contact_surface():
         return False
 
     run_dag(dag_id)
+    return True
+
+
+def run_synaptor_file_seg():
+    """Runs the synaptor file segmentation DAG."""
+    if check_running():
+        return False
+
+    run_dag("synaptor_file_seg")
+    return True
+
+
+def run_synaptor_db_seg():
+    """Runs the synaptor database segmentation DAG."""
+    if check_running():
+        return False
+
+    run_dag("synaptor_db_seg")
+    return True
+
+
+def run_synaptor_assignment():
+    """Runs the synaptor assignment DAG."""
+    if check_running():
+        return False
+
+    run_dag("synaptor_assignment")
     return True
 
 
