@@ -7,7 +7,8 @@ import string
 from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
     sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
-    mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks
+    mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks, \
+    synaptor_sanity_check
 from bot_info import slack_token, botid, workerid, broker_url
 from kombu_helper import drain_messages
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
@@ -281,6 +282,26 @@ def update_param(msg, advanced=False):
     return
 
 
+def update_synaptor_params(msg):
+    """Parses the synaptor configuration file to check for simple errors."""
+    # Current file format is ini/toml, not json
+    _, content = download_file(msg)
+
+    if content is not None:  # download_file returns None if there's a problem
+        if check_running():
+            replyto(msg, "Busy right now")
+            return
+
+        replyto(msg, "Running synaptor sanity check. Please wait.")
+
+        update_metadata(msg)
+        set_variable("synaptor_param", content)
+        synaptor_sanity_check()
+
+    else:
+        replyto(msg, "Error reading file")
+
+
 def run_igneous_scripts(msg):
     _, payload = download_file(msg)
     if payload:
@@ -457,6 +478,8 @@ def dispatch_command(cmd, msg):
             update_metadata(msg)
             param_updated = False
             run_contact_surface()
+    elif cmd in ["updatesynaptorparams", "updatesynaptorparameters"]:
+        update_synaptor_params(msg)
     else:
         replyto(msg, "Sorry I do not understand, please try again.")
 

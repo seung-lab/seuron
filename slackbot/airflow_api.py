@@ -12,7 +12,7 @@ from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
 
-seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu"]
+seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check"]
 
 
 def latest_task():
@@ -92,6 +92,11 @@ def trigger_or_clear_dag(dag_id):
 def sanity_check():
     dag_id = "sanity_check"
     trigger_or_clear_dag(dag_id)
+
+
+def synaptor_sanity_check():
+    """Runs the synaptor sanity check DAG."""
+    trigger_or_clear_dag("synaptor_sanity_check")
 
 
 def chunkflow_set_env():
