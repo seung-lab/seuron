@@ -1,9 +1,10 @@
+from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.dummy import DummyOperator
 from airflow.utils.weight_rule import WeightRule
-from airflow.models import Variable
+from airflow.models import Variable, DagRun, DagBag, BaseOperator as Operator
 from time import sleep
-from slack_message import slack_message
+from slack_message import slack_message, task_failure_alert
 from param_default import default_args
 from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster
 
@@ -137,4 +138,38 @@ def reset_cluster_op(dag, stage, key, initial_size, queue):
         trigger_rule="all_success",
         queue=queue,
         dag=dag
+    )
+
+
+def mark_success_or_failure(dag_id: str, anchor_task: str) -> None:
+    """Marks a dag run status based on the status of an "anchor" task.
+
+    Assumes that the most recent DAG run is the one to mark.
+    """
+    finished_states = ["success", "failed", "skipped"]
+    assert dag_id in DagBag().dags, f"dag_id {dag_id} does not exist in DagBag"
+
+    dag_run = DagRun.find(dag_id=dag_id)[-1]
+
+    anchor_task_state = dag_run.get_task_instance(anchor_task).state
+    assert (
+        anchor_task_state in finished_states
+    ), f"anchor_task {anchor_task} not finished"
+
+    for ti in dag_run.get_task_instances():
+        if ti.state not in finished_states:
+            ti.set_state(anchor_task_state)
+
+
+def mark_success_or_failure_op(dag: DAG, dag_id: str, anchor_task: str) -> Operator:
+    """Operator fn for mark_success_or_failure callable."""
+    return PythonOperator(
+        task_id="mark_success_or_failure",
+        python_callable=mark_success_or_failure,
+        priority_weight=100_000,
+        op_args=(dag_id, anchor_task),
+        weight_rule=WeightRule.ABSOLUTE,
+        on_failure_callback=task_failure_alert,
+        queue="manager",
+        dag=dag,
     )
