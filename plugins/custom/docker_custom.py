@@ -320,17 +320,44 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
                 shutil.copy('/tmp/sysinfo.txt', tmp_var_dir)
             except FileNotFoundError:
                 self.log.info('No sysinfo file found, skip')
-            for key in self.variables:
-                value = Variable.get(key)
-                with open(os.path.join(tmp_var_dir, key), 'w') as value_file:
-                    # import pdb
-                    # pdb.set_trace()
-                    value_file.write(value)
+            # the variables attribute lists names to be mnted at the same point
+            if isinstance(self.variables, list):
+                for key in self.variables:
+                    value = Variable.get(key)
+                    with open(os.path.join(tmp_var_dir, key), 'w') as value_file:
+                        # import pdb
+                        # pdb.set_trace()
+                        value_file.write(value)
 
-            if self.variables:
-                self.mounts.append(
-                    Mount(source=tmp_var_dir, target=self.mount_point, type='bind')
-                )
+                if self.variables:
+                    self.mounts.append(
+                        Mount(source=tmp_var_dir, target=self.mount_point, type='bind')
+                    )
+
+            # the variables attribute maps variable names to mount points
+            elif isinstance(self.variables, dict):
+                self.log.info('Using flexible (dict) mounting and'
+                              f' ignoring mount point attribute: {self.mount_point}')
+
+                all_mount_points = list(set(self.variables.values()))
+                for (key, mount_point) in self.variables.items():
+                    value = Variable.get(key)
+                    tmp_mount_dir = os.path.join(
+                        tmp_var_dir, str(all_mount_points.index(mount_point))
+                    )
+                    self.log.info(f"Making directory {tmp_mount_dir}")
+                    os.makedirs(tmp_mount_dir, exist_ok=True)
+                    with open(os.path.join(tmp_mount_dir, key), 'w') as value_file:
+                        value_file.write(value)
+
+                for mount_point in all_mount_points:
+                    tmp_mount_dir = os.path.join(
+                        tmp_var_dir, str(all_mount_points.index(mount_point))
+                    )
+                    self.mounts.append(
+                        Mount(source=tmp_mount_dir, target=mount_point, type='bind')
+                    )
+
             return super().execute(context)
 
 
