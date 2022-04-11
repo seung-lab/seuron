@@ -133,7 +133,10 @@ def wait_for_task(q_state, ret_queue, err_queue, conn):
             elif isinstance(msg, dict):
                 if msg.get('msg', None) == "done":
                     if msg.get('ret', None):
-                        ret_queue.put(json.dumps(msg['ret']))
+                        try:
+                            ret_queue.put(json.dumps(msg['ret']))
+                        except:
+                            err_queue.put("Cannot jsonify the result from the worker")
                     print("task done")
                     return True
                 elif msg.get('msg', None) == "error":
