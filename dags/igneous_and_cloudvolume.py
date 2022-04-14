@@ -143,35 +143,44 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
             try:
                 ret = create_tasks(*args, **kwargs)
                 if isinstance(ret, dict):
-                    tasks = ret.get('tasks', None)
+                    task_list = ret.get('task_list', ret.get('tasks', None))
+                    task_generator = ret.get('task_generator', None)
                     agg = ret.get('aggregator', None)
                 else:
-                    tasks = ret
+                    task_generator = None
+                    task_list = ret
                     agg = None
 
-                if not tasks:
+                if task_list and task_generator:
+                    slack_message("Received both task list and task generator from {}, bail".format(create_tasks.__name__))
+                    return
+
+                if not task_list and not task_generator:
                     slack_message("No tasks submitted by {}".format(create_tasks.__name__))
                     return
 
-                try:
-                    tasks = list(tasks)
-                except TypeError:
-                    slack_message("{} must return a list of tasks".format(create_tasks.__name__))
-                    return
+                if not task_generator:
+                    task_generator = [task_list]
 
-                with Connection(broker, connect_timeout=60) as conn:
-                    queue = conn.SimpleQueue(queue_name)
-                    for t in tasks:
-                        payload = extract_payload(t)
-                        submit_message(queue, payload)
-                    queue.close()
+                for tasks in task_generator:
+                    try:
+                        tasks = list(tasks)
+                    except TypeError:
+                        slack_message("{} must return a list of tasks".format(create_tasks.__name__))
+                        continue
 
-                target_size = (1+len(tasks)//worker_factor)
-                ramp_up_cluster(cluster_name, min(target_size, init_workers) , target_size)
-                check_queue(queue_name, agg)
-                ramp_down_cluster(cluster_name, 0)
-                if agg:
-                    agg.finalize()
+                    with Connection(broker, connect_timeout=60) as conn:
+                        queue = conn.SimpleQueue(queue_name)
+                        for t in tasks:
+                            payload = extract_payload(t)
+                            submit_message(queue, payload)
+                        queue.close()
+
+                    target_size = (1+len(tasks)//worker_factor)
+                    ramp_up_cluster(cluster_name, min(target_size, init_workers) , target_size)
+                    check_queue(queue_name, agg)
+                    if agg:
+                        agg.finalize()
 
                 slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
 
