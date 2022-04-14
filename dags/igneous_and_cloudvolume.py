@@ -463,7 +463,8 @@ def merge_mesh_fragments(seg_cloudpath):
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4, worker_factor=32)
 def mesh_manifest(seg_cloudpath, bbox, chunk_size):
-    from igneous.tasks import MeshManifestTask
+    from functools import partial
+    from igneous.tasks import MeshManifestPrefixTask
     from os.path import commonprefix
     from slack_message import slack_message
     import math
@@ -510,7 +511,10 @@ def mesh_manifest(seg_cloudpath, bbox, chunk_size):
             continue
 
         ptask = p
-        t = MeshManifestTask(layer_path=seg_cloudpath, prefix=str(p))
+        t = partial(MeshManifestPrefixTask,
+          layer_path=seg_cloudpath,
+          prefix=str(p),
+        )
         tasks.append(t)
 
     slack_message(":arrow_forward: Generating mesh manifest for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
