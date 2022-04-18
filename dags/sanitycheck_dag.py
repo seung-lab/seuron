@@ -351,8 +351,7 @@ Agglomeration threshold: {agg_threshold}
         msg += '''
 Worker image: {worker_image}
 Fundamental chunk size: {chunk_size}
-
-{nnodes} nodes in the octree
+{nnodes} nodes in the {nlayers}-layer octree
 {bchunks} bundle chunks at mip level {local_batch_mip}
 {hchunks} chunks at mip level {high_mip} and above
 {ntasks} tasks in total
@@ -360,6 +359,7 @@ Fundamental chunk size: {chunk_size}
             worker_image = param["WORKER_IMAGE"],
             chunk_size = param["CHUNK_SIZE"],
             nnodes = nnodes,
+            nlayers= top_mip+1,
             bchunks = bchunks,
             local_batch_mip = local_batch_mip,
             hchunks = hchunks,
@@ -378,6 +378,9 @@ Fundamental chunk size: {chunk_size}
 
     if "GT_PATH" in param:
         msg += """:vs: Evaluate the output against ground truth `{}`\n""".format(param["GT_PATH"])
+
+    if top_mip > 8:
+        msg += """:u7981:*WARNING: The default seuronbot configuration only support octrees up to 9 layers, tasks may hang*"""
 
     slack_message(msg, broadcast=True)
 
