@@ -75,6 +75,9 @@ def check_queue(queue, agg=None):
                 ret_queue.close()
                 return
 
+def chunk_tasks(tasks, chunk_size):
+     for i in range(0, len(tasks), chunk_size):
+         yield tasks[i:i + chunk_size]
 
 def mount_secrets(func):
     @wraps(func)
@@ -160,7 +163,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
                     return
 
                 if not task_generator:
-                    task_generator = [task_list]
+                    task_generator = chunk_tasks(task_list, 100000)
 
                 for tasks in task_generator:
                     try:
@@ -168,6 +171,8 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
                     except TypeError:
                         slack_message("{} must return a list of tasks".format(create_tasks.__name__))
                         continue
+
+                    slack_message(f"Populate the message queue with {len(tasks)} tasks")
 
                     with Connection(broker, connect_timeout=60) as conn:
                         queue = conn.SimpleQueue(queue_name)
