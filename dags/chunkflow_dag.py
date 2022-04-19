@@ -106,6 +106,7 @@ def check_patch_parameters(param):
 
 
 def supply_default_parameters():
+    from docker_helper import health_check_info
     param = Variable.get("inference_param", deserialize_json=True)
 
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
@@ -279,6 +280,8 @@ def supply_default_parameters():
         raise ValueError('Bounding box is outside of the image')
 
     Variable.set("inference_param", check_patch_parameters(param), serialize_json=True)
+
+    health_check_info(param["CHUNKFLOW_IMAGE"])
 
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))

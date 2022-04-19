@@ -265,8 +265,11 @@ def check_worker_image_op(dag):
 )
 
 def print_summary():
+    from docker_helper import health_check_info
     param = Variable.get("param", deserialize_json=True)
     data_bbox = param["BBOX"]
+
+    health_check_info(param["WORKER_IMAGE"])
 
     if not (param.get("SKIP_WS", False) and param.get("SKIP_AGG", False)):
         chunk_size = param["CHUNK_SIZE"]
