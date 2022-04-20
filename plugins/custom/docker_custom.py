@@ -150,7 +150,7 @@ class DockerConfigurableOperator(DockerOperator):
         cpu_total = 0.0
         cpu_system = 0.0
         cpu_percent = 0.0
-        idle_count = 0
+        unhealthy_count = 0
         while True:
             try:
                 x = self.cli.stats(container=self.container['Id'], decode=False, stream=False)
@@ -181,13 +181,23 @@ class DockerConfigurableOperator(DockerOperator):
                                  humanize_bytes(net_r),
                                  humanize_bytes(net_w)))
 
-            if cpu_percent < 5:
-                idle_count += 1
-            else:
-                idle_count = 0
+            try:
+                 info = self.cli.inspect_container(container=self.container['Id'])
+                 health_check_ok = info['State']['Health']['Status']
+                 if health_check_ok:
+                    unhealthy_count = 0
+                 else:
+                    unhealthy_count += 1
+                    self.log.info('Health check Failed')
+            except:
+                if cpu_percent < 5:
+                    unhealthy_count += 1
+                    self.log.info('No health status, container is idle, assuming it is unhealthy.')
+                else:
+                    unhealthy_count = 0
 
-            if self.qos and idle_count > 5:
-                self.log.info('Nothing happened in 5 minutes, stop the container')
+            if self.qos and unhealthy_count > 5:
+                self.log.info('Health check failed 5 times, stop the container')
                 self.cli.stop(self.container['Id'], timeout=1)
 
             sleep(60)
