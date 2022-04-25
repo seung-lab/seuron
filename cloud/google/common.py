@@ -36,7 +36,7 @@ EOF
 systemctl restart docker
 '''
 
-DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v ${AIRFLOW__LOGGING__BASE_LOG_FOLDER}:/var/log/airflow/logs %(args)s %(image)s'
+DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'
 
 CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concurrency)s -q %(queue)s'
 
