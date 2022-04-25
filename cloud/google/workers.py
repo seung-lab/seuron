@@ -16,6 +16,7 @@ def GenerateWorkerStartupScript(context, env_variables, cmd, use_gpu=False):
 set -e
 mount -t tmpfs -o size=80%,noatime tmpfs /tmp
 mkdir -p /var/log/airflow/logs
+chmod 777 /var/log/airflow/logs
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 {INSTALL_DOCKER_CMD}
 '''
