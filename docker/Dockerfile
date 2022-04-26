@@ -17,7 +17,9 @@ ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
 ARG AIRFLOW_VERSION=2.2.5
 ENV AIRFLOW_VERSION ${AIRFLOW_VERSION}
-ENV PATH /opt/conda/bin:${PATH}
+ARG MINICONDA_PATH=/opt/conda
+ARG MINICONDA_URL=https://repo.anaconda.com/miniconda/Miniconda3-py39_4.11.0-Linux-x86_64.sh
+ENV PATH ${MINICONDA_PATH}/bin:${PATH}
 
 WORKDIR ${AIRFLOW_HOME}
 
@@ -25,17 +27,16 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && buildDeps='git build-essential' \
     && apt-get -y update \
     && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends apt-transport-https ca-certificates software-properties-common gnupg curl lsb-release parallel sudo $buildDeps \
-    && MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py39_4.11.0-Linux-x86_64.sh" \
     && mkdir -p /opt \
     && curl -o ~/miniconda.sh ${MINICONDA_URL} \
     && chmod +x ~/miniconda.sh \
-    && ~/miniconda.sh -b -p /opt/conda \
+    && ~/miniconda.sh -b -p ${MINICONDA_PATH} \
     && rm ~/miniconda.sh \
     && conda install -y nomkl \
     && conda install -y numpy scipy \
-    && find /opt/conda/ -follow -type f -name '*.a' -delete \
-    && find /opt/conda/ -follow -type f -name '*.js.map' -delete \
-    && /opt/conda/bin/conda clean -yaf \
+    && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
+    && find ${MINICONDA_PATH} -follow -type f -name '*.js.map' -delete \
+    && conda clean -yaf \
     && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && pip install --no-cache-dir -U pip \
@@ -47,7 +48,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && groupadd -r docker \
     && groupadd -r ${AIRFLOW_USER} \
     && useradd -r -d ${AIRFLOW_HOME} -g ${AIRFLOW_USER} -G docker -s /bin/bash ${AIRFLOW_USER} \
-    && chown -R ${AIRFLOW_USER}: /opt/conda \
+    && chown -R ${AIRFLOW_USER}: ${MINICONDA_PATH} \
     && chown -R ${AIRFLOW_USER}: ${AIRFLOW_HOME} \
     # Deleting this symlink not handled correctly by shutil.copy
     && apt-mark auto '.*' > /dev/null \
@@ -62,7 +63,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
         /usr/share/man \
         /usr/share/doc \
         /usr/share/doc-base \
-    && find /opt/conda -depth \
+    && find ${MINICONDA_PATH} -depth \
          \( \
              \( -type d -a \( -name test -o -name tests \) \) \
              -o \
