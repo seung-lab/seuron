@@ -17,7 +17,6 @@ resources:
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/main/deploy/docker-compose-CeleryExecutor.yml
           slack:
             botToken: # bot token for slack
-            botUserID: # slack id of the bot user
           nginx:
             user: # nginx username
             password: # nginx password, set it to null if you do not want a password
