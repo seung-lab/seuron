@@ -1,5 +1,4 @@
 from googleapiclient import discovery
-from oauth2client.client import GoogleCredentials
 import requests
 import json
 
@@ -16,15 +15,13 @@ def get_instance_data(key):
     return response.text
 
 def get_instance_metadata(project, zone, instance):
-    credentials = GoogleCredentials.get_application_default()
-    service = discovery.build('compute', 'v1', credentials=credentials)
+    service = discovery.build('compute', 'v1')
     request = service.instances().get(project=project, zone=zone, instance=instance)
     info = request.execute()
     return info['metadata']
 
 def set_instance_metadata(project, zone, instance, data):
-    credentials = GoogleCredentials.get_application_default()
-    service = discovery.build('compute', 'v1', credentials=credentials)
+    service = discovery.build('compute', 'v1')
     request = service.instances().setMetadata(body=data, project=project, zone=zone, instance=instance)
     return request.execute()
 

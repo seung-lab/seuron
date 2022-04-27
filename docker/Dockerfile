@@ -41,7 +41,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
-    && pip install --no-cache-dir -U joblib psutil matplotlib oauth2client==2.0.2 \
+    && pip install --no-cache-dir -U joblib psutil matplotlib \
     && pip install --no-cache-dir -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install --no-cache-dir -U igneous-pipeline \
     && mkdir -p ${AIRFLOW_HOME}/version \

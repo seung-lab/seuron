@@ -2,7 +2,6 @@ from time import sleep
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from googleapiclient import discovery
-from oauth2client.client import GoogleCredentials
 from slack_message import slack_message
 import requests
 import json
@@ -16,14 +15,12 @@ def get_project_id():
 
 
 def instance_group_manager_info(project_id, instance_group):
-    credentials = GoogleCredentials.get_application_default()
-    service = discovery.build('compute', 'v1', credentials=credentials)
+    service = discovery.build('compute', 'v1')
     request = service.instanceGroupManagers().get(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'])
     return request.execute()
 
 def instance_group_info(project_id, instance_group):
-    credentials = GoogleCredentials.get_application_default()
-    service = discovery.build('compute', 'v1', credentials=credentials)
+    service = discovery.build('compute', 'v1')
     request = service.instanceGroups().get(project=project_id, zone=instance_group['zone'], instanceGroup=instance_group['name'])
     return request.execute()
 
@@ -96,8 +93,7 @@ def resize_instance_group(project_id, instance_group, size):
             continue
         if info_group_manager["targetSize"] > info_group["size"]:
             ig_size = min(ig_size, info_group["size"]+1)
-        credentials = GoogleCredentials.get_application_default()
-        service = discovery.build('compute', 'v1', credentials=credentials)
+        service = discovery.build('compute', 'v1')
         request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=ig_size)
         response = request.execute()
         print(json.dumps(response, indent=2))
