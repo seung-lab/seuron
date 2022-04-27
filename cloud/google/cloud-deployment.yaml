@@ -11,7 +11,7 @@ resources:
       properties:
           zone: us-east1-c
           subnetwork: us-east1
-          seuronImage: ranlu/air-tasks:airflow2
+          seuronImage: ranlu/seuron:main
           project: segmentation
           managerMachineType: e2-medium
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/main/deploy/docker-compose-CeleryExecutor.yml
