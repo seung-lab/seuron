@@ -2,6 +2,9 @@ from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, Generate
 from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 
+GPU_TYPES = ['gpu', 'custom-gpu']
+
+
 def GenerateEnvironVar(context, env_variables):
     export_variables = "\n".join([f'''export {e}={env_variables[e]}''' for e in env_variables])
 
@@ -68,7 +71,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     elif worker['type'] == 'custom-gpu':
         cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
 
-    startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in ['gpu', 'custom-gpu'] and worker['gpuWorkerAcceleratorType']))
+    startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']))
 
     instance_template = {
         'zone': worker['zone'],
@@ -101,7 +104,7 @@ def GenerateWorkers(context, hostname_manager, worker):
         }],
     }
 
-    if worker['type'] in ['gpu', 'custom-gpu']:
+    if worker['type'] in GPU_TYPES:
         instance_template['guestAccelerators'] = [{
                 'acceleratorCount': 1,
                 'acceleratorType': worker['gpuWorkerAcceleratorType'],
