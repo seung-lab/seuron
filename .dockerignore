@@ -10,7 +10,5 @@ docker
 .*
 # we need these 3 git folders to be included for version tagging
 !.git/refs/heads/*
-.git/refs/heads/*/*
 !.git/refs/tags/*
-.git/refs/tags/*/*
 !.git/HEAD
