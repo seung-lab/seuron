@@ -76,7 +76,9 @@ def GenerateWorkers(context, hostname_manager, worker):
     instance_template = {
         'zone': worker['zone'],
         'machineType': worker['machineType'],
-        'disks': [GenerateBootDisk(diskSizeGb=20)],
+        'disks': [GenerateBootDisk(diskSizeGb=worker["diskSizeGb"])
+                  if "diskSizeGb" in worker
+                  else GenerateBootDisk(diskSizeGb=20)],
         'tags': {
             'items': ['princeton-access'],
         },
