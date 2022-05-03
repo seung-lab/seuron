@@ -5,8 +5,8 @@ x-airflow-common:
     restart: always
     environment:
         &airflow-common-env
-        AIRFLOW__CORE__SQL_ALCHEMY_CONN:
         AIRFLOW__CORE__FERNET_KEY:
+        AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:
         AIRFLOW__CELERY__BROKER_URL:
         AIRFLOW__CELERY__CELERY_RESULT_BACKEND:
         AIRFLOW__WEBSERVER__SECRET_KEY:
