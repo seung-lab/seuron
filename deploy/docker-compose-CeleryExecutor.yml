@@ -125,7 +125,6 @@ services:
         environment:
             <<: *airflow-common-env
             SLACK_TOKEN:
-            BOTUSERID:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py
         deploy:
