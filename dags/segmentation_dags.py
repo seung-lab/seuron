@@ -9,7 +9,7 @@ from airflow.models import Variable
 from chunkiterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
-from segmentation_op import composite_chunks_batch_op, composite_chunks_overlap_op, composite_chunks_wrap_op, remap_chunks_batch_op
+from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, composite_chunks_wrap_op, remap_chunks_batch_op
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op
 
 from param_default import param_default, default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
@@ -165,7 +165,7 @@ def process_composite_tasks(c, cm, top_mip, params):
                 generate_chunks[stage][top_mip][top_tag].set_downstream(remap_chunks[stage][tag])
             init[stage].set_downstream(generate_chunks[stage]["batch"][tag])
         if params.get('OVERLAP_MODE', False) and c.mip_level() == overlap_mip and stage == 'agg':
-            overlap_chunks[tag] = composite_chunks_overlap_op(image, dag[stage], cm, composite_queue, tag, params)
+            overlap_chunks[tag] = overlap_chunks_op(image, dag[stage], cm, composite_queue, tag, params)
             for n in c.neighbours():
                 n_tag = str(n.mip_level()) + "_" + "_".join([str(i) for i in n.coordinate()])
                 if n_tag in generate_chunks[stage][c.mip_level()]:

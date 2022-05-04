@@ -31,9 +31,9 @@ def composite_chunks_wrap_op(img, dag, config_mounts, queue, tag, stage, op, par
     )
 
 
-def composite_chunks_overlap_op(img, dag, config_mounts, queue, tag, params):
+def overlap_chunks_op(img, dag, config_mounts, queue, tag, params):
     workspace_path = params.get("WORKSPACE_PATH", default_seg_workspace)
-    cmdlist = f'export STAGE=agg && {os.path.join(workspace_path, "scripts/run_wrapper.sh")} . composite_chunk_overlap {tag}'
+    cmdlist = f'export STAGE=agg && {os.path.join(workspace_path, "scripts/run_wrapper.sh")} . overlap_chunk_me {tag}'
 
     return worker_op(
         variables=config_mounts,
