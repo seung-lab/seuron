@@ -6,7 +6,7 @@ import pendulum
 from airflow import settings
 from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
 from airflow.models.dagrun import DagRun, DagRunType
-from airflow.api.common.experimental.mark_tasks import set_dag_run_state_to_success
+from airflow.api.common.mark_tasks import set_dag_run_state_to_success
 from airflow.utils.state import State
 from airflow.utils import timezone
 
@@ -26,7 +26,7 @@ def mark_dags_success():
             state, exec_date = dag_state(d)
             if state == "running":
                 dag = dagbag.dags[d]
-                set_dag_run_state_to_success(dag, dag.latest_execution_date, commit=True)
+                set_dag_run_state_to_success(dag=dag, execution_date=dag.latest_execution_date, commit=True)
 
 
 def update_slack_connection(payload, token):
