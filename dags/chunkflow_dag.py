@@ -416,7 +416,7 @@ def process_output(**kwargs):
 
     upload_json(os.path.join(gs_log_path,"param"), "{}.json".format(param["NAME"]), param)
 
-    slack_message('chunkflow setup-env output: ```{}```'.format(output))
+    slack_message('chunkflow setup-env output: ```{}```'.format("\n".join(output)))
 
     Variable.set("chunkflow_done", "no")
 
