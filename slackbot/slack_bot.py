@@ -633,7 +633,12 @@ def handle_batch(q_payload, q_cmd):
                 if cmd == "cancel":
                     replyto(msg, "Cancel batch process")
                     break
-            param = deepcopy(default_param)
+
+            if p.get("INHERIT_PARAMETERS", True):
+                param = deepcopy(default_param)
+            else:
+                param = {}
+
             if i > 0:
                 if 'NAME' in param:
                     del param['NAME']
