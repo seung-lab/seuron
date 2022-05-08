@@ -30,3 +30,6 @@ def gce_external_ip():
 
 def gce_internal_ip():
     return get_instance_data("network-interfaces/0/ip")
+
+def gce_hostname():
+    return get_instance_data("hostname")
