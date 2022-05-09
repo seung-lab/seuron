@@ -130,13 +130,19 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
         queue.put(payload)
 
 
-    def extract_payload(msg):
+    def extract_payload(metadata, msg):
         from taskqueue.queueables import totask
         from taskqueue.lib import jsonify
         if type(msg) is str:
-            return msg
+            return {
+                'metadata': metadata,
+                'task': msg,
+            }
         else:
-            return jsonify(totask(msg).payload())
+            return {
+                'metadata': metadata,
+                'task': jsonify(totask(msg).payload()),
+            }
 
 
     def decorator(create_tasks):
@@ -152,6 +158,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
 
             try:
                 ret = create_tasks(*args, **kwargs)
+                metadata = ret.get('metadata', {})
                 if isinstance(ret, dict):
                     task_list = ret.get('task_list', ret.get('tasks', None))
                     task_generator = ret.get('task_generator', None)
@@ -184,7 +191,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
                     with Connection(broker, connect_timeout=60) as conn:
                         queue = conn.SimpleQueue(queue_name)
                         for t in tasks:
-                            payload = extract_payload(t)
+                            payload = extract_payload(metadata, t)
                             submit_message(queue, payload)
                         queue.close()
 

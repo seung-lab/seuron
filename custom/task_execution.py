@@ -1,5 +1,4 @@
 from airflow.models import Variable
-from airflow.stats import Stats
 from airflow.configuration import conf
 import os
 import time
@@ -13,6 +12,7 @@ import base64
 import click
 from kombu import Connection
 from kombu.simple import SimpleQueue
+from statsd import StatsClient
 import psutil
 import custom_worker
 
@@ -23,6 +23,10 @@ import custom_worker
 @click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
 def command(tag, queue, timeout, loop):
     qurl = conf.get('celery', 'broker_url')
+    statsd_host = conf.get('metrics', 'statsd_host')
+    statsd_port = conf.get('metrics', 'statsd_port')
+
+    statsd = StatsClient(host=statsd_host, port=statsd_port)
 
     param = Variable.get("param", deserialize_json=True)
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
@@ -42,7 +46,7 @@ def command(tag, queue, timeout, loop):
         pass
 
     conn = Connection(qurl, heartbeat=timeout)
-    worker = threading.Thread(target=handle_task, args=(q_task, q_state, queue))
+    worker = threading.Thread(target=handle_task, args=(q_task, q_state, statsd))
     worker.daemon = True
     worker.start()
     execute(conn, tag, queue, qurl, timeout, loop)
@@ -84,7 +88,7 @@ def execute(conn, tag, queue_name, qurl, timeout, loop):
             break
 
 
-def handle_task(q_task, q_state, q_name):
+def handle_task(q_task, q_state, statsd):
     while True:
         if q_task.qsize() == 0:
             time.sleep(1)
@@ -92,12 +96,11 @@ def handle_task(q_task, q_state, q_name):
         if q_task.qsize() > 0:
             msg = q_task.get()
             print("run task: {}".format(msg))
-            Stats.incr(f'ti.start.{q_name}.process_task')
+            statsd_task_key = msg['metadata'].get('statsd_task_key', 'task')
             try:
-                with Stats.timer(f'dag.{q_name}.process_task.duration'):
-                    val = custom_worker.process_task(msg)
+                with statsd.timer(f'{statsd_task_key}.duration'):
+                    val = custom_worker.process_task(msg['task'])
             except BaseException as e:
-                Stats.incr('ti_failures')
                 val = traceback.format_exc()
                 ret = {
                     'msg': "error",
@@ -105,8 +108,6 @@ def handle_task(q_task, q_state, q_name):
                 }
                 q_state.put(ret)
                 return
-            finally:
-                Stats.incr('ti.finish.{q_name}.process_task')
 
             if val:
                 ret = {
@@ -116,7 +117,6 @@ def handle_task(q_task, q_state, q_name):
                 q_state.put(ret)
             else:
                 q_state.put("done")
-            Stats.incr('ti_successes')
 
 
 def wait_for_task(q_state, ret_queue, err_queue, conn):
