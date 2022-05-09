@@ -60,6 +60,39 @@ services:
         ports:
             - "5432:5432"
 
+    postgres-exporter:
+        image: quay.io/prometheuscommunity/postgres-exporter
+        environment:
+            DATA_SOURCE_URI: postgres?sslmode=disable
+            DATA_SOURCE_USER: ${POSTGRES_USER}
+            DATA_SOURCE_PASS: ${POSTGRES_PASSWORD}
+
+    statsd-exporter:
+        image: ranlu/statsd-exporter
+        command: "--statsd.listen-udp=:9125 --web.listen-address=:9102 --statsd.mapping-config=/statsd.conf"
+        ports:
+            - "9102:9102"
+            - "9125:9125/udp"
+
+    prometheus:
+        image: ranlu/prometheus
+        ports:
+            - "9090:9090"
+
+    grafana:
+        image: ranlu/grafana
+        environment:
+            GF_SECURITY_ADMIN_USER: ${GRAFANA_USERNAME}
+            GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+            GF_SERVER_ROOT_URL: https://localhost/grafana
+            GF_USERS_DEFAULT_THEME: light
+            GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/dashboards/SeuronDashboard.json
+            POSTGRES_USER:
+            POSTGRES_PASSWORD:
+            POSTGRES_DB:
+        ports:
+            - "3000:3000"
+
     # single shot initialize the database
     init-seuronbot:
         <<: *airflow-common
