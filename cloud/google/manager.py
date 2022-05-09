@@ -14,6 +14,8 @@ def GenerateEnvironVar(context, hostname_manager):
         'POSTGRES_PASSWORD': context.properties['postgres']['password'],
         'POSTGRES_DB': context.properties['postgres']['database'],
         'POSTGRES_MEM': """$(free -m|grep Mem|awk '{print int($2/4)}')""",
+        'GRAFANA_USERNAME': context.properties['grafana']['user'],
+        'GRAFANA_PASSWORD': context.properties['grafana']['password'],
     }
 
     env_variables.update(GenerateAirflowVar(context, hostname_manager))

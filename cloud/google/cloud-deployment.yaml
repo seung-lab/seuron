@@ -30,6 +30,9 @@ resources:
             user: # postgres username
             password: # postgres password
             database: # postgres database for airflow
+          grafana:
+            user: # grafana username
+            password: # grafana password
           workerInstanceGroups:
             - type: gpu
               zone: us-east1-c
