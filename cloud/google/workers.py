@@ -2,6 +2,10 @@ from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, Generate
 from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 
+GPU_TYPES = ['gpu', 'custom-gpu', 'synaptor-gpu']
+SYNAPTOR_TYPES = ['synaptor-cpu', 'synaptor-gpu', 'synaptor-seggraph']
+
+
 def GenerateEnvironVar(context, env_variables):
     export_variables = "\n".join([f'''export {e}={env_variables[e]}''' for e in env_variables])
 
@@ -67,13 +71,19 @@ def GenerateWorkers(context, hostname_manager, worker):
         cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': 32}
     elif worker['type'] == 'custom-gpu':
         cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
+    elif worker['type'] in SYNAPTOR_TYPES:
+        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+    else:
+        raise ValueError(f"unknown worker type: {worker['type']}")
 
-    startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in ['gpu', 'custom-gpu'] and worker['gpuWorkerAcceleratorType']))
+    startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']))
 
     instance_template = {
         'zone': worker['zone'],
         'machineType': worker['machineType'],
-        'disks': [GenerateBootDisk(diskSizeGb=20)],
+        'disks': [GenerateBootDisk(diskSizeGb=worker["diskSizeGb"])
+                  if "diskSizeGb" in worker
+                  else GenerateBootDisk(diskSizeGb=20)],
         'tags': {
             'items': ['princeton-access'],
         },
@@ -101,7 +111,7 @@ def GenerateWorkers(context, hostname_manager, worker):
         }],
     }
 
-    if worker['type'] in ['gpu', 'custom-gpu']:
+    if worker['type'] in GPU_TYPES:
         instance_template['guestAccelerators'] = [{
                 'acceleratorCount': 1,
                 'acceleratorType': worker['gpuWorkerAcceleratorType'],

@@ -98,5 +98,24 @@ resources:
               workerImage: ranlu/air-tasks:airflow2
               preemptible: True
               sizeLimit: 4
+            - type: synaptor-cpu
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: e2-highmem-4
+              preemptible: True
+              sizeLimit: 10
+            - type: synaptor-gpu
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: n1-highmem-8
+              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              preemptible: True
+              sizeLimit: 10
+            - type: synaptor-seggraph
+              zone: us-east1-c
+              subnetwork: us-east1
+              machineType: n2d-highmem-32
+              preemptible: False
+              sizeLimit: 1
           firewallAllowedIPRanges:
               - 128.112.0.0/16
