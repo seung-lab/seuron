@@ -236,6 +236,11 @@ services:
                             proxy_pass http:\\/\\/rabbitmq:15672\\/;\\n
                             proxy_redirect off;\\n
                         }\\n
+                        location ^~ \\/grafana\\/ {\\n
+                            proxy_pass http:\\/\\/grafana:3000\\/;\\n
+                            proxy_set_header Host \\$$http_host;\\n
+                            proxy_redirect off;\\n
+                        }\\n
                     }\\n
                 }/\" /etc/nginx/nginx.conf;
             fi &&
