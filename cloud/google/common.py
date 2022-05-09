@@ -67,8 +67,9 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['airflow']['secretKey'],
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
         'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{context.properties["airflow"]["remoteLogFolder"]}/{context.env["deployment"]}',
-        'AIRFLOW__METRICS__STATSD_ON': 'False',
+        'AIRFLOW__METRICS__STATSD_ON': 'True',
         'AIRFLOW__METRICS__STATSD_HOST': hostname_manager,
+        'AIRFLOW__METRICS__STATSD_PORT': 9125,
     }
 
     return airflow_variable
