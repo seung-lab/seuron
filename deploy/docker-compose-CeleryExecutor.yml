@@ -79,8 +79,6 @@ services:
 
     prometheus:
         image: ranlu/prometheus
-        ports:
-            - "9090:9090"
 
     grafana:
         image: ranlu/grafana
