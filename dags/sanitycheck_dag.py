@@ -57,6 +57,7 @@ def task_done_alert(context):
 
 
 def check_cv_data():
+    from airflow import configuration as conf
     param = Variable.get("param", deserialize_json=True)
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
@@ -75,6 +76,15 @@ def check_cv_data():
         with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
             value_file.write(v)
 
+
+    statsd_host = conf.get('metrics', 'statsd_host')
+    statsd_port = conf.get('metrics', 'statsd_port')
+
+    if not param.get("STATSD_HOST", ""):
+        param["STATSD_HOST"] = statsd_host
+
+    if not param.get("STATSD_PORT", ""):
+        param["STATSD_PORT"] = statsd_port
 
     # We need affinity map for watershed and agglomeration, not for meshing
     if (not param.get("SKIP_WS", False)) or (not param.get("SKIP_AGG", False)):

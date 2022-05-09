@@ -107,7 +107,17 @@ def check_patch_parameters(param):
 
 def supply_default_parameters():
     from docker_helper import health_check_info
+    from airflow import configuration as conf
     param = Variable.get("inference_param", deserialize_json=True)
+
+    statsd_host = conf.get('metrics', 'statsd_host')
+    statsd_port = conf.get('metrics', 'statsd_port')
+
+    if not param.get("STATSD_HOST", ""):
+        param["STATSD_HOST"] = statsd_host
+
+    if not param.get("STATSD_PORT", ""):
+        param["STATSD_PORT"] = statsd_port
 
     cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
