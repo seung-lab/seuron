@@ -158,8 +158,9 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
 
             try:
                 ret = create_tasks(*args, **kwargs)
-                metadata = ret.get('metadata', {})
+                metadata = {}
                 if isinstance(ret, dict):
+                    metadata = ret.get('metadata', {})
                     task_list = ret.get('task_list', ret.get('tasks', None))
                     task_generator = ret.get('task_generator', None)
                     agg = ret.get('aggregator', None)
