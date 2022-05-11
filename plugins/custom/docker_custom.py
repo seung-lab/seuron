@@ -182,14 +182,17 @@ class DockerConfigurableOperator(DockerOperator):
                                  humanize_bytes(net_w)))
 
             try:
-                 info = self.cli.inspect_container(container=self.container['Id'])
-                 health_check_ok = info['State']['Health']['Status']
-                 if health_check_ok:
-                    unhealthy_count = 0
-                 else:
-                    unhealthy_count += 1
-                    self.log.info('Health check Failed')
+                info = self.cli.inspect_container(container=self.container['Id'])
+                health_status = info['State']['Health']['Status']
             except:
+                health_status = 'none'
+
+            if health_status == 'healthy' or health_status == 'starting':
+                unhealthy_count = 0
+            elif health_status == 'unhealthy':
+                unhealthy_count += 1
+                self.log.info('Health check Failed')
+            else:
                 if cpu_percent < 5:
                     unhealthy_count += 1
                     self.log.info('No health status, container is idle, assuming it is unhealthy.')
