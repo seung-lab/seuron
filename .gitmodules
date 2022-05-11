@@ -1,4 +1,0 @@
-[submodule "cloud"]
-	path = cloud
-	url = git@github.com:wongwill86/examples.git
-	branch = air-tasks
