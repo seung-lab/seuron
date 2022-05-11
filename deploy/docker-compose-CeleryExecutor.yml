@@ -148,7 +148,7 @@ services:
         <<: *airflow-common
         environment:
             <<: *airflow-common-env
-            AIRFLOW__CELERY__WORKER_CONCURRENCY: 4
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 2
         command: airflow celery worker --without-gossip --without-mingle -q manager
         deploy:
             restart_policy:
