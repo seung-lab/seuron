@@ -44,7 +44,7 @@ services:
             - POSTGRES_DB
         volumes:
             - /var/lib/postgresql/data:/var/lib/postgresql/data
-        command: -c max_connections=100 -c shared_buffers=${POSTGRES_MEM}MB
+        command: -c max_connections=100 -c shared_buffers=${POSTGRES_MEM}MB -c idle_in_transaction_session_timeout=10000
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
             interval: 60s
