@@ -51,7 +51,7 @@ services:
             retries: 5
 
     pgbouncer:
-        image: ranlu/pgbouncer:1.16.1
+        image: ranlu/pgbouncer:1.17.0
         environment:
             - DB_USER=${POSTGRES_USER}
             - DB_PASSWORD=${POSTGRES_PASSWORD}
