@@ -79,6 +79,13 @@ def chunk_tasks(tasks, chunk_size):
      for i in range(0, len(tasks), chunk_size):
          yield tasks[i:i + chunk_size]
 
+def tasks_with_metadata(run_name, tasks):
+    metadata = {'statsd_task_key': run_name}
+    return {
+        'metadata': metadata,
+        'task_list': tasks,
+    }
+
 def mount_secrets(func):
     @wraps(func)
     def inner(*args, **kwargs):
@@ -123,13 +130,19 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
         queue.put(payload)
 
 
-    def extract_payload(msg):
+    def extract_payload(metadata, msg):
         from taskqueue.queueables import totask
         from taskqueue.lib import jsonify
         if type(msg) is str:
-            return msg
+            return {
+                'metadata': metadata,
+                'task': msg,
+            }
         else:
-            return jsonify(totask(msg).payload())
+            return {
+                'metadata': metadata,
+                'task': jsonify(totask(msg).payload()),
+            }
 
 
     def decorator(create_tasks):
@@ -145,7 +158,9 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
 
             try:
                 ret = create_tasks(*args, **kwargs)
+                metadata = {}
                 if isinstance(ret, dict):
+                    metadata = ret.get('metadata', {})
                     task_list = ret.get('task_list', ret.get('tasks', None))
                     task_generator = ret.get('task_generator', None)
                     agg = ret.get('aggregator', None)
@@ -177,7 +192,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
                     with Connection(broker, connect_timeout=60) as conn:
                         queue = conn.SimpleQueue(queue_name)
                         for t in tasks:
-                            payload = extract_payload(t)
+                            payload = extract_payload(metadata, t)
                             submit_message(queue, payload)
                         queue.close()
 
@@ -385,32 +400,32 @@ def put_file_job(content, param, prefix):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8, worker_factor=32)
-def downsample_for_meshing(seg_cloudpath, mask):
+def downsample_for_meshing(run_name, seg_cloudpath, mask):
     import igneous.task_creation as tc
     from slack_message import slack_message
     mip, _ = cv_scale_with_data(seg_cloudpath)
     tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True)
     slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks
+    return tasks_with_metadata(f"{run_name}.igneous.downsampleForMeshing", tasks)
 
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8, worker_factor=32)
-def downsample(*args):
+def downsample(run_name, cloudpaths):
     import igneous.task_creation as tc
     from slack_message import slack_message
     total_tasks = []
-    for seg_cloudpath in args:
+    for seg_cloudpath in cloudpaths:
         mip, _ = cv_scale_with_data(seg_cloudpath)
         tasks = list(tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True))
         slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
         total_tasks += tasks
-    return total_tasks
+    return tasks_with_metadata(f"{run_name}.igneous.downsample", tasks)
 
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8, worker_factor=32)
-def mesh(seg_cloudpath, mesh_quality, sharded):
+def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
     from cloudvolume import CloudVolume
@@ -447,22 +462,23 @@ def mesh(seg_cloudpath, mesh_quality, sharded):
                                     shape=Vec(256, 256, 256))
     slack_message(":arrow_forward: Start meshing `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
-    return tasks
+    return tasks_with_metadata(f"{run_name}.igneous.createMeshFragments", tasks)
 
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8, worker_factor=4)
-def merge_mesh_fragments(seg_cloudpath):
+def merge_mesh_fragments(run_name, seg_cloudpath):
     import igneous.task_creation as tc
     from slack_message import slack_message
     tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks
+
+    return tasks_with_metadata(f"{run_name}.igneous.mergeMesh", tasks)
 
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4, worker_factor=32)
-def mesh_manifest(seg_cloudpath, bbox, chunk_size):
+def mesh_manifest(run_name, seg_cloudpath, bbox, chunk_size):
     from functools import partial
     from igneous.tasks import MeshManifestPrefixTask
     from os.path import commonprefix
@@ -518,12 +534,12 @@ def mesh_manifest(seg_cloudpath, bbox, chunk_size):
         tasks.append(t)
 
     slack_message(":arrow_forward: Generating mesh manifest for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks
+    return tasks_with_metadata(f"{run_name}.igneous.createMeshManifest", tasks)
 
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8, worker_factor=32)
-def create_skeleton_fragments(seg_cloudpath, teasar_param):
+def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
     from slack_message import slack_message
@@ -545,12 +561,12 @@ def create_skeleton_fragments(seg_cloudpath, teasar_param):
                 parallel=1, # Number of parallel processes to use (more useful locally)
             )
     slack_message(":arrow_forward: Creating skeleton fragments for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks
+    return tasks_with_metadata(f"{run_name}.igneous.createSkeletonFragments", tasks)
 
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4, worker_factor=32)
-def merge_skeleton_fragments(seg_cloudpath):
+def merge_skeleton_fragments(run_name, seg_cloudpath):
     import igneous.task_creation as tc
     from slack_message import slack_message
     tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
@@ -560,7 +576,7 @@ def merge_skeleton_fragments(seg_cloudpath):
                 data_encoding='gzip', # or None
             )
     slack_message(":arrow_forward: Merging skeleton fragments for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks
+    return tasks_with_metadata(f"{run_name}.igneous.mergeSkeleton", tasks)
 
 
 def downsample_and_mesh(param):
