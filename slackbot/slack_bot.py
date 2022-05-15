@@ -19,6 +19,7 @@ import re
 import time
 import logging
 from secrets import token_hex
+from datetime import datetime
 import threading
 import queue
 import subprocess
@@ -403,7 +404,7 @@ def update_python_packages(msg):
 
 def supply_default_param(json_obj):
     if not json_obj.get("NAME", ""):
-        json_obj["NAME"] = token_hex(16)
+        json_obj["NAME"] = datetime.now().strftime("%Y%m%d%H%M%S")
 
     if "SCRATCH_PREFIX" not in json_obj and "SCRATCH_PATH" not in json_obj:
         json_obj["SCRATCH_PREFIX"] = "gs://ranl_pipeline_scratch/"
