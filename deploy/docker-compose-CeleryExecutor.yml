@@ -74,7 +74,6 @@ services:
         image: ranlu/statsd-exporter
         command: "--statsd.listen-udp=:9125 --web.listen-address=:9102 --statsd.mapping-config=/statsd.conf"
         ports:
-            - "9102:9102"
             - "9125:9125/udp"
 
     prometheus:
@@ -91,8 +90,6 @@ services:
             POSTGRES_USER:
             POSTGRES_PASSWORD:
             POSTGRES_DB:
-        ports:
-            - "3000:3000"
 
     # single shot initialize the database
     init-seuronbot:
