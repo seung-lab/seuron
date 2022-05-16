@@ -6,6 +6,7 @@ cloud
 secrets
 tests
 docker
+deploy
 .env
 .*
 # we need these 3 git folders to be included for version tagging
