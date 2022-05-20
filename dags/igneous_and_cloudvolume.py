@@ -420,7 +420,7 @@ def downsample(run_name, cloudpaths):
         tasks = list(tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True))
         slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
         total_tasks += tasks
-    return tasks_with_metadata(f"{run_name}.igneous.downsample", tasks)
+    return tasks_with_metadata(f"{run_name}.igneous.downsample", total_tasks)
 
 
 @mount_secrets
