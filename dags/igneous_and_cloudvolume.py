@@ -403,9 +403,9 @@ def put_file_job(content, param, prefix):
 def downsample_for_meshing(run_name, seg_cloudpath, mask):
     import igneous.task_creation as tc
     from slack_message import slack_message
-    mip, _ = cv_scale_with_data(seg_cloudpath)
+    mip, resolution = cv_scale_with_data(seg_cloudpath)
     tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True)
-    slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+    slack_message(":arrow_forward: Start downsampling `{}` at `{}`: {} tasks in total".format(seg_cloudpath, resolution, len(tasks)))
     return tasks_with_metadata(f"{run_name}.igneous.downsampleForMeshing", tasks)
 
 
@@ -416,9 +416,9 @@ def downsample(run_name, cloudpaths):
     from slack_message import slack_message
     total_tasks = []
     for seg_cloudpath in cloudpaths:
-        mip, _ = cv_scale_with_data(seg_cloudpath)
+        mip, resolution = cv_scale_with_data(seg_cloudpath)
         tasks = list(tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=isotropic_mip(seg_cloudpath), preserve_chunk_size=True))
-        slack_message(":arrow_forward: Start downsampling `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
+        slack_message(":arrow_forward: Start downsampling `{}` at `{}`: {} tasks in total".format(seg_cloudpath, resolution, len(tasks)))
         total_tasks += tasks
     return tasks_with_metadata(f"{run_name}.igneous.downsample", total_tasks)
 
