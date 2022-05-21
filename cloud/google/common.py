@@ -70,6 +70,7 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__METRICS__STATSD_ON': 'True',
         'AIRFLOW__METRICS__STATSD_HOST': hostname_manager,
         'AIRFLOW__METRICS__STATSD_PORT': 9125,
+        'REDIS_SERVER': hostname_manager,
     }
 
     return airflow_variable

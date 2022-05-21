@@ -15,6 +15,7 @@ x-airflow-common:
         AIRFLOW__METRICS__STATSD_ON:
         AIRFLOW__METRICS__STATSD_HOST:
         AIRFLOW__METRICS__STATSD_PORT:
+        REDIS_SERVER:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp:/tmp
@@ -90,6 +91,16 @@ services:
             POSTGRES_USER:
             POSTGRES_PASSWORD:
             POSTGRES_DB:
+
+    redis:
+        image: redis:latest
+        ports:
+            - "6379:6379"
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 30s
+            retries: 50
 
     # single shot initialize the database
     init-seuronbot:
