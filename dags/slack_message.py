@@ -1,4 +1,4 @@
-def slack_message(msg, channel=None, broadcast=False, attachment=None):
+def slack_message(msg, notification=False, broadcast=False, attachment=None):
     from param_default import SLACK_CONN_ID
     from airflow.hooks.base_hook import BaseHook
     import slack_sdk as slack
@@ -15,14 +15,13 @@ def slack_message(msg, channel=None, broadcast=False, attachment=None):
     slack_channel = slack_extra['channel']
     slack_thread = slack_extra['thread_ts']
 
-    if channel is not None:
-        slack_channel = channel
+    if notification:
         text="{message}".format(
             message=msg
         )
         sc.chat_postMessage(
             username=slack_workername,
-            channel=channel,
+            channel="#seuron-alerts",
             text=text
         )
     else:

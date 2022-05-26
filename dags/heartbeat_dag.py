@@ -71,7 +71,7 @@ def get_num_task_instances(session):
 
     message = '''*Pipeline heartbeat:*
 *{}* tasks running, *{}* tasks queued, *{}* tasks up for retry'''.format(running, queued, up_for_retry)
-    slack_message(message, channel="#seuron-alerts")
+    slack_message(message, notification=True)
 
 latest = LatestOnlyOperator(
     task_id='latest_only',
