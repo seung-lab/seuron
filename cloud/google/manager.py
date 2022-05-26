@@ -5,6 +5,7 @@ from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PA
 def GenerateEnvironVar(context, hostname_manager):
     env_variables = {
         'SLACK_TOKEN': context.properties['slack']['botToken'],
+        'SLACK_NOTIFICATION_CHANNEL': context.properties['slack']['notificationChannel'],
         'DEPLOYMENT': context.env['deployment'],
         'ZONE': context.properties['zone'],
         'SEURON_TAG': context.properties['seuronImage'],

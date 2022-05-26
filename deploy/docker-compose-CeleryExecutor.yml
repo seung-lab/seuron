@@ -108,6 +108,7 @@ services:
         restart: on-failure
         environment:
             <<: *airflow-common-env
+            SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:
             ZONE:
             _AIRFLOW_DB_UPGRADE: 'true'
@@ -167,6 +168,7 @@ services:
         environment:
             <<: *airflow-common-env
             SLACK_TOKEN:
+            SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py
         deploy:

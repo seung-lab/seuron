@@ -14,6 +14,7 @@ def slack_message(msg, notification=False, broadcast=False, attachment=None):
     slack_username = slack_extra['user']
     slack_channel = slack_extra['channel']
     slack_thread = slack_extra['thread_ts']
+    slack_notification_channel = slack_extra['notification_channel']
 
     if notification:
         text="{message}".format(
@@ -21,7 +22,7 @@ def slack_message(msg, notification=False, broadcast=False, attachment=None):
         )
         sc.chat_postMessage(
             username=slack_workername,
-            channel="#seuron-alerts",
+            channel=slack_notification_channel,
             text=text
         )
     else:

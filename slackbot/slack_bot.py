@@ -10,7 +10,7 @@ from airflow_api import get_variable, run_segmentation, \
     mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks, \
     synaptor_sanity_check, run_synaptor_file_seg, run_synaptor_db_seg, \
     run_synaptor_assignment
-from bot_info import slack_token, botid, workerid, broker_url
+from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from kombu_helper import drain_messages
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
 from copy import deepcopy
@@ -566,7 +566,7 @@ def hello_world(client=None):
     host_ip = update_ip_address()
 
     client.chat_postMessage(
-        channel='#seuron-alerts',
+        channel=slack_notification_channel,
         username=workerid,
         text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 

@@ -60,4 +60,4 @@ db_utils.merge_conn(
 db_utils.merge_conn(
         models.Connection(
             conn_id='Slack', conn_type='http',
-            host='localhost'))
+            host='localhost', extra=json.dumps({"notification_channel": os.environ["SLACK_NOTIFICATION_CHANNEL"]})))

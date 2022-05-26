@@ -17,6 +17,7 @@ resources:
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/main/deploy/docker-compose-CeleryExecutor.yml
           slack:
             botToken: # bot token for slack
+            notificationChannel: seuron-alerts
           nginx:
             user: # nginx username
             password: # nginx password, set it to null if you do not want a password
