@@ -1,5 +1,5 @@
 import json
-from bot_info import workerid
+from bot_info import workerid, slack_notification_channel
 
 import pendulum
 
@@ -54,7 +54,7 @@ def update_slack_connection(payload, token):
 
     new_conn = Connection(conn_id=conn_id, conn_type='http', host='localhost', login=workerid, password=token)
 
-    new_conn.set_extra(json.dumps(payload, indent=4))
+    new_conn.set_extra(json.dumps({**payload, "notification_channel": slack_notification_channel}, indent=4))
     session.add(new_conn)
     session.commit()
     session.close()

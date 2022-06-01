@@ -8,6 +8,7 @@ def get_botid():
     return f'<@{auth_info["user_id"]}>'
 
 slack_token = environ["SLACK_TOKEN"]
+slack_notification_channel = environ["SLACK_NOTIFICATION_CHANNEL"]
 botid = get_botid()
 workerid = "seuron-worker-"+environ["DEPLOYMENT"]
 broker_url = environ['AIRFLOW__CELERY__BROKER_URL']
