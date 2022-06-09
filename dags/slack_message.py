@@ -73,7 +73,7 @@ def slack_userinfo():
 
     return None
 
-def slack_alert(msg, channel, context):
+def slack_alert(msg, context):
     text="""
         {msg}
         *Task*: {task}
@@ -83,11 +83,11 @@ def slack_alert(msg, channel, context):
         dag=context.get('task_instance').dag_id,
         ti=context.get('task_instance'))
 
-    return slack_message(text, channel=channel)
+    return slack_message(text)
 
 
 def task_start_alert(context):
-    return slack_alert(":arrow_forward: Task Started", None, context)
+    return slack_alert(":arrow_forward: Task Started", context)
 
 
 def task_retry_alert(context):
@@ -104,7 +104,7 @@ def task_retry_alert(context):
             "&task_id={ti.task_id}"
             "&execution_date={iso}"
         ).format(**locals())
-        slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), None, context)
+        slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), context)
 
 def task_failure_alert(context):
     from airflow.models import Variable
@@ -118,8 +118,8 @@ def task_failure_alert(context):
         "&task_id={ti.task_id}"
         "&execution_date={iso}"
     ).format(**locals())
-    slack_alert(":exclamation: Task failed, check the latest error log: `{}`".format(log_url), None, context)
+    slack_alert(":exclamation: Task failed, check the latest error log: `{}`".format(log_url), context)
 
 
 def task_done_alert(context):
-    return slack_alert(":heavy_check_mark: Task Finished", None, context)
+    return slack_alert(":heavy_check_mark: Task Finished", context)
