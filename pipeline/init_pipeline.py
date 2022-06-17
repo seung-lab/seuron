@@ -2,7 +2,7 @@ from airflow.utils import db as db_utils
 from airflow.models import Variable
 from airflow import models
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
-from param_default import param_default, inference_param_default
+from param_default import param_default, inference_param_default, synaptor_param_default
 import os
 import requests
 import json
@@ -46,6 +46,7 @@ Variable.setdefault("cluster_target_size", target_sizes, deserialize_json=True)
 Variable.setdefault("param", param_default, deserialize_json=True)
 Variable.setdefault("inference_param", inference_param_default, deserialize_json=True)
 Variable.setdefault("vendor", os.environ.get("VENDOR", "Google"))
+Variable.setdefault("synaptor_param.json", synaptor_param_default)
 
 db_utils.merge_conn(
         models.Connection(
