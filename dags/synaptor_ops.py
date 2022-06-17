@@ -10,6 +10,7 @@ from airflow.models import Variable, BaseOperator as Operator
 
 from worker_op import worker_op
 from igneous_and_cloudvolume import check_queue
+from param_default import default_synaptor_image
 
 from slack_message import task_failure_alert, task_done_alert
 from kombu_helper import drain_messages
@@ -17,7 +18,6 @@ from kombu_helper import drain_messages
 
 # hard-coding these for now
 MOUNT_POINT = "/root/.cloudvolume/secrets/"
-SYNAPTOR_IMAGE = "gcr.io/zetta-lee-fly-vnc-001/synaptor:nazgul"
 TASK_QUEUE_NAME = "synaptor"
 
 
@@ -51,7 +51,12 @@ def drain_op(
     )
 
 
-def manager_op(dag: DAG, synaptor_task_name: str, queue: str = "manager") -> Operator:
+def manager_op(
+    dag: DAG,
+    synaptor_task_name: str,
+    queue: str = "manager",
+    image: str = default_synaptor_image,
+) -> Operator:
     """An operator fn for running synaptor tasks on the airflow node."""
     config_path = os.path.join(MOUNT_POINT, "synaptor_param.json")
     command = f"{synaptor_task_name} {config_path}"
@@ -67,7 +72,7 @@ def manager_op(dag: DAG, synaptor_task_name: str, queue: str = "manager") -> Ope
         force_pull=True,
         on_failure_callback=task_failure_alert,
         on_success_callback=task_done_alert,
-        image=SYNAPTOR_IMAGE,
+        image=image,
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
         queue=queue,
@@ -81,6 +86,7 @@ def generate_op(
     op_queue_name: Optional[str] = "manager",
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
     tag: Optional[str] = None,
+    image: str = default_synaptor_image,
 ) -> Operator:
     """Generates tasks to run and adds them to the RabbitMQ."""
     from airflow import configuration as conf
@@ -107,7 +113,7 @@ def generate_op(
         force_pull=True,
         on_failure_callback=task_failure_alert,
         on_success_callback=task_done_alert,
-        image=SYNAPTOR_IMAGE,
+        image=image,
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
         queue=op_queue_name,
@@ -121,6 +127,7 @@ def synaptor_op(
     op_queue_name: Optional[str] = "synaptor-cpu",
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
     tag: Optional[str] = None,
+    image: str = default_synaptor_image,
 ) -> Operator:
     """Runs a synaptor worker until it receives a self-destruct task."""
     from airflow import configuration as conf
@@ -146,7 +153,7 @@ def synaptor_op(
         task_id=task_id,
         command=command,
         force_pull=True,
-        image=SYNAPTOR_IMAGE,
+        image=image,
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
         queue=op_queue_name,
