@@ -258,7 +258,7 @@ def supply_default_parameters():
         slack_message("*Set memory limit of each task to 4 GB by default*")
 
     if "MAX_MIP" not in param:
-        param["MAX_MIP"] = max(5, param.get("IMAGE_MASK_MIP",0), param.get("OUTPUT_MASK_MIP",0), param["IMAGE_MIP"], param["OUTPUT_MIP"])
+        param["MAX_MIP"] = max(param.get("IMAGE_MASK_MIP",0), param.get("OUTPUT_MASK_MIP",0), param["IMAGE_MIP"], param["OUTPUT_MIP"])
         slack_message("*Max mip level set to {}*".format(param["MAX_MIP"]))
 
     if param.get("INFERENCE_FRAMEWORK", "pytorch") != "pytorch":
