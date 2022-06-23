@@ -1,4 +1,5 @@
 """Operator functions for synaptor DAGs."""
+from __future__ import annotations
 import os
 from typing import Optional
 
