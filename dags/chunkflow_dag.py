@@ -4,7 +4,7 @@ from airflow.hooks.base_hook import BaseHook
 from worker_op import worker_op
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
-from param_default import inference_param_default, default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels
+from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels
 from datetime import datetime
 from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
@@ -19,7 +19,6 @@ import json
 import urllib
 from collections import OrderedDict
 
-Variable.setdefault("inference_param", inference_param_default, deserialize_json=True)
 param = Variable.get("inference_param", deserialize_json=True)
 
 def generate_ng_link():
