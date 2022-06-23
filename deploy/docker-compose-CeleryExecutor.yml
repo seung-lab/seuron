@@ -45,7 +45,7 @@ services:
             - POSTGRES_DB
         volumes:
             - /var/lib/postgresql/data:/var/lib/postgresql/data
-        command: -c max_connections=100 -c shared_buffers=${POSTGRES_MEM}MB -c idle_in_transaction_session_timeout=300000
+        command: -c max_connections=${POSTGRES_MAX_CONN} -c shared_buffers=${POSTGRES_MEM}MB -c idle_in_transaction_session_timeout=300000
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
             interval: 60s
@@ -59,7 +59,7 @@ services:
             - DB_NAME=${POSTGRES_DB}
             - DB_HOST=postgres
             - MAX_CLIENT_CONN=10000
-            - DEFAULT_POOL_SIZE=100
+            - DEFAULT_POOL_SIZE=${POSTGRES_MAX_CONN}
             - POOL_MODE=transaction
         ports:
             - "5432:5432"
