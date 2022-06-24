@@ -243,7 +243,6 @@ services:
                         location ^~ \\/rabbitmq\\/ {\\n
                             proxy_pass http:\\/\\/rabbitmq:15672\\/;\\n
                             proxy_redirect off;\\n
-                            proxy_set_header Authorization \\\"\\\";\\n
                         }\\n
                         location ^~ \\/grafana\\/ {\\n
                             proxy_pass http:\\/\\/grafana:3000\\/;\\n
