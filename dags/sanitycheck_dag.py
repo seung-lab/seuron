@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
-from param_default import param_default, default_seg_workspace, check_worker_image_labels
+from param_default import default_seg_workspace, check_worker_image_labels
 from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scale_with_data
 import os
 
@@ -14,7 +14,6 @@ from chunkiterator import ChunkIterator
 from helper_ops import slack_message_op, placeholder_op
 from slack_message import slack_message, task_failure_alert
 
-Variable.setdefault("param", param_default, deserialize_json=True)
 param = Variable.get("param", deserialize_json=True)
 
 DAG_ID = 'sanity_check'
