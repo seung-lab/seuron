@@ -3,6 +3,7 @@ from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from googleapiclient import discovery
 from slack_message import slack_message
+from warm_up import get_min_size
 import requests
 import json
 
@@ -150,7 +151,10 @@ def ramp_down_cluster(key, total_size):
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         target_sizes[key] = total_size
         Variable.set("cluster_target_size", target_sizes, serialize_json=True)
-        reduce_instance_group_size(key, total_size)
+
+        min_size = get_min_size(key)
+        if total_size >= min_size:
+            reduce_instance_group_size(key, total_size)
     except:
         reduce_instance_group_size(key, total_size)
 

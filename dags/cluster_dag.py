@@ -17,6 +17,7 @@ from airflow.hooks.base_hook import BaseHook
 from airflow.operators.python import PythonOperator
 from airflow.operators.latest_only import LatestOnlyOperator
 
+from warm_up import get_min_size
 from slack_message import slack_message
 import google_api_helper as gapi
 import json
@@ -90,6 +91,7 @@ def cluster_control():
         project_id = gapi.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+        min_sizes = Variable.get("cluster_min_size", deserialize_json=True)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"), notification=True)
         return
@@ -99,6 +101,9 @@ def cluster_control():
             continue
 
         print(f"processing cluster: {key}")
+        min_size = get_min_size(key, min_sizes)
+        max_size = sum(ig["max_size"] for ig in cluster_info[key])
+
         try:
             num_tasks = get_num_task(key)
             stable, requested_size = cluster_status(project_id, key, cluster_info[key])
@@ -109,15 +114,14 @@ def cluster_control():
         if num_tasks != target_sizes[key]:
             target_sizes[key] = max(num_tasks, 1)
 
-        if target_sizes[key] == 0:
+        if target_sizes[key] == 0 and min_size == 0:
             if requested_size != 0:
                 gapi.resize_instance_group(project_id, cluster_info[key], 0)
             continue
 
-        if stable and requested_size < target_sizes[key]:
-            max_size = sum(ig['max_size'] for ig in cluster_info[key])
-            updated_size = min([target_sizes[key], requested_size*2, max_size])
-            if requested_size != updated_size:
+        if stable and requested_size < max(target_sizes[key], min_size):
+            updated_size = min(max([min_size, target_sizes[key], requested_size*2]), max_size)
+            if requested_size < updated_size:
                 gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
                 slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
 
