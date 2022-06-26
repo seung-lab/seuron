@@ -43,6 +43,7 @@ dag = DAG(
 )
 
 def check_queue(queue):
+    """Checks the number of messages in a given queue."""
     import requests
     ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
     if not ret.ok:
@@ -53,6 +54,7 @@ def check_queue(queue):
 
 
 def get_num_task(cluster):
+    """Checks the number of tasks in the relevant queues for a given cluster."""
     from dag_utils import get_composite_worker_limits
 
     if cluster == "composite":
@@ -65,6 +67,11 @@ def get_num_task(cluster):
 
 
 def cluster_status(project_id, name, cluster):
+    """Fetches the requested size of a cluster and whether it has stabilized.
+
+    Considers a cluster to be currently stabilizing/unstable if its current size is more
+    than 10% away from its requested size.
+    """
     current_size = gapi.get_cluster_size(project_id, cluster)
     requested_size = gapi.get_cluster_target_size(project_id, cluster)
     stable = True
