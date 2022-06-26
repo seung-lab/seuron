@@ -4,6 +4,7 @@ import functools
 import concurrent.futures
 
 from airflow import settings
+from airflow.hooks.base import BaseHook
 from airflow.models import DagBag, DagModel, Variable, Connection
 from airflow.models.dagrun import DagRun, DagRunType
 from airflow.api.common.mark_tasks import set_dag_run_state_to_success
@@ -113,6 +114,13 @@ def get_variable(key, deserialize_json=False):
 
 def set_variable(key, value, serialize_json=False):
     Variable.set(key, value, serialize_json=serialize_json)
+
+
+def cluster_exists(cluster_name: str) -> bool:
+    """Checks whether an instance group is managed by this cluster."""
+    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+
+    return cluster_name in cluster_info
 
 
 def __latest_dagrun_state(dag_id):

@@ -5,6 +5,7 @@ from airflow_api import get_variable, set_variable, \
     check_running, mark_dags_success, run_dag
 from bot_info import broker_url
 from kombu_helper import drain_messages, put_message
+from warm_up import init_timestamp
 
 
 @SeuronBot.on_message("cancel run",
@@ -31,15 +32,23 @@ def on_cancel_run(msg):
 
 def shut_down_clusters():
     cluster_size = get_variable('cluster_target_size', deserialize_json=True)
-    for k in cluster_size:
-        cluster_size[k] = 0
-    set_variable("cluster_target_size", cluster_size, serialize_json=True)
+    set_variable('cluster_target_size', {k: 0 for k in cluster_size}, serialize_json=True)
+
+    min_size = get_variable('cluster_min_size', deserialize_json=True)
+    set_variable(
+        'cluster_min_size',
+        {k: [0, init_timestamp()] for k in min_size},
+        serialize_json=True,
+    )
+
     run_dag("cluster_management")
+
+    return min_size
 
 
 def cancel_run(msg):
     replyto(msg, "Shutting down clusters...")
-    shut_down_clusters()
+    orig_min_size = shut_down_clusters()
     time.sleep(10)
 
     replyto(msg, "Marking all DAG states to success...")
@@ -63,5 +72,9 @@ def cancel_run(msg):
     replyto(msg, "Making sure the clusters are shut down...")
     shut_down_clusters()
     time.sleep(30)
+
+    # Resetting minimum sizes
+    set_variable("cluster_min_size", orig_min_size, serialize_json=True)
+    run_dag("cluster_management")
 
     replyto(msg, "*Current run cancelled*", broadcast=True)

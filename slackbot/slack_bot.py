@@ -10,6 +10,7 @@ from kombu_helper import drain_messages, visible_messages, peek_message, get_mes
 from bot_utils import fetch_slack_thread, replyto, extract_command, download_file, clear_queues
 from seuronbot import SeuronBot
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
+from warm_up import init_timestamp
 from copy import deepcopy
 import time
 import logging
@@ -30,6 +31,7 @@ import custom_tasks_commands
 import synaptor_commands
 import pipeline_commands
 import heartbeat_commands
+import warm_up_commands
 
 
 def update_ip_address():
