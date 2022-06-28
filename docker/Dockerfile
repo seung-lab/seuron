@@ -33,7 +33,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && ~/miniconda.sh -b -p ${MINICONDA_PATH} \
     && rm ~/miniconda.sh \
     && conda install -y nomkl \
-    && conda install -y numpy scipy \
+    && conda install -y -c conda-forge numpy=1.22.4 scipy cryptography=36.0.2 redis-py boto3=1.24.0 boto=2.49.0 celery=5.2.7 networkx gevent pillow matplotlib-base kombu=5.2.4 pysimdjson zstandard \
     && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
     && find ${MINICONDA_PATH} -follow -type f -name '*.js.map' -delete \
     && conda clean -yaf \
@@ -41,9 +41,9 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
-    && pip install --no-cache-dir -U joblib psutil matplotlib redis \
-    && pip install --no-cache-dir -U --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
-    && pip install --no-cache-dir -U igneous-pipeline \
+    && pip install --no-cache-dir joblib \
+    && pip install --no-cache-dir --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
+    && pip install --no-cache-dir igneous-pipeline \
     && mkdir -p ${AIRFLOW_HOME}/version \
     && groupadd -r docker \
     && groupadd -r ${AIRFLOW_USER} \
