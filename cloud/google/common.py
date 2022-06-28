@@ -77,7 +77,7 @@ def GenerateAirflowVar(context, hostname_manager):
 
 
 def GenerateBootDisk(diskSizeGb):
-    ubuntu_release = 'family/ubuntu-2004-lts'
+    ubuntu_release = 'family/ubuntu-2204-lts'
     return {
             'type': 'PERSISTENT',
             'autoDelete': True,
