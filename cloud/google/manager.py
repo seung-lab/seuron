@@ -57,6 +57,7 @@ sudo openssl genrsa 2048 | tee >(
 
 wget -O compose.yml {context.properties["composeLocation"]}
 
+echo "[rabbitmq_management,rabbitmq_prometheus]." > /enabled_plugins
 
 touch /etc/bootstrap_done
 
