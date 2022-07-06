@@ -14,7 +14,7 @@ resources:
           seuronImage: ranlu/seuron:main
           project: segmentation
           managerMachineType: e2-medium
-          composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/main/deploy/docker-compose-CeleryExecutor.yml
+          composeLocation: https://raw.githubusercontent.com/ZettaAI/seuron/main/deploy/docker-compose-CeleryExecutor.yml
           slack:
             botToken: # bot token for slack
             notificationChannel: seuron-alerts
