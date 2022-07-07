@@ -18,7 +18,7 @@ if packages:
         except:
             pass
 
-value = Variable.get("custom_script")
-with open("custom/custom_script.py", 'w', newline='\n') as script_file:
+var_name = sys.argv[1]
+value = Variable.get(var_name)
+with open(f"custom/{var_name}.py", 'w', newline='\n') as script_file:
     script_file.write(value)
-
