@@ -66,7 +66,7 @@ def GenerateWorkers(context, hostname_manager, worker):
         workers = [(5, 4), (6, 2), (7, 1), (8, 1)]
         cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
     elif worker['type'] == 'igneous':
-        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "python custom/task_execution.py --queue igneous", 'jobs': 32}
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_igneous.sh", 'jobs': 32}
     elif worker['type'] == 'custom-cpu':
         cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': 32}
     elif worker['type'] == 'custom-gpu':

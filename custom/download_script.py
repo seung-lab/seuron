@@ -19,6 +19,12 @@ if packages:
             pass
 
 var_name = sys.argv[1]
-value = Variable.get(var_name)
+
+try:
+    value = Variable.get(var_name)
+except:
+    print(f"Cannot download variable {var_name}")
+    value = ""
+
 with open(f"custom/{var_name}.py", 'w', newline='\n') as script_file:
     script_file.write(value)
