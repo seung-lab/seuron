@@ -19,6 +19,6 @@ if packages:
             pass
 
 value = Variable.get("custom_script")
-with open("custom/custom_worker.py", 'w', newline='\n') as script_file:
+with open("custom/custom_script.py", 'w', newline='\n') as script_file:
     script_file.write(value)
 

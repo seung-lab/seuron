@@ -14,7 +14,7 @@ from kombu import Connection
 from kombu.simple import SimpleQueue
 from statsd import StatsClient
 import psutil
-import custom_worker
+import custom_script
 
 @click.command()
 @click.option('--tag', default='',  help='kind of task to execute')
@@ -41,7 +41,7 @@ def command(tag, queue, timeout, loop):
             value_file.write(v)
 
     try:
-        timeout = custom_worker.task_timeout
+        timeout = custom_script.task_timeout
     except:
         pass
 
@@ -99,7 +99,7 @@ def handle_task(q_task, q_state, statsd):
             statsd_task_key = msg['metadata'].get('statsd_task_key', 'task')
             try:
                 with statsd.timer(f'{statsd_task_key}.duration'):
-                    val = custom_worker.process_task(msg['task'])
+                    val = custom_script.process_task(msg['task'])
             except BaseException as e:
                 val = traceback.format_exc()
                 ret = {
