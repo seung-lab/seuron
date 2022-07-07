@@ -263,12 +263,16 @@ def update_inference_param(msg):
 def update_param(msg, advanced=False):
     global param_updated
     json_obj = download_json(msg)
-    if not advanced:
-        kw = check_advanced_settings(json_obj)
-        if kw:
-            replyto(msg, f'You are trying to change advanced parameters: {",".join("`"+x+"`" for x in kw)}')
-            replyto(msg, "Use `please update parameters` to confirm that you know what you are doing")
-            return
+    kw = check_advanced_settings(json_obj)
+
+    if len(kw) > 0 and not advanced:
+        replyto(msg, f'You are trying to change advanced parameters: {",".join("`"+x+"`" for x in kw)}')
+        replyto(msg, "Use `please update parameters` to confirm that you know what you are doing!")
+        return
+    elif len(kw) == 0 and advanced:
+        replyto(msg, "You are too polite, do not use `please update parameters` without any advanced parameters!")
+        return
+
     if json_obj:
         if not check_running():
             clear_queues()
