@@ -11,7 +11,7 @@ from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scal
 import os
 
 from chunkiterator import ChunkIterator
-from helper_ops import slack_message_op, placeholder_op
+from helper_ops import slack_message_op, placeholder_op, setup_redis_op
 from slack_message import slack_message, task_failure_alert
 
 param = Variable.get("param", deserialize_json=True)
@@ -53,18 +53,6 @@ def task_done_alert(context):
     msg = "{} passed".format(context.get('task_instance').task_id)
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
-
-def reset_redis():
-    if "REDIS_SERVER" not in os.environ:
-        slack_message("*No redis server, nothing to flush*")
-    else:
-        import redis
-        param = Variable.get("param", deserialize_json=True)
-        param["REDIS_SERVER"] = os.environ['REDIS_SERVER']
-        r = redis.Redis(host=param["REDIS_SERVER"])
-        r.flushall()
-        Variable.set("param", param, serialize_json=True)
-        slack_message("*Flush redis database*")
 
 def check_cv_data():
     from airflow import configuration as conf
@@ -425,12 +413,7 @@ for p in [("WS","WS"), ("AGG","SEG")]:
     else:
         path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", paths[p[1]+"_PATH"]))
 
-flush_redis_db = PythonOperator(
-    task_id="flush_redis_db",
-    python_callable=reset_redis,
-    on_failure_callback=cv_check_alert,
-    queue="manager",
-    dag=dag)
+setup_redis_db = setup_redis_op(dag, "param", "ABISS")
 
 image_parameters = PythonOperator(
     task_id="setup_image_parameters",
@@ -456,4 +439,4 @@ summary = PythonOperator(
     queue="manager",
     dag=dag)
 
-flush_redis_db >> image_parameters >> image_check >> path_checks >> affinity_check >> summary
+setup_redis_db >> image_parameters >> image_check >> path_checks >> affinity_check >> summary

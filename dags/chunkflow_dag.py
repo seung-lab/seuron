@@ -10,7 +10,7 @@ from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
-from helper_ops import slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op
+from helper_ops import slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op
 
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
@@ -502,6 +502,8 @@ generate_ng_link_task = PythonOperator(
 
 mark_done_task = mark_done_op(dag_worker, "chunkflow_done")
 
+setup_redis_task = setup_redis_op(dag_generator, "inference_param", "CHUNKFLOW")
+
 set_env_task = setup_env_op(dag_generator, param, "manager")
 drain_tasks = drain_tasks_op(dag_generator, param, "manager")
 
@@ -513,6 +515,6 @@ for i in range(min(param.get("TASK_NUM", 1), total_gpus)):
 
 scale_up_cluster_task >> workers >> scale_down_cluster_task
 
-sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
+setup_redis_task >> sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
 
 scale_up_cluster_task >> wait_for_chunkflow_task >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
