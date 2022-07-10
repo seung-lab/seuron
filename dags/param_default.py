@@ -67,6 +67,11 @@ default_args = {
     'max_retry_delay': timedelta(seconds=600)
     }
 
+redis_databases = {
+    'SEURON': 0,
+    'ABISS': 1,
+    'CHUNKFLOW': 2,
+}
 
 SLACK_CONN_ID = 'Slack'
 AWS_CONN_ID = 'AWS'
