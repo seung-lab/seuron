@@ -625,17 +625,18 @@ def submit_custom_cpu_tasks():
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
 
-    exec(python_string, globals())
+    global_dict={'__name__': 'custom_script'}
+    exec(python_string, global_dict)
 
-    if "submit_tasks" not in globals() or not callable(globals()["submit_tasks"]):
+    if "submit_tasks" not in global_dict or not callable(global_dict["submit_tasks"]):
         slack_message(":exclamation:*Error* cannot find the submit_tasks function")
         return
 
-    if "process_task" not in globals() or not callable(globals()["process_task"]):
+    if "process_task" not in global_dict or not callable(global_dict["process_task"]):
         slack_message(":exclamation:*Error* cannot find the process_task function")
         return
 
-    tasks = globals()["submit_tasks"]()
+    tasks = global_dict["submit_tasks"]()
 
     return tasks
 
@@ -647,16 +648,17 @@ def submit_custom_gpu_tasks():
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
 
-    exec(python_string, globals())
+    global_dict={'__name__': 'custom_script'}
+    exec(python_string, global_dict)
 
-    if "submit_tasks" not in globals() or not callable(globals()["submit_tasks"]):
+    if "submit_tasks" not in global_dict or not callable(global_dict["submit_tasks"]):
         slack_message(":exclamation:*Error* cannot find the submit_tasks function")
         return
 
-    if "process_task" not in globals() or not callable(globals()["process_task"]):
+    if "process_task" not in global_dict or not callable(global_dict["process_task"]):
         slack_message(":exclamation:*Error* cannot find the process_task function")
         return
 
-    tasks = globals()["submit_tasks"]()
+    tasks = global_dict["submit_tasks"]()
 
     return tasks
