@@ -54,10 +54,11 @@ def generate_ng_payload(param):
         "visible": False
     }
 
-    layers["seg"] = {
-        "source": "precomputed://"+param["SEG_PATH"],
-        "type": "segmentation"
-    }
+    if not param.get("SKIP_AGG", False):
+        layers["seg"] = {
+            "source": "precomputed://"+param["SEG_PATH"],
+            "type": "segmentation"
+        }
 
     if "GT_PATH" in param:
         layers["gt"] = {
@@ -65,10 +66,11 @@ def generate_ng_payload(param):
             "type": "segmentation"
         }
 
-    layers["size"] = {
-        "source": "precomputed://"+param["SEG_PATH"]+"/size_map",
-        "type": "image"
-    }
+    if not param.get("SKIP_AGG", False):
+        layers["size"] = {
+            "source": "precomputed://"+param["SEG_PATH"]+"/size_map",
+            "type": "image"
+        }
 
     bbox = param["BBOX"]
 
