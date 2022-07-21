@@ -53,11 +53,11 @@ def drain_op(
 
 def manager_op(dag: DAG, synaptor_task_name: str, queue: str = "manager") -> Operator:
     """An operator fn for running synaptor tasks on the airflow node."""
-    config_path = os.path.join(MOUNT_POINT, "synaptor_param")
+    config_path = os.path.join(MOUNT_POINT, "synaptor_param.json")
     command = f"{synaptor_task_name} {config_path}"
 
     # these variables will be mounted in the containers
-    variables = ["synaptor_param"]
+    variables = ["synaptor_param.json"]
 
     return worker_op(
         variables=variables,
@@ -86,7 +86,7 @@ def generate_op(
     from airflow import configuration as conf
 
     broker_url = conf.get("celery", "broker_url")
-    config_path = os.path.join(MOUNT_POINT, "synaptor_param")
+    config_path = os.path.join(MOUNT_POINT, "synaptor_param.json")
 
     command = (
         f"generate {taskname} {config_path}"
@@ -95,7 +95,7 @@ def generate_op(
     )
 
     # these variables will be mounted in the containers
-    variables = add_secrets_if_defined(["synaptor_param"])
+    variables = add_secrets_if_defined(["synaptor_param.json"])
 
     task_id = f"generate_{taskname}" if tag is None else f"generate_{taskname}_{tag}"
 
@@ -126,7 +126,7 @@ def synaptor_op(
     from airflow import configuration as conf
 
     broker_url = conf.get("celery", "broker_url")
-    config_path = os.path.join(MOUNT_POINT, "synaptor_param")
+    config_path = os.path.join(MOUNT_POINT, "synaptor_param.json")
 
     command = (
         f"worker --configfilename {config_path}"
@@ -136,7 +136,7 @@ def synaptor_op(
     )
 
     # these variables will be mounted in the containers
-    variables = add_secrets_if_defined(["synaptor_param"])
+    variables = add_secrets_if_defined(["synaptor_param.json"])
 
     task_id = f"worker_{i}" if tag is None else f"worker_{tag}_{i}"
 

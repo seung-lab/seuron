@@ -1,6 +1,5 @@
 """DAG definition for synaptor workflows."""
 from datetime import datetime
-from configparser import ConfigParser
 
 from airflow import DAG
 from airflow.models import Variable
@@ -14,16 +13,10 @@ from synaptor_ops import synaptor_op, wait_op, generate_op
 # Processing parameters
 # We need to set a default so any airflow container can parse the dag before we
 # pass in a configuration file
-
-try:
-    param = Variable.get("synaptor_param", default_synaptor_param)
-    cp = ConfigParser()
-    cp.read_string(param)
-    MAX_CLUSTER_SIZE = cp.getint("Workflow", "maxclustersize")
-
-except:  # not sure why this doesn't work sometimes
-    MAX_CLUSTER_SIZE = 1
-
+param = Variable.get(
+    "synaptor_param.json", default_synaptor_param, deserialize_json=True
+)
+MAX_CLUSTER_SIZE = int(param.get("Workflow", {}).get("maxclustersize", 1))
 
 default_args = {
     "owner": "seuronbot",
