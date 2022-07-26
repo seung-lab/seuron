@@ -26,6 +26,18 @@ import subprocess
 import sys
 import traceback
 
+def excepthook(exctype, excvalue, exctraceback):
+    client = slack.WebClient(token=slack_token)
+    client.chat_postMessage(
+            channel=slack_notification_channel,
+            username=workerid,
+            text=f"An uncaught exception occured. Restart slackbot!\n ```{traceback.format_exc()}```",
+    )
+    sys.exit()
+
+
+sys.excepthook = excepthook
+
 ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
 
 param_updated = False
