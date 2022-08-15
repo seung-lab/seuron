@@ -197,28 +197,26 @@ def update_inference_param(msg):
     global param_updated
     json_obj = download_json(msg)
     if json_obj:
-        if not check_running():
-            clear_queues()
-            drain_messages(broker_url, "chunkflow")
+        clear_queues()
+        drain_messages(broker_url, "chunkflow")
 
-            if isinstance(json_obj, list):
-                replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-                q_payload.put(json_obj)
-                json_obj = json_obj[0]
+        if isinstance(json_obj, list):
+            replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+            q_payload.put(json_obj)
+            json_obj = json_obj[0]
 
-            supply_default_param(json_obj)
-            replyto(msg, "Running chunkflow setup_env, please wait")
-            update_metadata(msg)
-            set_variable('inference_param', json_obj, serialize_json=True)
-            chunkflow_set_env()
-            param_updated = True
-        else:
-            replyto(msg, "Busy right now")
+        supply_default_param(json_obj)
+        replyto(msg, "Running chunkflow setup_env, please wait")
+        update_metadata(msg)
+        set_variable('inference_param', json_obj, serialize_json=True)
+        chunkflow_set_env()
+        param_updated = True
 
     return
 
 @seuronbot.on_message("parameters",
-                      description="Upload parameters of the last segmentation")
+                      description="Upload parameters of the last segmentation",
+                      exclusive=False)
 def on_parameters(msg):
     param = get_variable("param", deserialize_json=True)
     upload_param(msg, param)
@@ -241,6 +239,7 @@ def on_update_inference_parameters(msg):
 
 @seuronbot.on_message("cancel run",
                       description="Cancel the current run, must provide a matching token",
+                      exclusive=False,
                       extra_parameters=True)
 def on_cancel_run(msg):
     token = get_variable("run_token")
@@ -263,9 +262,7 @@ def on_cancel_run(msg):
 def on_run_segmentations(msg):
     global param_updated
     state, _ = dag_state("sanity_check")
-    if check_running():
-        replyto(msg, "I am busy right now")
-    elif not param_updated:
+    if not param_updated:
         replyto(msg, "You have to update the parameters before starting the segmentation")
     elif state != "success":
         replyto(msg, "Sanity check failed, try again")
@@ -285,9 +282,7 @@ def on_run_segmentations(msg):
 def on_run_inferences(msg):
     global param_updated
     state, _ = dag_state("chunkflow_generator")
-    if check_running():
-        replyto(msg, "I am busy right now")
-    elif not param_updated:
+    if not param_updated:
         replyto(msg, "You have to update the parameters before starting the inference")
     elif state != "success":
         replyto(msg, "Chunkflow set_env failed, try again")
@@ -306,28 +301,19 @@ def on_run_inferences(msg):
                       description="Run igneous tasks defined in the uploaded script",
                       file_inputs=True)
 def on_run_igneous_tasks(msg):
-    if check_running():
-        replyto(msg, "I am busy right now")
-    else:
-        run_igneous_scripts(msg)
+    run_igneous_scripts(msg)
 
 @seuronbot.on_message(["run custom cpu task", "run custom cpu tasks"],
                       description="Run custom cpu tasks defined in the uploaded script",
                       file_inputs=True)
 def on_run_custom_cpu_tasks(msg):
-    if check_running():
-        replyto(msg, "I am busy right now")
-    else:
-        run_custom_scripts(msg, "cpu")
+    run_custom_scripts(msg, "cpu")
 
 @seuronbot.on_message(["run custom gpu task", "run custom gpu tasks"],
                       description="Run custom gpu tasks defined in the uploaded script",
                       file_inputs=True)
 def on_run_custom_gpu_tasks(msg):
-    if check_running():
-        replyto(msg, "I am busy right now")
-    else:
-        run_custom_scripts(msg, "gpu")
+    run_custom_scripts(msg, "gpu")
 
 @seuronbot.on_message(["update python package", "update python packages"],
                       description="Install extra python packages before starting the docker containers")
@@ -350,23 +336,18 @@ def on_update_python_packages(msg):
 @seuronbot.on_message("redeploy docker stack",
                       description="Restart the manager stack with updated docker images")
 def on_redeploy_docker_stack(msg):
-    if check_running():
-        replyto(msg, "I am busy right now")
-    else:
-        replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
-        update_metadata(msg)
-        set_redeploy_flag(True)
-        time.sleep(300)
-        replyto(msg, "Failed to restart the bot")
+    replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
+    update_metadata(msg)
+    set_redeploy_flag(True)
+    time.sleep(300)
+    replyto(msg, "Failed to restart the bot")
 
 @seuronbot.on_message("extract contact surfaces",
                       description="Extract the contact surfaces between segments")
 def on_extract_contact_surfaces(msg):
     global param_updated
     state, _ = dag_state("sanity_check")
-    if check_running():
-        replyto(msg, "I am busy right now")
-    elif state != "success":
+    if state != "success":
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Extract contact surfaces")
@@ -389,24 +370,21 @@ def update_param(msg, advanced=False):
         return
 
     if json_obj:
-        if not check_running():
-            clear_queues()
+        clear_queues()
 
-            if isinstance(json_obj, list):
-                if (len(json_obj) > 1):
-                    replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-                q_payload.put(json_obj)
-                json_obj = json_obj[0]
+        if isinstance(json_obj, list):
+            if (len(json_obj) > 1):
+                replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
+            q_payload.put(json_obj)
+            json_obj = json_obj[0]
 
-            supply_default_param(json_obj)
-            replyto(msg, "Running sanity check, please wait")
-            update_metadata(msg)
-            set_variable('param', json_obj, serialize_json=True)
-            time.sleep(30)
-            sanity_check()
-            param_updated = True
-        else:
-            replyto(msg, "Busy right now")
+        supply_default_param(json_obj)
+        replyto(msg, "Running sanity check, please wait")
+        update_metadata(msg)
+        set_variable('param', json_obj, serialize_json=True)
+        time.sleep(30)
+        sanity_check()
+        param_updated = True
 
     return
 
@@ -429,10 +407,6 @@ def update_synaptor_params(msg):
         }
 
     if content is not None:  # download_file returns None if there's a problem
-        if check_running():
-            replyto(msg, "Busy right now")
-            return
-
         replyto(msg, "Running synaptor sanity check. Please wait.")
         update_metadata(msg)
 
@@ -449,10 +423,6 @@ def update_synaptor_params(msg):
                   "run synaptor file segmentation"])
 def synaptor_file_seg(msg):
     """Runs the file segmentation DAG."""
-    if check_running():
-        replyto(msg, "Busy right now")
-        return
-
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     create_run_token(msg)
     update_metadata(msg)
@@ -464,10 +434,6 @@ def synaptor_file_seg(msg):
                  "run synaptor database segmentation"])
 def synaptor_db_seg(msg):
     """Runs the file segmentation DAG."""
-    if check_running():
-        replyto(msg, "Busy right now")
-        return
-
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     create_run_token(msg)
     update_metadata(msg)
@@ -477,10 +443,6 @@ def synaptor_db_seg(msg):
                  "run synaptor synapse assignment"])
 def synaptor_assignment(msg):
     """Runs the file segmentation DAG."""
-    if check_running():
-        replyto(msg, "Busy right now")
-        return
-
     replyto(msg, "Running synaptor synapse assignment. Please wait.")
     create_run_token(msg)
     update_metadata(msg)
@@ -490,17 +452,14 @@ def synaptor_assignment(msg):
 def run_igneous_scripts(msg):
     _, payload = download_file(msg)
     if payload:
-        if not check_running():
-            drain_messages(broker_url, "igneous")
-            drain_messages(broker_url, "igneous_ret")
-            drain_messages(broker_url, "igneous_err")
-            create_run_token(msg)
-            update_metadata(msg)
-            set_variable('igneous_script', payload)
-            replyto(msg, "Execute `submit_tasks` function")
-            run_igneous_tasks()
-        else:
-            replyto(msg, "Busy right now")
+        drain_messages(broker_url, "igneous")
+        drain_messages(broker_url, "igneous_ret")
+        drain_messages(broker_url, "igneous_err")
+        create_run_token(msg)
+        update_metadata(msg)
+        set_variable('igneous_script', payload)
+        replyto(msg, "Execute `submit_tasks` function")
+        run_igneous_tasks()
 
     return
 
@@ -508,18 +467,15 @@ def run_igneous_scripts(msg):
 def run_custom_scripts(msg, task_type):
     _, payload = download_file(msg)
     if payload:
-        if not check_running():
-            for t in ['gpu', 'cpu']:
-                drain_messages(broker_url, f"custom-{t}")
-                drain_messages(broker_url, f"custom-{t}_ret")
-                drain_messages(broker_url, f"custom-{t}_err")
-            create_run_token(msg)
-            update_metadata(msg)
-            set_variable('custom_script', payload)
-            replyto(msg, "Execute `submit_tasks` function")
-            run_custom_tasks(task_type)
-        else:
-            replyto(msg, "Busy right now")
+        for t in ['gpu', 'cpu']:
+            drain_messages(broker_url, f"custom-{t}")
+            drain_messages(broker_url, f"custom-{t}_ret")
+            drain_messages(broker_url, f"custom-{t}_err")
+        create_run_token(msg)
+        update_metadata(msg)
+        set_variable('custom_script', payload)
+        replyto(msg, "Execute `submit_tasks` function")
+        run_custom_tasks(task_type)
 
     return
 
