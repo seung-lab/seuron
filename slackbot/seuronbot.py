@@ -110,7 +110,7 @@ class SeuronBot:
 
         return __call__
 
-    def on_message(self, trigger_phrases="", description="", exclusive=False, extra_parameters=False, file_inputs=False):
+    def on_message(self, trigger_phrases="", description="", exclusive=True, extra_parameters=False, file_inputs=False):
         if isinstance(trigger_phrases, str):
             trigger_phrases = [trigger_phrases]
 
