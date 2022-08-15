@@ -3,7 +3,6 @@ from slack_sdk.rtm_v2 import RTMClient
 import json
 import json5
 from collections import OrderedDict
-import string
 from airflow_api import get_variable, run_segmentation, \
     update_slack_connection, check_running, dag_state, set_variable, \
     sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
@@ -12,10 +11,10 @@ from airflow_api import get_variable, run_segmentation, \
     run_synaptor_assignment
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from kombu_helper import drain_messages
+from bot_utils import replyto, extract_command
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
 from copy import deepcopy
 import requests
-import re
 import time
 import logging
 from secrets import token_hex
@@ -97,31 +96,6 @@ def report(msg):
             workerid=workerid
         ), username="seuronbot", broadcast=True)
     hello_world()
-
-
-def extract_command(msg):
-    cmd = msg["text"].replace(workerid, "").replace(botid, "")
-    cmd = cmd.translate(str.maketrans('', '', string.punctuation))
-    cmd = cmd.lower()
-    return "".join(cmd.split())
-
-
-def replyto(msg, reply, username=workerid, broadcast=False):
-    sc = slack.WebClient(slack_token, timeout=300)
-    channel = msg['channel']
-    userid = msg['user']
-    thread_ts = msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
-    reply_msg = "<@{}> {}".format(userid, reply)
-    rc = sc.chat_postMessage(
-        username=username,
-        channel=channel,
-        thread_ts=thread_ts,
-        reply_broadcast=broadcast,
-        text=reply_msg
-    )
-    if not rc["ok"]:
-        print("Failed to send slack message")
-        print(rc)
 
 
 def shut_down_clusters():
