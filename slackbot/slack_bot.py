@@ -216,12 +216,15 @@ def update_inference_param(msg):
 
     return
 
-@seuronbot.on_message("parameters", description="Upload parameters of the last segmentation")
+@seuronbot.on_message("parameters",
+                      description="Upload parameters of the last segmentation")
 def on_parameters(msg):
     param = get_variable("param", deserialize_json=True)
     upload_param(msg, param)
 
-@seuronbot.on_message(["update parameters", "please update parameters"], description="Update segmentation parameters", file_inputs=True)
+@seuronbot.on_message(["update parameters", "please update parameters"],
+                      description="Update segmentation parameters",
+                      file_inputs=True)
 def on_update_parameters(msg):
     cmd = extract_command(msg)
     if cmd.startswith("please"):
@@ -229,11 +232,15 @@ def on_update_parameters(msg):
     else:
         update_param(msg, advanced=False)
 
-@seuronbot.on_message("update inference parameters", description="Update inference parameters", file_inputs=True)
+@seuronbot.on_message("update inference parameters",
+                      description="Update inference parameters",
+                      file_inputs=True)
 def on_update_inference_parameters(msg):
     update_inference_param(msg)
 
-@seuronbot.on_message("cancel run", description="Cancel the current run, must provide a matching token", extra_parameters=True)
+@seuronbot.on_message("cancel run",
+                      description="Cancel the current run, must provide a matching token",
+                      extra_parameters=True)
 def on_cancel_run(msg):
     token = get_variable("run_token")
     cmd = extract_command(msg)
@@ -250,7 +257,8 @@ def on_cancel_run(msg):
         else:
             replyto(msg, "The bot is idle, nothing to cancel")
 
-@seuronbot.on_message(["run segmentation", "run segmentations"], description="Create segmentation with updated parameters")
+@seuronbot.on_message(["run segmentation", "run segmentations"],
+                      description="Create segmentation with updated parameters")
 def on_run_segmentations(msg):
     global param_updated
     state, _ = dag_state("sanity_check")
@@ -271,7 +279,8 @@ def on_run_segmentations(msg):
             q_payload.put(msg)
             q_cmd.put("runseg")
 
-@seuronbot.on_message(["run inference", "run inferences"], description="Inference with updated parameters")
+@seuronbot.on_message(["run inference", "run inferences"],
+                      description="Inference with updated parameters")
 def on_run_inferences(msg):
     global param_updated
     state, _ = dag_state("chunkflow_generator")
@@ -292,28 +301,35 @@ def on_run_inferences(msg):
             q_payload.put(msg)
             q_cmd.put("runinf")
 
-@seuronbot.on_message(["run igneous task", "run igneous tasks"], description="Run igneous tasks defined in the uploaded script", file_inputs=True)
+@seuronbot.on_message(["run igneous task", "run igneous tasks"],
+                      description="Run igneous tasks defined in the uploaded script",
+                      file_inputs=True)
 def on_run_igneous_tasks(msg):
     if check_running():
         replyto(msg, "I am busy right now")
     else:
         run_igneous_scripts(msg)
 
-@seuronbot.on_message(["run custom cpu task", "run custom cpu tasks"], description="Run custom cpu tasks defined in the uploaded script", file_inputs=True)
+@seuronbot.on_message(["run custom cpu task", "run custom cpu tasks"],
+                      description="Run custom cpu tasks defined in the uploaded script",
+                      file_inputs=True)
 def on_run_custom_cpu_tasks(msg):
     if check_running():
         replyto(msg, "I am busy right now")
     else:
         run_custom_scripts(msg, "cpu")
 
-@seuronbot.on_message(["run custom gpu task", "run custom gpu tasks"], description="Run custom gpu tasks defined in the uploaded script", file_inputs=True)
+@seuronbot.on_message(["run custom gpu task", "run custom gpu tasks"],
+                      description="Run custom gpu tasks defined in the uploaded script",
+                      file_inputs=True)
 def on_run_custom_gpu_tasks(msg):
     if check_running():
         replyto(msg, "I am busy right now")
     else:
         run_custom_scripts(msg, "gpu")
 
-@seuronbot.on_message(["update python package", "update python packages"], description="Install extra python packages before starting the docker containers")
+@seuronbot.on_message(["update python package", "update python packages"],
+                      description="Install extra python packages before starting the docker containers")
 def on_update_python_packages(msg):
     _, payload = download_file(msg)
     replyto(msg, "*WARNING:Extra python packages are available for workers only*")
@@ -330,7 +346,8 @@ def on_update_python_packages(msg):
         set_variable('python_packages', payload)
         replyto(msg, "Packages are ready for *workers*")
 
-@seuronbot.on_message("redeploy docker stack", description="Restart the manager stack with updated docker images")
+@seuronbot.on_message("redeploy docker stack",
+                      description="Restart the manager stack with updated docker images")
 def on_redeploy_docker_stack(msg):
     if check_running():
         replyto(msg, "I am busy right now")
@@ -341,7 +358,8 @@ def on_redeploy_docker_stack(msg):
         time.sleep(300)
         replyto(msg, "Failed to restart the bot")
 
-@seuronbot.on_message("extract contact surfaces", description="Extract the contact surfaces between segments")
+@seuronbot.on_message("extract contact surfaces",
+                      description="Extract the contact surfaces between segments")
 def on_extract_contact_surfaces(msg):
     global param_updated
     state, _ = dag_state("sanity_check")
