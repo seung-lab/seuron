@@ -1,6 +1,8 @@
 import re
 import functools
 import json
+import itertools
+import difflib
 from secrets import token_hex
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid
@@ -81,6 +83,12 @@ class SeuronBot:
     def generate_cmdlist(self):
         return "\n".join(self.generate_command_description(listener) for listener in self.message_listeners)
 
+    def find_suggestions(self, context):
+        cmd = extract_command(context)
+        candidates = list(itertools.chain(*[x['triggers'] for x in self.message_listeners]))
+
+        return difflib.get_close_matches(cmd, candidates, n=2)
+
     def report(self, msg):
         print("preparing report!")
         if check_running():
@@ -110,7 +118,11 @@ class SeuronBot:
                 handled |= listener["command"](event)
 
             if not handled:
-                replyto(event, "Do not understand command")
+                reply_msg = "I do not understand the message"
+                candidates = self.find_suggestions(event)
+                if candidates:
+                    reply_msg += "\nDo you mean "+ " or ".join(f"`{x}`" for x in candidates)
+                replyto(event, reply_msg)
 
     def process_reaction(self, client: RTMClient, event: dict):
         print("reaction added")
