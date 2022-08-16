@@ -123,22 +123,6 @@ def upload_param(msg, param):
     )
 
 
-def update_metadata(msg):
-    sc = slack.WebClient(slack_token, timeout=300)
-    payload = {
-        'user': msg['user'],
-        'channel': msg['channel'],
-        'thread_ts': msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
-    }
-    update_slack_connection(payload, slack_token)
-    rc = sc.users_info(
-        user=msg['user']
-    )
-    global task_owner
-    if rc["ok"]:
-        task_owner = rc["user"]["profile"]["display_name"]
-
-
 def download_file(msg):
     if "files" not in msg:
         replyto(msg, "You need to upload a parameter file with this message")
@@ -207,7 +191,6 @@ def update_inference_param(msg):
 
         supply_default_param(json_obj)
         replyto(msg, "Running chunkflow setup_env, please wait")
-        update_metadata(msg)
         set_variable('inference_param', json_obj, serialize_json=True)
         chunkflow_set_env()
         param_updated = True
@@ -269,7 +252,6 @@ def on_run_segmentations(msg):
     else:
         replyto(msg, "Start segmentation")
         create_run_token(msg)
-        update_metadata(msg)
         param_updated = False
         if q_payload.qsize() == 0:
             run_segmentation()
@@ -289,7 +271,6 @@ def on_run_inferences(msg):
     else:
         replyto(msg, "Start inference")
         create_run_token(msg)
-        update_metadata(msg)
         param_updated = False
         if q_payload.qsize() == 0:
             run_inference()
@@ -337,7 +318,6 @@ def on_update_python_packages(msg):
                       description="Restart the manager stack with updated docker images")
 def on_redeploy_docker_stack(msg):
     replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
-    update_metadata(msg)
     set_redeploy_flag(True)
     time.sleep(300)
     replyto(msg, "Failed to restart the bot")
@@ -352,7 +332,6 @@ def on_extract_contact_surfaces(msg):
     else:
         replyto(msg, "Extract contact surfaces")
         create_run_token(msg)
-        update_metadata(msg)
         param_updated = False
         run_contact_surface()
 
@@ -380,7 +359,6 @@ def update_param(msg, advanced=False):
 
         supply_default_param(json_obj)
         replyto(msg, "Running sanity check, please wait")
-        update_metadata(msg)
         set_variable('param', json_obj, serialize_json=True)
         time.sleep(30)
         sanity_check()
@@ -408,8 +386,6 @@ def update_synaptor_params(msg):
 
     if content is not None:  # download_file returns None if there's a problem
         replyto(msg, "Running synaptor sanity check. Please wait.")
-        update_metadata(msg)
-
         param = config_to_json(content)
 
         set_variable("synaptor_param.json", param, serialize_json=True)
@@ -425,7 +401,6 @@ def synaptor_file_seg(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     create_run_token(msg)
-    update_metadata(msg)
     run_synaptor_file_seg()
 
 @seuronbot.on_message(["run synaptor dbseg",
@@ -436,7 +411,6 @@ def synaptor_db_seg(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     create_run_token(msg)
-    update_metadata(msg)
     run_synaptor_db_seg()
 
 @seuronbot.on_message(["run synaptor assignment",
@@ -445,7 +419,6 @@ def synaptor_assignment(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor synapse assignment. Please wait.")
     create_run_token(msg)
-    update_metadata(msg)
     run_synaptor_assignment()
 
 
@@ -456,7 +429,6 @@ def run_igneous_scripts(msg):
         drain_messages(broker_url, "igneous_ret")
         drain_messages(broker_url, "igneous_err")
         create_run_token(msg)
-        update_metadata(msg)
         set_variable('igneous_script', payload)
         replyto(msg, "Execute `submit_tasks` function")
         run_igneous_tasks()
@@ -472,7 +444,6 @@ def run_custom_scripts(msg, task_type):
             drain_messages(broker_url, f"custom-{t}_ret")
             drain_messages(broker_url, f"custom-{t}_err")
         create_run_token(msg)
-        update_metadata(msg)
         set_variable('custom_script', payload)
         replyto(msg, "Execute `submit_tasks` function")
         run_custom_tasks(task_type)
@@ -593,7 +564,6 @@ def handle_batch(q_payload, q_cmd):
                 for k in p:
                     param[k] = p[k]
                 supply_default_param(param)
-                update_metadata(msg)
                 replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
                 state = "unknown"
                 if current_task == "runseg":
@@ -650,8 +620,6 @@ def wait_for_airflow():
         time.sleep(60)
 
 if __name__ == '__main__':
-    task_owner = "seuronbot"
-
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 

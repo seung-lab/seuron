@@ -4,7 +4,7 @@ import json
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid
 from bot_utils import replyto, extract_command
-from airflow_api import check_running
+from airflow_api import check_running, update_slack_connection
 
 class SeuronBot:
     def __init__(self, slack_token=None):
@@ -15,6 +15,8 @@ class SeuronBot:
             "extra_parameters": False,
             "file_inputs": False,
         }
+        self.task_owner = "seuronbot"
+        self.slack_token = slack_token
 
         trigger_cmds = ["".join(p.split()) for p in self.help_listener['triggers']]
 
@@ -36,6 +38,20 @@ class SeuronBot:
         self.rtmclient.on("reaction_added")(functools.partial(self.process_reaction.__func__, self))
         self.rtmclient.on("hello")(functools.partial(self.process_hello.__func__, self))
 
+    def update_metadata(self, msg):
+        sc = self.rtmclient.web_client
+        payload = {
+            'user': msg['user'],
+            'channel': msg['channel'],
+            'thread_ts': msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
+        }
+        update_slack_connection(payload, self.slack_token)
+        rc = sc.users_info(
+            user=msg['user']
+        )
+        if rc["ok"]:
+            self.task_owner = rc["user"]["profile"]["display_name"]
+
     def generate_command_description(self, cmd):
         command = " or ".join(f"`{x}`" for x in cmd["triggers"])
         if cmd['extra_parameters']:
@@ -53,7 +69,7 @@ class SeuronBot:
     def report(self, msg):
         print("preparing report!")
         if check_running():
-            replyto(msg, f"{workerid}: busy running segmentation for {task_owner}", username="seuronbot", broadcast=True)
+            replyto(msg, f"{workerid}: busy running segmentation for {self.task_owner}", username="seuronbot", broadcast=True)
         else:
             replyto(msg, f"{workerid}: idle", username="seuronbot", broadcast=True)
 
@@ -91,11 +107,13 @@ class SeuronBot:
             listener()
 
     def run_cmd(self, func, context, exclusive=False):
-        if exclusive and check_running():
-            replyto(context, "Busy right now")
-            return
-        else:
-            func(context)
+        if exclusive:
+            if check_running():
+                replyto(context, "Busy right now")
+                return
+            self.update_metadata(context)
+
+        func(context)
 
     def on_hello(self):
         def __call__(*args, **kwargs):
