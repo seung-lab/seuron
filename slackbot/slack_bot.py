@@ -55,21 +55,6 @@ def clear_queues():
         q_cmd.queue.clear()
 
 
-def create_run_token(msg):
-    token = token_hex(16)
-    set_variable("run_token", token)
-    sc = slack.WebClient(slack_token, timeout=300)
-    userid = msg['user']
-    reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
-    rc = sc.chat_postMessage(
-        channel=userid,
-        text=reply_msg
-    )
-    if not rc["ok"]:
-        print("Failed to send direct message")
-        print(rc)
-
-
 def shut_down_clusters():
     cluster_size = get_variable('cluster_target_size', deserialize_json=True)
     for k in cluster_size:
@@ -199,13 +184,15 @@ def update_inference_param(msg):
 
 @seuronbot.on_message("parameters",
                       description="Upload parameters of the last segmentation",
-                      exclusive=False)
+                      exclusive=False,
+                      cancelable=False)
 def on_parameters(msg):
     param = get_variable("param", deserialize_json=True)
     upload_param(msg, param)
 
 @seuronbot.on_message(["update parameters", "please update parameters"],
                       description="Update segmentation parameters",
+                      cancelable=False,
                       file_inputs=True)
 def on_update_parameters(msg):
     cmd = extract_command(msg)
@@ -216,6 +203,7 @@ def on_update_parameters(msg):
 
 @seuronbot.on_message("update inference parameters",
                       description="Update inference parameters",
+                      cancelable=False,
                       file_inputs=True)
 def on_update_inference_parameters(msg):
     update_inference_param(msg)
@@ -251,7 +239,6 @@ def on_run_segmentations(msg):
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Start segmentation")
-        create_run_token(msg)
         param_updated = False
         if q_payload.qsize() == 0:
             run_segmentation()
@@ -270,7 +257,6 @@ def on_run_inferences(msg):
         replyto(msg, "Chunkflow set_env failed, try again")
     else:
         replyto(msg, "Start inference")
-        create_run_token(msg)
         param_updated = False
         if q_payload.qsize() == 0:
             run_inference()
@@ -297,7 +283,8 @@ def on_run_custom_gpu_tasks(msg):
     run_custom_scripts(msg, "gpu")
 
 @seuronbot.on_message(["update python package", "update python packages"],
-                      description="Install extra python packages before starting the docker containers")
+                      description="Install extra python packages before starting the docker containers",
+                      cancelable=False)
 def on_update_python_packages(msg):
     _, payload = download_file(msg)
     replyto(msg, "*WARNING:Extra python packages are available for workers only*")
@@ -315,7 +302,8 @@ def on_update_python_packages(msg):
         replyto(msg, "Packages are ready for *workers*")
 
 @seuronbot.on_message("redeploy docker stack",
-                      description="Restart the manager stack with updated docker images")
+                      description="Restart the manager stack with updated docker images",
+                      cancelable=False)
 def on_redeploy_docker_stack(msg):
     replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
     set_redeploy_flag(True)
@@ -331,7 +319,6 @@ def on_extract_contact_surfaces(msg):
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Extract contact surfaces")
-        create_run_token(msg)
         param_updated = False
         run_contact_surface()
 
@@ -367,7 +354,8 @@ def update_param(msg, advanced=False):
     return
 
 @seuronbot.on_message(["update synaptor params",
-                  "update synaptor parameters"])
+                  "update synaptor parameters"],
+                      cancelable=False)
 def update_synaptor_params(msg):
     """Parses the synaptor configuration file to check for simple errors."""
     # Current file format is ini/toml, not json
@@ -400,7 +388,6 @@ def update_synaptor_params(msg):
 def synaptor_file_seg(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
-    create_run_token(msg)
     run_synaptor_file_seg()
 
 @seuronbot.on_message(["run synaptor dbseg",
@@ -410,7 +397,6 @@ def synaptor_file_seg(msg):
 def synaptor_db_seg(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
-    create_run_token(msg)
     run_synaptor_db_seg()
 
 @seuronbot.on_message(["run synaptor assignment",
@@ -418,7 +404,6 @@ def synaptor_db_seg(msg):
 def synaptor_assignment(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor synapse assignment. Please wait.")
-    create_run_token(msg)
     run_synaptor_assignment()
 
 
@@ -428,7 +413,6 @@ def run_igneous_scripts(msg):
         drain_messages(broker_url, "igneous")
         drain_messages(broker_url, "igneous_ret")
         drain_messages(broker_url, "igneous_err")
-        create_run_token(msg)
         set_variable('igneous_script', payload)
         replyto(msg, "Execute `submit_tasks` function")
         run_igneous_tasks()
@@ -443,7 +427,6 @@ def run_custom_scripts(msg, task_type):
             drain_messages(broker_url, f"custom-{t}")
             drain_messages(broker_url, f"custom-{t}_ret")
             drain_messages(broker_url, f"custom-{t}_err")
-        create_run_token(msg)
         set_variable('custom_script', payload)
         replyto(msg, "Execute `submit_tasks` function")
         run_custom_tasks(task_type)

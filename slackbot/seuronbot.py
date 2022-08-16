@@ -1,10 +1,11 @@
 import re
 import functools
 import json
+from secrets import token_hex
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid
 from bot_utils import replyto, extract_command
-from airflow_api import check_running, update_slack_connection
+from airflow_api import check_running, update_slack_connection, set_variable
 
 class SeuronBot:
     def __init__(self, slack_token=None):
@@ -51,6 +52,20 @@ class SeuronBot:
         )
         if rc["ok"]:
             self.task_owner = rc["user"]["profile"]["display_name"]
+
+    def create_run_token(self, msg):
+        token = token_hex(16)
+        set_variable("run_token", token)
+        sc = self.rtmclient.web_client
+        userid = msg['user']
+        reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
+        rc = sc.chat_postMessage(
+            channel=userid,
+            text=reply_msg
+        )
+        if not rc["ok"]:
+            print("Failed to send direct message")
+            print(rc)
 
     def generate_command_description(self, cmd):
         command = " or ".join(f"`{x}`" for x in cmd["triggers"])
@@ -106,7 +121,7 @@ class SeuronBot:
         for listener in self.hello_listeners:
             listener()
 
-    def run_cmd(self, func, context, exclusive=False):
+    def run_cmd(self, func, context, exclusive=False, cancelable=False):
         if exclusive:
             if check_running():
                 replyto(context, "Busy right now")
@@ -114,6 +129,9 @@ class SeuronBot:
             self.update_metadata(context)
 
         func(context)
+
+        if cancelable:
+            self.create_run_token(context)
 
     def on_hello(self):
         def __call__(*args, **kwargs):
@@ -128,7 +146,7 @@ class SeuronBot:
 
         return __call__
 
-    def on_message(self, trigger_phrases="", description="", exclusive=True, extra_parameters=False, file_inputs=False):
+    def on_message(self, trigger_phrases="", description="", exclusive=True, cancelable=True, extra_parameters=False, file_inputs=False):
         if isinstance(trigger_phrases, str):
             trigger_phrases = [trigger_phrases]
 
@@ -140,12 +158,12 @@ class SeuronBot:
                 actual_cmd = extract_command(context)
                 if not extra_parameters:
                     if actual_cmd in trigger_cmds:
-                        self.run_cmd(func, context, exclusive=exclusive)
+                        self.run_cmd(func, context, exclusive=exclusive, cancelable=cancelable)
                         return True
                 else:
                     for c in trigger_cmds:
                         if actual_cmd.startswith(c):
-                            self.run_cmd(func, context, exclusive=exclusive)
+                            self.run_cmd(func, context, exclusive=exclusive, cancelable=cancelable)
                             return True
 
                 return False
@@ -155,6 +173,7 @@ class SeuronBot:
                 "description": description,
                 "command": new_message_listener,
                 "exclusive": exclusive,
+                "cancelable": cancelable,
                 "extra_parameters": extra_parameters,
                 "file_inputs": file_inputs,
             })
