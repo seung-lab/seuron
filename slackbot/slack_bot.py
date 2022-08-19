@@ -353,8 +353,13 @@ def update_param(msg, advanced=False):
 
     return
 
-@seuronbot.on_message(["update synaptor params",
-                  "update synaptor parameters"],
+@seuronbot.on_message("update synaptor parameters",
+                      description=(
+                          "Updates parameters for synaptor segmentation or assignment."
+                          " Performs a light sanity check."
+                      ),
+                      exclusive=True,  # allows metadata update for callbacks
+                      file_inputs=True,
                       cancelable=False)
 def update_synaptor_params(msg):
     """Parses the synaptor configuration file to check for simple errors."""
@@ -382,27 +387,34 @@ def update_synaptor_params(msg):
     else:
         replyto(msg, "Error reading file")
 
-
-@seuronbot.on_message(["run synaptor fileseg",
-                  "run synaptor file segmentation"])
+@seuronbot.on_message("run synaptor file segmentation",
+                      description=(
+                          "Runs a synaptor segmentation using the file backend."
+                      ))
 def synaptor_file_seg(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     run_synaptor_file_seg()
 
-@seuronbot.on_message(["run synaptor dbseg",
-                 "run synaptor database seg",
-                 "run synaptor dbsegmentation",
-                 "run synaptor database segmentation"])
+@seuronbot.on_message(["run synaptor db segmentation",
+                       "run synaptor database segmentation"],
+                      description=(
+                          "Runs a synaptor segmentation using the database backend."
+                          " NOTE: This requires the user to set up an accessible database."
+                      ))
 def synaptor_db_seg(msg):
-    """Runs the file segmentation DAG."""
+    """Runs the database segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     run_synaptor_db_seg()
 
-@seuronbot.on_message(["run synaptor assignment",
-                 "run synaptor synapse assignment"])
+@seuronbot.on_message("run synaptor synapse assignment",
+                      description=(
+                          "Runs synaptor synapse segmentation and assignment."
+                          " NOTE: This requires the user to set up an accessible"
+                          " database."
+                      ))
 def synaptor_assignment(msg):
-    """Runs the file segmentation DAG."""
+    """Runs the synapse assignment DAG."""
     replyto(msg, "Running synaptor synapse assignment. Please wait.")
     run_synaptor_assignment()
 
