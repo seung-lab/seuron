@@ -181,7 +181,7 @@ def update_inference_param(msg):
 
     return
 
-@seuronbot.on_message("parameters",
+@seuronbot.on_message("show segmentation parameters",
                       description="Upload parameters of the last segmentation",
                       exclusive=False,
                       cancelable=False)
@@ -189,7 +189,8 @@ def on_parameters(msg):
     param = get_variable("param", deserialize_json=True)
     upload_param(msg, param)
 
-@seuronbot.on_message(["update parameters", "please update parameters"],
+@seuronbot.on_message(["update segmentation parameters",
+                       "please update segmentation parameters"],
                       description="Update segmentation parameters",
                       cancelable=False,
                       file_inputs=True)
