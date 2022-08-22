@@ -591,6 +591,7 @@ def handle_batch(q_payload, q_cmd):
                 supply_default_param(param)
                 replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
                 state = "unknown"
+                current_task = guess_run_type(param)
                 if current_task == "runseg":
                     set_variable('param', param, serialize_json=True)
                     sanity_check()
