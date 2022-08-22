@@ -190,6 +190,28 @@ def on_parameters(msg):
     param = get_variable("param", deserialize_json=True)
     upload_param(msg, param)
 
+@seuronbot.on_message(["update parameters",
+                       "please update parameters"],
+                      description="Update segmentation/inference parameters",
+                      cancelable=False,
+                      file_inputs=True)
+def on_update_parameters(msg):
+    cmd = extract_command(msg)
+    json_obj = download_json(msg)
+    if json_obj:
+        if isinstance(json_obj, list):
+            json_obj = json_obj[0]
+
+        if "WORKER_IMAGE" in json_obj:
+            if cmd.startswith("please"):
+                update_segmentation_param(msg, advanced=True)
+            else:
+                update_segmentation_param(msg, advanced=False)
+        elif "CHUNKFLOW_IMAGE" in json_obj:
+            update_inference_param(msg)
+        else:
+            replyto(msg, "Cannot guess run type from input parameters, please be more specific")
+
 @seuronbot.on_message(["update segmentation parameters",
                        "please update segmentation parameters"],
                       description="Update segmentation parameters",
