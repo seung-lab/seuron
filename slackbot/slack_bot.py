@@ -162,6 +162,15 @@ def check_advanced_settings(params):
     return kw
 
 
+def guess_run_type(param):
+    if "WORKER_IMAGE" in param:
+        return "runseg"
+    elif "CHUNKFLOW_IMAGE" in param:
+        return "runinf"
+    else:
+        return None
+
+
 def update_inference_param(msg):
     global param_updated
     json_obj = download_json(msg)
@@ -202,13 +211,11 @@ def on_update_parameters(msg):
         if isinstance(json_obj, list):
             json_obj = json_obj[0]
 
-        if "WORKER_IMAGE" in json_obj:
-            if cmd.startswith("please"):
-                update_segmentation_param(msg, advanced=True)
-            else:
-                update_segmentation_param(msg, advanced=False)
-        elif "CHUNKFLOW_IMAGE" in json_obj:
-            update_inference_param(msg)
+        run_type = guess_run_type(json_obj)
+        if run_type == "runseg":
+            on_update_segmentation_parameters(msg)
+        elif run_type == "runinf":
+            on_update_inference_parameters(msg)
         else:
             replyto(msg, "Cannot guess run type from input parameters, please be more specific")
 
