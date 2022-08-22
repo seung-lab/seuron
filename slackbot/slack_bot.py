@@ -195,12 +195,12 @@ def on_parameters(msg):
                       description="Update segmentation parameters",
                       cancelable=False,
                       file_inputs=True)
-def on_update_parameters(msg):
+def on_update_segmentation_parameters(msg):
     cmd = extract_command(msg)
     if cmd.startswith("please"):
-        update_param(msg, advanced=True)
+        update_segmentation_param(msg, advanced=True)
     else:
-        update_param(msg, advanced=False)
+        update_segmentation_param(msg, advanced=False)
 
 @seuronbot.on_message("update inference parameters",
                       description="Update inference parameters",
@@ -323,7 +323,7 @@ def on_extract_contact_surfaces(msg):
         param_updated = False
         run_contact_surface()
 
-def update_param(msg, advanced=False):
+def update_segmentation_param(msg, advanced=False):
     global param_updated
     json_obj = download_json(msg)
     kw = check_advanced_settings(json_obj)
