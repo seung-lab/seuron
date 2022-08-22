@@ -330,10 +330,10 @@ def update_segmentation_param(msg, advanced=False):
 
     if len(kw) > 0 and not advanced:
         replyto(msg, f'You are trying to change advanced parameters: {",".join("`"+x+"`" for x in kw)}')
-        replyto(msg, "Use `please update parameters` to confirm that you know what you are doing!")
+        replyto(msg, "Use `please update segmentation parameters` to confirm that you know what you are doing!")
         return
     elif len(kw) == 0 and advanced:
-        replyto(msg, "You are too polite, do not use `please update parameters` without any advanced parameters!")
+        replyto(msg, "You are too polite, do not use `please update segmentation parameters` without any advanced parameters!")
         return
 
     if json_obj:
