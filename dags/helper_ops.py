@@ -59,6 +59,33 @@ def reset_flags(param):
         slack_message(":exclamation:Cannot reset the sizes of the clusters")
 
 
+def setup_redis(varname, dbname):
+    import os
+    import redis
+    from param_default import redis_databases
+    param = Variable.get(varname, deserialize_json=True)
+    if "REDIS_SERVER" not in os.environ:
+        slack_message("*No redis server, nothing to flush*")
+    else:
+        param["REDIS_SERVER"] = os.environ['REDIS_SERVER']
+        param["REDIS_DB"] = redis_databases[dbname]
+        slack_message(f'*Use redis database {param["REDIS_DB"]} to track the progress of the run*')
+        if param.get("RESET_REDIS_DB", True):
+            r = redis.Redis(host=param["REDIS_SERVER"], db=param["REDIS_DB"])
+            r.flushdb()
+            slack_message(f'*Flush redis database {param["REDIS_DB"]}*')
+        Variable.set(varname, param, serialize_json=True)
+
+
+def setup_redis_op(dag, varname, dbname):
+    return PythonOperator(
+        task_id="setup_redis",
+        python_callable=setup_redis,
+        op_args = (varname, dbname, ),
+        queue="manager",
+        dag=dag)
+
+
 def set_variable(key, value):
     Variable.set(key, value)
 

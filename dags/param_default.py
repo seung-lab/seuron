@@ -51,10 +51,9 @@ inference_param_default = {
     "BBOX": [7168, 20480, 1500, 8608, 21920, 1764],
 }
 
-default_synaptor_param = """
-[Workflow]
-maxclustersize = 1
-"""
+default_synaptor_param = {
+    "Workflow": dict(maxclustersize=1)
+}
 
 default_args = {
     'owner': 'seuronbot',
@@ -67,6 +66,11 @@ default_args = {
     'max_retry_delay': timedelta(seconds=600)
     }
 
+redis_databases = {
+    'SEURON': 0,
+    'ABISS': 1,
+    'CHUNKFLOW': 2,
+}
 
 SLACK_CONN_ID = 'Slack'
 AWS_CONN_ID = 'AWS'

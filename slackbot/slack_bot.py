@@ -20,6 +20,7 @@ import time
 import logging
 from secrets import token_hex
 from datetime import datetime
+from configparser import ConfigParser
 import threading
 import queue
 import subprocess
@@ -313,15 +314,28 @@ def update_synaptor_params(msg):
     # Current file format is ini/toml, not json
     _, content = download_file(msg)
 
+    def config_to_json(content):
+        cp = ConfigParser()
+        cp.read_string(content)
+
+        return {
+            section: {
+                field: cp[section][field] for field in cp[section]
+            }
+            for section in cp
+        }
+
     if content is not None:  # download_file returns None if there's a problem
         if check_running():
             replyto(msg, "Busy right now")
             return
 
         replyto(msg, "Running synaptor sanity check. Please wait.")
-
         update_metadata(msg)
-        set_variable("synaptor_param", content)
+
+        param = config_to_json(content)
+
+        set_variable("synaptor_param.json", param, serialize_json=True)
         synaptor_sanity_check()
 
     else:
