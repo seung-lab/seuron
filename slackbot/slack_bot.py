@@ -164,9 +164,9 @@ def check_advanced_settings(params):
 
 def guess_run_type(param):
     if "WORKER_IMAGE" in param:
-        return "runseg"
+        return "seg_run"
     elif "CHUNKFLOW_IMAGE" in param:
-        return "runinf"
+        return "inf_run"
     else:
         return None
 
@@ -212,9 +212,9 @@ def on_update_parameters(msg):
             json_obj = json_obj[0]
 
         run_type = guess_run_type(json_obj)
-        if run_type == "runseg":
+        if run_type == "seg_run":
             on_update_segmentation_parameters(msg)
-        elif run_type == "runinf":
+        elif run_type == "inf_run":
             on_update_inference_parameters(msg)
         else:
             replyto(msg, "Cannot guess run type from input parameters, please be more specific")
@@ -274,7 +274,7 @@ def on_run_segmentations(msg):
             run_segmentation()
         else:
             q_payload.put(msg)
-            q_cmd.put("runseg")
+            q_cmd.put("seg_run")
 
 @seuronbot.on_message(["run inference", "run inferences"],
                       description="Inference with updated parameters")
@@ -292,7 +292,7 @@ def on_run_inferences(msg):
             run_inference()
         else:
             q_payload.put(msg)
-            q_cmd.put("runinf")
+            q_cmd.put("inf_run")
 
 @seuronbot.on_message(["run igneous task", "run igneous tasks"],
                       description="Run igneous tasks defined in the uploaded script",
@@ -542,14 +542,14 @@ def send_reset_message(client):
 
 def handle_batch(q_payload, q_cmd):
     while True:
-        current_task="runseg"
+        current_task="seg_run"
         logger.debug("check queue")
         time.sleep(1)
         if q_payload.qsize() == 0:
             continue
         if q_cmd.qsize() != 0:
             cmd = q_cmd.get()
-            if cmd != "runseg" and cmd != "runinf":
+            if cmd != "seg_run" and cmd != "inf_run":
                 continue
             else:
                 current_task = cmd
@@ -592,12 +592,12 @@ def handle_batch(q_payload, q_cmd):
                 replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
                 state = "unknown"
                 current_task = guess_run_type(param)
-                if current_task == "runseg":
+                if current_task == "seg_run":
                     set_variable('param', param, serialize_json=True)
                     sanity_check()
                     wait_for_airflow()
                     state, _ = dag_state("sanity_check")
-                elif current_task == "runinf":
+                elif current_task == "inf_run":
                     set_variable('inference_param', param, serialize_json=True)
                     chunkflow_set_env()
                     wait_for_airflow()
@@ -609,11 +609,11 @@ def handle_batch(q_payload, q_cmd):
 
             state = "unknown"
             replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
-            if current_task == "runseg":
+            if current_task == "seg_run":
                 run_segmentation()
                 wait_for_airflow()
                 state, _ = dag_state("segmentation")
-            elif current_task == "runinf":
+            elif current_task == "inf_run":
                 run_inference()
                 wait_for_airflow()
                 state, _ = dag_state("chunkflow_worker")
