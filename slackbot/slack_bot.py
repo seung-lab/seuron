@@ -40,7 +40,7 @@ sys.excepthook = excepthook
 
 ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
 
-param_updated = False
+param_updated = None
 seuronbot = SeuronBot(slack_token=slack_token)
 
 
@@ -187,7 +187,7 @@ def update_inference_param(msg):
         replyto(msg, "Running chunkflow setup_env, please wait")
         set_variable('inference_param', json_obj, serialize_json=True)
         chunkflow_set_env()
-        param_updated = True
+        param_updated = "inf_run"
 
     return
 
@@ -263,13 +263,13 @@ def on_cancel_run(msg):
 def on_run_segmentations(msg):
     global param_updated
     state, _ = dag_state("sanity_check")
-    if not param_updated:
+    if param_updated != 'seg_run':
         replyto(msg, "You have to update the parameters before starting the segmentation")
     elif state != "success":
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Start segmentation")
-        param_updated = False
+        param_updated = None
         if q_payload.qsize() == 0:
             run_segmentation()
         else:
@@ -281,13 +281,13 @@ def on_run_segmentations(msg):
 def on_run_inferences(msg):
     global param_updated
     state, _ = dag_state("chunkflow_generator")
-    if not param_updated:
+    if param_updated != 'inf_run':
         replyto(msg, "You have to update the parameters before starting the inference")
     elif state != "success":
         replyto(msg, "Chunkflow set_env failed, try again")
     else:
         replyto(msg, "Start inference")
-        param_updated = False
+        param_updated = None
         if q_payload.qsize() == 0:
             run_inference()
         else:
@@ -349,7 +349,7 @@ def on_extract_contact_surfaces(msg):
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Extract contact surfaces")
-        param_updated = False
+        param_updated = None
         run_contact_surface()
 
 def update_segmentation_param(msg, advanced=False):
@@ -379,7 +379,7 @@ def update_segmentation_param(msg, advanced=False):
         set_variable('param', json_obj, serialize_json=True)
         time.sleep(30)
         sanity_check()
-        param_updated = True
+        param_updated = "seg_run"
 
     return
 
