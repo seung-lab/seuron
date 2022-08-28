@@ -294,6 +294,18 @@ def on_run_inferences(msg):
             q_payload.put(msg)
             q_cmd.put("inf_run")
 
+@seuronbot.on_message(["run pipeline"],
+                      description="Run pipeline with updated parameters")
+def on_run_pipeline(msg):
+    if not param_updated:
+        replyto(msg, "You have to update the parameters before starting the pipeline")
+    elif param_updated == 'inf_run':
+        on_run_inferences(msg)
+    elif param_updated == 'seg_run':
+        on_run_segmentations(msg)
+    else:
+        replyto(msg, "Do not understand the parameters, please upload them again")
+
 @seuronbot.on_message(["run igneous task", "run igneous tasks"],
                       description="Run igneous tasks defined in the uploaded script",
                       file_inputs=True)
