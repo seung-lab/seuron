@@ -157,7 +157,10 @@ def process_composite_tasks(c, cm, top_mip, params):
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
         elif c.mip_level() == local_batch_mip:
             generate_chunks[stage]["batch"][tag]=composite_chunks_batch_op(image, dag[stage], cm, short_queue, local_batch_mip-1, tag, stage, op, params)
-            generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
+            if local_batch_mip == 0:
+                generate_chunks[stage][c.mip_level()][tag]=placeholder_op(dag[stage], "composite_chunk_placeholder")
+            else:
+                generate_chunks[stage][c.mip_level()][tag]=composite_chunks_wrap_op(image, dag[stage], cm, composite_queue, tag, stage, op, params)
             generate_chunks[stage]["batch"][tag] >> generate_chunks[stage][c.mip_level()][tag]
             slack_ops[stage][c.mip_level()].set_upstream(generate_chunks[stage][c.mip_level()][tag])
             if stage != "cs":
