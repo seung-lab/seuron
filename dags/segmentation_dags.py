@@ -10,7 +10,7 @@ from chunkiterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
 from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, composite_chunks_wrap_op, remap_chunks_batch_op
-from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op
+from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op
 
 from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_files_job, get_atomic_files_job, dataset_resolution
@@ -512,29 +512,27 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     if param.get("SKIP_WS", False):
         triggers["ws"] = slack_message_op(dag_manager, "skip_ws", ":exclamation: Skip watershed")
-        wait["ws"] = placeholder_op(dag_manager, "ws_done")
     else:
         triggers["ws"] = TriggerDagRunOperator(
             task_id="trigger_ws",
             trigger_dag_id="watershed",
             queue="manager",
+            wait_for_completion=True,
             dag=dag_manager
         )
-        wait["ws"] = wait_op(dag_manager, "ws_done")
 
     mark_done["ws"] = mark_done_op(dag["ws"], "ws_done")
 
     if param.get("SKIP_AGG", False):
         triggers["agg"] = slack_message_op(dag_manager, "skip_agg", ":exclamation: Skip agglomeration")
-        wait["agg"] = placeholder_op(dag_manager, "agg_done")
     else:
         triggers["agg"] = TriggerDagRunOperator(
             task_id="trigger_agg",
             trigger_dag_id="agglomeration",
             queue="manager",
+            wait_for_completion=True,
             dag=dag_manager
         )
-        wait["agg"] = wait_op(dag_manager, "agg_done")
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
@@ -633,11 +631,11 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0, "cluster")
 
-    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_tasks[0]
+    starting_op >> reset_flags >> triggers["ws"] >> triggers["agg"] >> igneous_tasks[0]
     igneous_tasks[-1] >> ending_op
     reset_flags >> scaling_global_start
     igneous_tasks[-1]>> scaling_igneous_finish
-    wait["agg"] >> scaling_global_finish
+    triggers["agg"] >> scaling_global_finish
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
