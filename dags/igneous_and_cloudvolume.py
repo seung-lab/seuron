@@ -148,6 +148,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
     def decorator(create_tasks):
         @wraps(create_tasks)
         def inner(*args, **kwargs):
+            import time
             from airflow import configuration
             from kombu import Connection
             from google_api_helper import ramp_up_cluster, ramp_down_cluster
@@ -155,6 +156,7 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
             import traceback
             broker = configuration.get('celery', 'BROKER_URL')
             queue_name = cluster_name
+            start_time = time.monotonic()
 
             try:
                 ret = create_tasks(*args, **kwargs)
@@ -203,13 +205,14 @@ def kombu_tasks(cluster_name, init_workers, worker_factor):
                         agg.finalize()
 
                 slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
+                elapsed_time = time.monotonic() - start_time
+                if elapsed_time > 600:
+                    ramp_down_cluster(cluster_name, 0)
 
             except Exception as e:
                 slack_message("Failed to submit tasks using {}".format(create_tasks.__name__))
                 slack_message(f"backtrace: {traceback.format_exc()}")
                 raise e
-            finally:
-                ramp_down_cluster(cluster_name, 0)
 
         return inner
 

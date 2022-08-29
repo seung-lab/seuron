@@ -4,6 +4,7 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import datetime
 from slack_message import task_failure_alert
+from helper_ops import scale_down_cluster_op
 
 igneous_default_args = {
     'owner': 'seuronbot',
@@ -14,6 +15,7 @@ igneous_default_args = {
 }
 
 dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule_interval=None, tags=['igneous tasks'])
+scaling_igneous_finish = scale_down_cluster_op(dag_igneous, "igneous_finish", "igneous", 0, "cluster")
 
 
 submit_igneous_tasks = PythonOperator(
@@ -26,8 +28,11 @@ submit_igneous_tasks = PythonOperator(
     dag=dag_igneous
 )
 
+submit_igneous_tasks >> scaling_igneous_finish
+
 
 dag_custom_cpu = DAG("custom-cpu", default_args=igneous_default_args, schedule_interval=None, tags=['custom tasks'])
+scaling_custom_cpu_finish = scale_down_cluster_op(dag_custom_cpu, "custom_cpu_finish", "custom-cpu", 0, "cluster")
 
 
 submit_custom_cpu_tasks = PythonOperator(
@@ -40,8 +45,11 @@ submit_custom_cpu_tasks = PythonOperator(
     dag=dag_custom_cpu
 )
 
+submit_custom_cpu_tasks >> scaling_custom_cpu_finish
+
 
 dag_custom_gpu = DAG("custom-gpu", default_args=igneous_default_args, schedule_interval=None, tags=['custom tasks'])
+scaling_custom_gpu_finish = scale_down_cluster_op(dag_custom_gpu, "custom_gpu_finish", "custom-gpu", 0, "cluster")
 
 
 submit_custom_gpu_tasks = PythonOperator(
@@ -54,4 +62,4 @@ submit_custom_gpu_tasks = PythonOperator(
     dag=dag_custom_gpu
 )
 
-
+submit_custom_gpu_tasks >> scaling_custom_gpu_finish
