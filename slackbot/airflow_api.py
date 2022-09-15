@@ -103,7 +103,7 @@ def set_variable(key, value, serialize_json=False):
     Variable.set(key, value, serialize_json=serialize_json)
 
 
-def __dag_state(dag_id):
+def __latest_dagrun_state(dag_id):
     print("check dag states")
     dagbag = DagBag()
     if dag_id not in dagbag.dags:
@@ -118,5 +118,5 @@ def __dag_state(dag_id):
         latest_run = d.get_dagrun(execution_date=execution_date)
         return latest_run.state
 
-def dag_state(dag_id):
-    return run_in_executor(__dag_state, dag_id).result()
+def latest_dagrun_state(dag_id):
+    return run_in_executor(__latest_dagrun_state, dag_id).result()
