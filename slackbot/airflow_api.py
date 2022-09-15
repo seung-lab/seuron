@@ -16,8 +16,6 @@ from sqlalchemy.orm import exc
 seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg", "synaptor_assignment"]
 
 
-def latest_task():
-    state, exec_date = dag_state("sanity_check")
 
 
 def mark_dags_success():
