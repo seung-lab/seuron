@@ -7,6 +7,7 @@ from airflow import settings
 from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
 from airflow.models.dagrun import DagRun, DagRunType
 from airflow.api.common.mark_tasks import set_dag_run_state_to_success
+from airflow.api.common.trigger_dag import trigger_dag
 from airflow.utils.state import State
 from airflow.utils import timezone
 
@@ -79,29 +80,7 @@ def check_running():
 
 
 def run_dag(dag_id):
-    print("run dag {}".format(dag_id))
-    execution_date = timezone.utcnow()
-    run_id = 'trig__' + execution_date.isoformat()
-    dbag = DagBag()
-    dbag.sync_to_db()
-    trigger_dag = dbag.get_dag(dag_id)
-    session = settings.Session()
-
-    dr = trigger_dag.create_dagrun(
-        run_type=DagRunType.MANUAL,
-        run_id=run_id,
-        execution_date=execution_date,
-        state=State.QUEUED,
-        conf=None,
-        data_interval=trigger_dag.timetable.infer_manual_data_interval(
-            run_after=pendulum.instance(execution_date)
-        ),
-        dag_hash=dbag.dags_hash.get(dag_id),
-        external_trigger=True)
-    print("Creating DagRun {}".format(dr))
-    session.add(dr)
-    session.commit()
-    session.close()
+    trigger_dag(dag_id)
 
 
 def get_variable(key, deserialize_json=False):
