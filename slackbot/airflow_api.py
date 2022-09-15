@@ -74,35 +74,8 @@ def check_running():
     return False
 
 
-def trigger_or_clear_dag(dag_id):
-    state, exec_date = dag_state(dag_id)
-    if state == "success" or state == "unknown":
-        run_dag(dag_id)
-        return True
-    elif state == "failed":
-        print(exec_date)
-        dagbag = DagBag()
-        dags = [dagbag.dags[dag_id]]
-        DAG.clear_dags(dags, start_date=exec_date)
-        return True
-    else:
-        print("do not understand {} state".format(state))
-        return False
 
 
-def sanity_check():
-    dag_id = "sanity_check"
-    trigger_or_clear_dag(dag_id)
-
-
-def synaptor_sanity_check():
-    """Runs the synaptor sanity check DAG."""
-    trigger_or_clear_dag("synaptor_sanity_check")
-
-
-def chunkflow_set_env():
-    dag_id = "chunkflow_generator"
-    trigger_or_clear_dag(dag_id)
 
 
 def run_dag(dag_id):
@@ -129,83 +102,6 @@ def run_dag(dag_id):
     session.add(dr)
     session.commit()
     session.close()
-
-
-def run_igneous_tasks():
-    dag_id = "igneous"
-
-    if check_running():
-        return False
-
-    run_dag(dag_id)
-    return True
-
-
-def run_custom_tasks(task_type):
-    dag_id = f"custom-{task_type}"
-
-    if check_running():
-        return False
-
-    run_dag(dag_id)
-    return True
-
-
-def run_segmentation():
-    dag_id = "segmentation"
-
-    if check_running():
-        return False
-
-    run_dag(dag_id)
-    return True
-
-
-def run_inference():
-    dag_id = "chunkflow_worker"
-
-    if check_running():
-        return False
-
-    run_dag(dag_id)
-    return True
-
-
-def run_contact_surface():
-    dag_id = "contact_surface"
-
-    if check_running():
-        return False
-
-    run_dag(dag_id)
-    return True
-
-
-def run_synaptor_file_seg():
-    """Runs the synaptor file segmentation DAG."""
-    if check_running():
-        return False
-
-    run_dag("synaptor_file_seg")
-    return True
-
-
-def run_synaptor_db_seg():
-    """Runs the synaptor database segmentation DAG."""
-    if check_running():
-        return False
-
-    run_dag("synaptor_db_seg")
-    return True
-
-
-def run_synaptor_assignment():
-    """Runs the synaptor assignment DAG."""
-    if check_running():
-        return False
-
-    run_dag("synaptor_assignment")
-    return True
 
 
 def get_variable(key, deserialize_json=False):
