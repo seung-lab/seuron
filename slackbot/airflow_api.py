@@ -108,15 +108,15 @@ def __dag_state(dag_id):
     dagbag = DagBag()
     if dag_id not in dagbag.dags:
         print("=========== dag_id does not exist ============")
-        return "null", "null"
+        return "null"
 
     d = dagbag.dags[dag_id]
     execution_date = d.get_latest_execution_date()
     if not execution_date:
-        return "unknown", "unknown"
+        return "unknown"
     else:
         latest_run = d.get_dagrun(execution_date=execution_date)
-        return latest_run.state, latest_run.execution_date
+        return latest_run.state
 
 def dag_state(dag_id):
     return run_in_executor(__dag_state, dag_id).result()

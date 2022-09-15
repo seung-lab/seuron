@@ -259,7 +259,7 @@ def on_cancel_run(msg):
                       description="Create segmentation with updated parameters")
 def on_run_segmentations(msg):
     global param_updated
-    state, _ = dag_state("sanity_check")
+    state = dag_state("sanity_check")
     if param_updated != 'seg_run':
         replyto(msg, "You have to update the parameters before starting the segmentation")
     elif state != "success":
@@ -277,7 +277,7 @@ def on_run_segmentations(msg):
                       description="Inference with updated parameters")
 def on_run_inferences(msg):
     global param_updated
-    state, _ = dag_state("chunkflow_generator")
+    state = dag_state("chunkflow_generator")
     if param_updated != 'inf_run':
         replyto(msg, "You have to update the parameters before starting the inference")
     elif state != "success":
@@ -353,7 +353,7 @@ def on_redeploy_docker_stack(msg):
                       description="Extract the contact surfaces between segments")
 def on_extract_contact_surfaces(msg):
     global param_updated
-    state, _ = dag_state("sanity_check")
+    state = dag_state("sanity_check")
     if state != "success":
         replyto(msg, "Sanity check failed, try again")
     else:
@@ -605,12 +605,12 @@ def handle_batch(q_payload, q_cmd):
                     set_variable('param', param, serialize_json=True)
                     run_dag("sanity_check")
                     wait_for_airflow()
-                    state, _ = dag_state("sanity_check")
+                    state = dag_state("sanity_check")
                 elif current_task == "inf_run":
                     set_variable('inference_param', param, serialize_json=True)
                     run_dag("chunkflow_generator")
                     wait_for_airflow()
-                    state, _ = dag_state("chunkflow_generator")
+                    state = dag_state("chunkflow_generator")
 
                 if state != "success":
                     replyto(msg, "*Sanity check failed, abort!*")
@@ -621,11 +621,11 @@ def handle_batch(q_payload, q_cmd):
             if current_task == "seg_run":
                 run_dag('segmentation')
                 wait_for_airflow()
-                state, _ = dag_state("segmentation")
+                state = dag_state("segmentation")
             elif current_task == "inf_run":
                 run_dag("chunkflow_worker")
                 wait_for_airflow()
-                state, _ = dag_state("chunkflow_worker")
+                state = dag_state("chunkflow_worker")
 
             if state != "success":
                 replyto(msg, "*Bach job failed, abort!*")
