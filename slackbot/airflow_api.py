@@ -2,6 +2,8 @@ import json
 from bot_info import workerid, slack_notification_channel
 
 import pendulum
+import functools
+import concurrent.futures
 
 from airflow import settings
 from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
@@ -16,9 +18,13 @@ from sqlalchemy.orm import exc
 seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg", "synaptor_assignment"]
 
 
+def run_in_executor(f, /, *args, **kwargs):
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        future = executor.submit(functools.partial(f, *args, **kwargs))
+        return future
 
 
-def mark_dags_success():
+def __mark_dags_success():
     dagbag = DagBag()
     runs = DagRun.find(state=DagRunState.RUNNING)
 
@@ -27,6 +33,10 @@ def mark_dags_success():
         if d in seuron_dags:
             dag = dagbag.dags[d]
             set_dag_run_state_to_success(dag=dag, execution_date=dag.get_latest_execution_date(), commit=True)
+
+
+def mark_dags_success():
+    return run_in_executor(__mark_dags_success).result()
 
 
 def update_slack_connection(payload, token):
@@ -64,7 +74,7 @@ def update_user_info(userid):
     set_variable('author', userid)
 
 
-def check_running():
+def __check_running():
     """Checks whether the DAGs within the seuron_dags list (above) is running."""
     runs = DagRun.find(state=DagRunState.RUNNING)
 
@@ -75,12 +85,14 @@ def check_running():
     return False
 
 
+def check_running():
+    return run_in_executor(__check_running).result()
 
 
 
 
 def run_dag(dag_id):
-    trigger_dag(dag_id)
+    return run_in_executor(trigger_dag, dag_id).result()
 
 
 def get_variable(key, deserialize_json=False):
@@ -91,7 +103,7 @@ def set_variable(key, value, serialize_json=False):
     Variable.set(key, value, serialize_json=serialize_json)
 
 
-def dag_state(dag_id):
+def __dag_state(dag_id):
     print("check dag states")
     dagbag = DagBag()
     if dag_id not in dagbag.dags:
@@ -105,3 +117,6 @@ def dag_state(dag_id):
     else:
         latest_run = d.get_dagrun(execution_date=execution_date)
         return latest_run.state, latest_run.execution_date
+
+def dag_state(dag_id):
+    return run_in_executor(__dag_state, dag_id).result()
