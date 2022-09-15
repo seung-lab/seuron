@@ -8,7 +8,7 @@ from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
 from airflow.models.dagrun import DagRun, DagRunType
 from airflow.api.common.mark_tasks import set_dag_run_state_to_success
 from airflow.api.common.trigger_dag import trigger_dag
-from airflow.utils.state import State
+from airflow.utils.state import State, DagRunState
 from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
@@ -67,9 +67,10 @@ def update_user_info(userid):
 
 def check_running():
     """Checks whether the DAGs within the seuron_dags list (above) is running."""
-    for d in seuron_dags:
-        state, exec_date = dag_state(d)
-        if state == "running":
+    runs = DagRun.find(state=DagRunState.RUNNING)
+
+    for r in runs:
+        if r.dag_id in seuron_dags:
             return True
 
     return False
