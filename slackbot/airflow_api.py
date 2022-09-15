@@ -22,12 +22,13 @@ def latest_task():
 
 def mark_dags_success():
     dagbag = DagBag()
-    for d in seuron_dags:
-        if d in dagbag.dags:
-            state, exec_date = dag_state(d)
-            if state == "running":
-                dag = dagbag.dags[d]
-                set_dag_run_state_to_success(dag=dag, execution_date=dag.latest_execution_date, commit=True)
+    runs = DagRun.find(state=DagRunState.RUNNING)
+
+    for r in runs:
+        d = r.dag_id
+        if d in seuron_dags:
+            dag = dagbag.dags[d]
+            set_dag_run_state_to_success(dag=dag, execution_date=dag.get_latest_execution_date(), commit=True)
 
 
 def update_slack_connection(payload, token):
