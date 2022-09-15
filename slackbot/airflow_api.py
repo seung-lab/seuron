@@ -100,12 +100,10 @@ def dag_state(dag_id):
         print("=========== dag_id does not exist ============")
         return "null", "null"
 
-    runs = DagRun.find(dag_id=dag_id)
-    for r in runs:
-        print(r.id, r.run_id, r.state, r.dag_id)
-    if len(runs) == 0:
+    d = dagbag.dags[dag_id]
+    execution_date = d.get_latest_execution_date()
+    if not execution_date:
         return "unknown", "unknown"
     else:
-        latest_run = runs[-1]
-        #start_date = ((latest_run.start_date or '') and latest_run.start_date.isoformat())
+        latest_run = d.get_dagrun(execution_date=execution_date)
         return latest_run.state, latest_run.execution_date
