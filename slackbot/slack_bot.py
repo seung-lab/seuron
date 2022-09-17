@@ -386,7 +386,6 @@ def update_segmentation_param(msg, advanced=False):
         supply_default_param(json_obj)
         replyto(msg, "Running sanity check, please wait")
         set_variable('param', json_obj, serialize_json=True)
-        time.sleep(30)
         param_updated = "seg_run"
         run_dag("sanity_check")
 
