@@ -15,7 +15,7 @@ ARG AIRFLOW_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME ${AIRFLOW_HOME}
 ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
-ARG AIRFLOW_VERSION=2.3.3
+ARG AIRFLOW_VERSION=2.3.4
 ENV AIRFLOW_VERSION ${AIRFLOW_VERSION}
 ARG MINICONDA_PATH=/opt/conda
 ARG MINICONDA_URL=https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
@@ -26,7 +26,7 @@ WORKDIR ${AIRFLOW_HOME}
 RUN savedAptMark="$(apt-mark showmanual)" \
     && buildDeps='git build-essential' \
     && apt-get -y update \
-    && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends apt-transport-https ca-certificates software-properties-common gnupg curl lsb-release parallel sudo $buildDeps \
+    && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends ca-certificates curl lsb-release parallel sudo tzdata $buildDeps \
     && mkdir -p /opt \
     && curl -o ~/miniconda.sh ${MINICONDA_URL} \
     && chmod +x ~/miniconda.sh \
@@ -52,7 +52,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && chown -R ${AIRFLOW_USER}: ${AIRFLOW_HOME} \
     # Deleting this symlink not handled correctly by shutil.copy
     && apt-mark auto '.*' > /dev/null \
-    && apt-mark manual sudo curl parallel \
+    && apt-mark manual sudo curl parallel tzdata \
     && apt-mark manual $savedAptMark \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf \
