@@ -1,3 +1,4 @@
+import time
 import json
 from bot_info import workerid, slack_notification_channel
 
@@ -92,11 +93,20 @@ def check_running():
 def __run_dag(dag_id):
     dbag = DagBag()
     dbag.sync_to_db()
-    dag_run = trigger_dag(dag_id)
+    return trigger_dag(dag_id)
 
 
-def run_dag(dag_id):
-    return run_in_executor(__run_dag, dag_id)
+def run_dag(dag_id, wait_for_completion=False):
+    dagrun = run_in_executor(__run_dag, dag_id).result()
+    if wait_for_completion:
+        while True:
+            time.sleep(60)
+            dagrun.refresh_from_db()
+            state = dagrun.state
+            print(f"waiting for dag {dagrun.dag_id}, {dagrun.run_id} state : {state}")
+            if state == DagRunState.SUCCESS or state == DagRunState.FAILED:
+                break
+    return dagrun
 
 
 def get_variable(key, deserialize_json=False):

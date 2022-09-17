@@ -603,14 +603,10 @@ def handle_batch(q_payload, q_cmd):
                 current_task = guess_run_type(param)
                 if current_task == "seg_run":
                     set_variable('param', param, serialize_json=True)
-                    run_dag("sanity_check")
-                    wait_for_airflow()
-                    state = latest_dagrun_state("sanity_check")
+                    state = run_dag("sanity_check", wait_for_completion=True).state
                 elif current_task == "inf_run":
                     set_variable('inference_param', param, serialize_json=True)
-                    run_dag("chunkflow_generator")
-                    wait_for_airflow()
-                    state = latest_dagrun_state("chunkflow_generator")
+                    state = run_dag("chunkflow_generator", wait_for_completion=True).state
 
                 if state != "success":
                     replyto(msg, "*Sanity check failed, abort!*")
@@ -619,13 +615,9 @@ def handle_batch(q_payload, q_cmd):
             state = "unknown"
             replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
             if current_task == "seg_run":
-                run_dag('segmentation')
-                wait_for_airflow()
-                state = latest_dagrun_state("segmentation")
+                state = run_dag('segmentation', wait_for_completion=True).state
             elif current_task == "inf_run":
-                run_dag("chunkflow_worker")
-                wait_for_airflow()
-                state = latest_dagrun_state("chunkflow_worker")
+                state = run_dag("chunkflow_worker", wait_for_completion=True).state
 
             if state != "success":
                 replyto(msg, "*Bach job failed, abort!*")
@@ -648,11 +640,6 @@ def set_redeploy_flag(value):
         data['items'].append({'key': 'redeploy', 'value':value})
     set_instance_metadata(project_id, vm_zone, vm_name, data)
 
-def wait_for_airflow():
-    time.sleep(60)
-    while check_running():
-        logger.debug("waiting for airflow")
-        time.sleep(60)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
