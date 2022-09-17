@@ -1,13 +1,10 @@
 import time
 import json
-from bot_info import workerid, slack_notification_channel
-
-import pendulum
 import functools
 import concurrent.futures
 
 from airflow import settings
-from airflow.models import (DagBag, DagRun, Variable, Connection, DAG)
+from airflow.models import DagBag, Variable, Connection
 from airflow.models.dagrun import DagRun, DagRunType
 from airflow.api.common.mark_tasks import set_dag_run_state_to_success
 from airflow.api.common.trigger_dag import trigger_dag
@@ -15,6 +12,8 @@ from airflow.utils.state import State, DagRunState
 from airflow.utils import timezone
 
 from sqlalchemy.orm import exc
+
+from bot_info import workerid, slack_notification_channel
 
 seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg", "synaptor_assignment"]
 
