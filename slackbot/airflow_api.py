@@ -89,10 +89,14 @@ def check_running():
     return run_in_executor(__check_running).result()
 
 
+def __run_dag(dag_id):
+    dbag = DagBag()
+    dbag.sync_to_db()
+    dag_run = trigger_dag(dag_id)
 
 
 def run_dag(dag_id):
-    return run_in_executor(trigger_dag, dag_id).result()
+    return run_in_executor(__run_dag, dag_id)
 
 
 def get_variable(key, deserialize_json=False):
