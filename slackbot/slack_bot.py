@@ -183,8 +183,8 @@ def update_inference_param(msg):
         supply_default_param(json_obj)
         replyto(msg, "Running chunkflow setup_env, please wait")
         set_variable('inference_param', json_obj, serialize_json=True)
-        run_dag("chunkflow_generator")
         param_updated = "inf_run"
+        run_dag("chunkflow_generator")
 
     return
 
@@ -387,8 +387,8 @@ def update_segmentation_param(msg, advanced=False):
         replyto(msg, "Running sanity check, please wait")
         set_variable('param', json_obj, serialize_json=True)
         time.sleep(30)
-        run_dag("sanity_check")
         param_updated = "seg_run"
+        run_dag("sanity_check")
 
     return
 
