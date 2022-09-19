@@ -22,6 +22,10 @@ import subprocess
 import sys
 import traceback
 
+import igneous_tasks_commands
+import custom_tasks_commands
+
+
 def excepthook(exctype, excvalue, exctraceback):
     client = slack.WebClient(token=slack_token)
     client.chat_postMessage(
@@ -286,24 +290,6 @@ def on_run_pipeline(msg):
     else:
         replyto(msg, "Do not understand the parameters, please upload them again")
 
-@SeuronBot.on_message(["run igneous task", "run igneous tasks"],
-                      description="Run igneous tasks defined in the uploaded script",
-                      file_inputs=True)
-def on_run_igneous_tasks(msg):
-    run_igneous_scripts(msg)
-
-@SeuronBot.on_message(["run custom cpu task", "run custom cpu tasks"],
-                      description="Run custom cpu tasks defined in the uploaded script",
-                      file_inputs=True)
-def on_run_custom_cpu_tasks(msg):
-    run_custom_scripts(msg, "cpu")
-
-@SeuronBot.on_message(["run custom gpu task", "run custom gpu tasks"],
-                      description="Run custom gpu tasks defined in the uploaded script",
-                      file_inputs=True)
-def on_run_custom_gpu_tasks(msg):
-    run_custom_scripts(msg, "gpu")
-
 @SeuronBot.on_message(["update python package", "update python packages"],
                       description="Install extra python packages before starting the docker containers",
                       cancelable=False)
@@ -438,33 +424,6 @@ def synaptor_assignment(msg):
     """Runs the synapse assignment DAG."""
     replyto(msg, "Running synaptor synapse assignment. Please wait.")
     run_dag("synaptor_assignment")
-
-
-def run_igneous_scripts(msg):
-    _, payload = download_file(msg)
-    if payload:
-        drain_messages(broker_url, "igneous")
-        drain_messages(broker_url, "igneous_ret")
-        drain_messages(broker_url, "igneous_err")
-        set_variable('igneous_script', payload)
-        replyto(msg, "Execute `submit_tasks` function")
-        run_dag("igneous")
-
-    return
-
-
-def run_custom_scripts(msg, task_type):
-    _, payload = download_file(msg)
-    if payload:
-        for t in ['gpu', 'cpu']:
-            drain_messages(broker_url, f"custom-{t}")
-            drain_messages(broker_url, f"custom-{t}_ret")
-            drain_messages(broker_url, f"custom-{t}_err")
-        set_variable('custom_script', payload)
-        replyto(msg, "Execute `submit_tasks` function")
-        run_dag(f"custom-{task_type}")
-
-    return
 
 
 def supply_default_param(json_obj):
