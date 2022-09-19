@@ -7,11 +7,10 @@ from airflow_api import get_variable, \
     mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from kombu_helper import drain_messages
-from bot_utils import replyto, extract_command
+from bot_utils import replyto, extract_command, download_file
 from seuronbot import SeuronBot
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
 from copy import deepcopy
-import requests
 import time
 import logging
 from secrets import token_hex
@@ -104,21 +103,6 @@ def upload_param(msg, param):
     )
 
 
-def download_file(msg):
-    if "files" not in msg:
-        replyto(msg, "You need to upload a parameter file with this message")
-        return None, None
-    else:
-        # only use the first file:
-        file_info = msg["files"][0]
-        private_url = file_info["url_private_download"]
-        filetype = file_info["pretty_type"]
-        response = requests.get(private_url, headers={'Authorization': 'Bearer {}'.format(slack_token)})
-
-        if response.status_code == 200:
-            return filetype, response.content.decode("ascii", "ignore")
-        else:
-            return None, None
 
 def download_json(msg):
     filetype, content = download_file(msg)

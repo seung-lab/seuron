@@ -1,4 +1,5 @@
 import string
+import requests
 from secrets import token_hex
 import slack_sdk as slack
 from bot_info import slack_token, botid, workerid
@@ -51,3 +52,20 @@ def create_run_token(msg):
     if not rc["ok"]:
         print("Failed to send direct message")
         print(rc)
+
+
+def download_file(msg):
+    if "files" not in msg:
+        replyto(msg, "You need to upload a parameter file with this message")
+        return None, None
+    else:
+        # only use the first file:
+        file_info = msg["files"][0]
+        private_url = file_info["url_private_download"]
+        filetype = file_info["pretty_type"]
+        response = requests.get(private_url, headers={'Authorization': 'Bearer {}'.format(slack_token)})
+
+        if response.status_code == 200:
+            return filetype, response.content.decode("ascii", "ignore")
+        else:
+            return None, None
