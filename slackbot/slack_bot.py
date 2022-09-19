@@ -38,7 +38,6 @@ sys.excepthook = excepthook
 ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
 
 param_updated = None
-seuronbot = SeuronBot(slack_token=slack_token)
 
 
 def install_package(package):
@@ -188,7 +187,7 @@ def update_inference_param(msg):
 
     return
 
-@seuronbot.on_message("show segmentation parameters",
+@SeuronBot.on_message("show segmentation parameters",
                       description="Upload parameters of the last segmentation",
                       exclusive=False,
                       cancelable=False)
@@ -196,7 +195,7 @@ def on_parameters(msg):
     param = get_variable("param", deserialize_json=True)
     upload_param(msg, param)
 
-@seuronbot.on_message(["update parameters",
+@SeuronBot.on_message(["update parameters",
                        "please update parameters"],
                       description="Update segmentation/inference parameters",
                       cancelable=False,
@@ -216,7 +215,7 @@ def on_update_parameters(msg):
         else:
             replyto(msg, "Cannot guess run type from input parameters, please be more specific")
 
-@seuronbot.on_message(["update segmentation parameters",
+@SeuronBot.on_message(["update segmentation parameters",
                        "please update segmentation parameters"],
                       description="Update segmentation parameters",
                       cancelable=False,
@@ -228,14 +227,14 @@ def on_update_segmentation_parameters(msg):
     else:
         update_segmentation_param(msg, advanced=False)
 
-@seuronbot.on_message("update inference parameters",
+@SeuronBot.on_message("update inference parameters",
                       description="Update inference parameters",
                       cancelable=False,
                       file_inputs=True)
 def on_update_inference_parameters(msg):
     update_inference_param(msg)
 
-@seuronbot.on_message("cancel run",
+@SeuronBot.on_message("cancel run",
                       description="Cancel the current run, must provide a matching token",
                       exclusive=False,
                       extra_parameters=True)
@@ -255,7 +254,7 @@ def on_cancel_run(msg):
         else:
             replyto(msg, "The bot is idle, nothing to cancel")
 
-@seuronbot.on_message(["run segmentation", "run segmentations"],
+@SeuronBot.on_message(["run segmentation", "run segmentations"],
                       description="Create segmentation with updated parameters")
 def on_run_segmentations(msg):
     global param_updated
@@ -273,7 +272,7 @@ def on_run_segmentations(msg):
             q_payload.put(msg)
             q_cmd.put("seg_run")
 
-@seuronbot.on_message(["run inference", "run inferences"],
+@SeuronBot.on_message(["run inference", "run inferences"],
                       description="Inference with updated parameters")
 def on_run_inferences(msg):
     global param_updated
@@ -291,7 +290,7 @@ def on_run_inferences(msg):
             q_payload.put(msg)
             q_cmd.put("inf_run")
 
-@seuronbot.on_message(["run pipeline"],
+@SeuronBot.on_message(["run pipeline"],
                       description="Run pipeline with updated parameters")
 def on_run_pipeline(msg):
     if not param_updated:
@@ -303,25 +302,25 @@ def on_run_pipeline(msg):
     else:
         replyto(msg, "Do not understand the parameters, please upload them again")
 
-@seuronbot.on_message(["run igneous task", "run igneous tasks"],
+@SeuronBot.on_message(["run igneous task", "run igneous tasks"],
                       description="Run igneous tasks defined in the uploaded script",
                       file_inputs=True)
 def on_run_igneous_tasks(msg):
     run_igneous_scripts(msg)
 
-@seuronbot.on_message(["run custom cpu task", "run custom cpu tasks"],
+@SeuronBot.on_message(["run custom cpu task", "run custom cpu tasks"],
                       description="Run custom cpu tasks defined in the uploaded script",
                       file_inputs=True)
 def on_run_custom_cpu_tasks(msg):
     run_custom_scripts(msg, "cpu")
 
-@seuronbot.on_message(["run custom gpu task", "run custom gpu tasks"],
+@SeuronBot.on_message(["run custom gpu task", "run custom gpu tasks"],
                       description="Run custom gpu tasks defined in the uploaded script",
                       file_inputs=True)
 def on_run_custom_gpu_tasks(msg):
     run_custom_scripts(msg, "gpu")
 
-@seuronbot.on_message(["update python package", "update python packages"],
+@SeuronBot.on_message(["update python package", "update python packages"],
                       description="Install extra python packages before starting the docker containers",
                       cancelable=False)
 def on_update_python_packages(msg):
@@ -340,7 +339,7 @@ def on_update_python_packages(msg):
         set_variable('python_packages', payload)
         replyto(msg, "Packages are ready for *workers*")
 
-@seuronbot.on_message("redeploy docker stack",
+@SeuronBot.on_message("redeploy docker stack",
                       description="Restart the manager stack with updated docker images",
                       cancelable=False)
 def on_redeploy_docker_stack(msg):
@@ -349,7 +348,7 @@ def on_redeploy_docker_stack(msg):
     time.sleep(300)
     replyto(msg, "Failed to restart the bot")
 
-@seuronbot.on_message("extract contact surfaces",
+@SeuronBot.on_message("extract contact surfaces",
                       description="Extract the contact surfaces between segments")
 def on_extract_contact_surfaces(msg):
     global param_updated
@@ -391,7 +390,7 @@ def update_segmentation_param(msg, advanced=False):
 
     return
 
-@seuronbot.on_message("update synaptor parameters",
+@SeuronBot.on_message("update synaptor parameters",
                       description=(
                           "Updates parameters for synaptor segmentation or assignment."
                           " Performs a light sanity check."
@@ -425,7 +424,7 @@ def update_synaptor_params(msg):
     else:
         replyto(msg, "Error reading file")
 
-@seuronbot.on_message("run synaptor file segmentation",
+@SeuronBot.on_message("run synaptor file segmentation",
                       description=(
                           "Runs a synaptor segmentation using the file backend."
                       ))
@@ -434,7 +433,7 @@ def synaptor_file_seg(msg):
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     run_dag("synaptor_file_seg")
 
-@seuronbot.on_message(["run synaptor db segmentation",
+@SeuronBot.on_message(["run synaptor db segmentation",
                        "run synaptor database segmentation"],
                       description=(
                           "Runs a synaptor segmentation using the database backend."
@@ -445,7 +444,7 @@ def synaptor_db_seg(msg):
     replyto(msg, "Running synaptor file segmentation. Please wait.")
     run_dag("synaptor_db_seg")
 
-@seuronbot.on_message("run synaptor synapse assignment",
+@SeuronBot.on_message("run synaptor synapse assignment",
                       description=(
                           "Runs synaptor synapse segmentation and assignment."
                           " NOTE: This requires the user to set up an accessible"
@@ -505,7 +504,7 @@ def update_ip_address():
     return host_ip
 
 
-@seuronbot.on_hello()
+@SeuronBot.on_hello()
 def process_hello():
     hello_world()
 
@@ -643,6 +642,7 @@ def set_redeploy_flag(value):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+    seuronbot = SeuronBot(slack_token=slack_token)
 
     q_payload = queue.Queue()
     q_cmd = queue.Queue()

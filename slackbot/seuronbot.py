@@ -33,21 +33,21 @@ def run_cmd(func, context, exclusive=False, cancelable=False):
 
 
 class SeuronBot:
-    def __init__(self, slack_token=None):
-        self.help_listener = {
-            "triggers": ["help"],
+
+    message_listeners = [{
+            "triggers": _help_trigger,
             "description": "Print help message",
             "exclusive": False,
             "extra_parameters": False,
             "file_inputs": False,
             "command": help_listener,
-        }
+    }]
+
+    hello_listeners = []
+
+    def __init__(self, slack_token=None):
         self.task_owner = "seuronbot"
         self.slack_token = slack_token
-
-        self.message_listeners = [self.help_listener]
-
-        self.hello_listeners = []
 
         self.rtmclient = RTMClient(token=slack_token)
         self.rtmclient.on("message")(functools.partial(self.process_message.__func__, self))
@@ -130,20 +130,22 @@ class SeuronBot:
         for listener in self.hello_listeners:
             listener()
 
-    def on_hello(self):
+    @classmethod
+    def on_hello(cls):
         def __call__(*args, **kwargs):
             func = args[0]
 
             def new_hello_listener():
                 func()
 
-            self.hello_listeners.append(new_hello_listener)
+            cls.hello_listeners.append(new_hello_listener)
 
             return func
 
         return __call__
 
-    def on_message(self, trigger_phrases="", description="", exclusive=True, cancelable=True, extra_parameters=False, file_inputs=False):
+    @classmethod
+    def on_message(cls, trigger_phrases="", description="", exclusive=True, cancelable=True, extra_parameters=False, file_inputs=False):
         if isinstance(trigger_phrases, str):
             trigger_phrases = [trigger_phrases]
 
@@ -165,7 +167,7 @@ class SeuronBot:
 
                 return False
 
-            self.message_listeners.append({
+            cls.message_listeners.append({
                 "triggers": trigger_phrases,
                 "description": description,
                 "command": new_message_listener,
