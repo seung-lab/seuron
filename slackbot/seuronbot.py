@@ -9,6 +9,16 @@ from bot_utils import replyto, extract_command, update_slack_thread, create_run_
 from airflow_api import check_running
 
 
+_help_trigger = ["help"]
+
+def help_listener(context):
+    cmd = extract_command(context)
+    if cmd in _help_trigger:
+        replyto(context, "Here is a list of the commands supported:\n"+SeuronBot.generate_cmdlist())
+        return True
+    return False
+
+
 def run_cmd(func, context, exclusive=False, cancelable=False):
     if exclusive:
         if check_running():
@@ -30,20 +40,10 @@ class SeuronBot:
             "exclusive": False,
             "extra_parameters": False,
             "file_inputs": False,
+            "command": help_listener,
         }
         self.task_owner = "seuronbot"
         self.slack_token = slack_token
-
-        trigger_cmds = ["".join(p.split()) for p in self.help_listener['triggers']]
-
-        def help_listener(context):
-            cmd = extract_command(context)
-            if cmd in trigger_cmds:
-                replyto(context, "Here is a list of the commands supported:\n"+self.generate_cmdlist())
-                return True
-            return False
-
-        self.help_listener['command'] = help_listener
 
         self.message_listeners = [self.help_listener]
 
@@ -62,7 +62,8 @@ class SeuronBot:
         if rc["ok"]:
             self.task_owner = rc["user"]["profile"]["display_name"]
 
-    def generate_command_description(self, cmd):
+    @staticmethod
+    def generate_command_description(cmd):
         command = " or ".join(f"`{x}`" for x in cmd["triggers"])
         if cmd['extra_parameters']:
             command += " + _parameters_"
@@ -73,8 +74,9 @@ class SeuronBot:
 
         return command
 
-    def generate_cmdlist(self):
-        return "\n".join(self.generate_command_description(listener) for listener in self.message_listeners)
+    @classmethod
+    def generate_cmdlist(cls):
+        return "\n".join(cls.generate_command_description(listener) for listener in cls.message_listeners)
 
     def find_suggestions(self, context):
         cmd = extract_command(context)
