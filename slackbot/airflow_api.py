@@ -20,8 +20,7 @@ seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', 'chun
 
 def run_in_executor(f, /, *args, **kwargs):
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        future = executor.submit(functools.partial(f, *args, **kwargs))
-        return future
+        return executor.submit(functools.partial(f, *args, **kwargs)).result()
 
 
 def __mark_dags_success():
@@ -36,7 +35,7 @@ def __mark_dags_success():
 
 
 def mark_dags_success():
-    return run_in_executor(__mark_dags_success).result()
+    return run_in_executor(__mark_dags_success)
 
 
 def update_slack_connection(payload, token):
@@ -86,7 +85,7 @@ def __check_running():
 
 
 def check_running():
-    return run_in_executor(__check_running).result()
+    return run_in_executor(__check_running)
 
 
 def __run_dag(dag_id):
@@ -96,7 +95,7 @@ def __run_dag(dag_id):
 
 
 def run_dag(dag_id, wait_for_completion=False):
-    dagrun = run_in_executor(__run_dag, dag_id).result()
+    dagrun = run_in_executor(__run_dag, dag_id)
     if wait_for_completion:
         while True:
             time.sleep(60)
@@ -132,4 +131,4 @@ def __latest_dagrun_state(dag_id):
         return latest_run.state
 
 def latest_dagrun_state(dag_id):
-    return run_in_executor(__latest_dagrun_state, dag_id).result()
+    return run_in_executor(__latest_dagrun_state, dag_id)
