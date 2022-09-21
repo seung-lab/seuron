@@ -656,11 +656,10 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0, "cluster")
 
-    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> triggers["pp"] >> wait["pp"]
+    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> triggers["pp"] >> wait["pp"]
     wait["pp"] >> ending_op
     reset_flags >> scaling_global_start
     wait["pp"] >> scaling_igneous_finish
-    wait["agg"] >> scaling_global_finish
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
