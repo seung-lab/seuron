@@ -18,10 +18,10 @@ from datetime import datetime
 from configparser import ConfigParser
 import threading
 import queue
-import subprocess
 import sys
 import traceback
 
+import update_python_packages
 import igneous_tasks_commands
 import custom_tasks_commands
 
@@ -42,9 +42,6 @@ ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "
 
 param_updated = None
 
-
-def install_package(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def clear_queues():
     with q_payload.mutex:
@@ -289,25 +286,6 @@ def on_run_pipeline(msg):
         on_run_segmentations(msg)
     else:
         replyto(msg, "Do not understand the parameters, please upload them again")
-
-@SeuronBot.on_message(["update python package", "update python packages"],
-                      description="Install extra python packages before starting the docker containers",
-                      cancelable=False)
-def on_update_python_packages(msg):
-    _, payload = download_file(msg)
-    replyto(msg, "*WARNING:Extra python packages are available for workers only*")
-    if payload:
-        for l in payload.splitlines():
-            replyto(msg, f"Testing python packages *{l}*")
-            try:
-                install_package(l)
-            except:
-                replyto(msg, f":u7981:Failed to install package *{l}*")
-                replyto(msg, "{}".format(traceback.format_exc()))
-                return
-
-        set_variable('python_packages', payload)
-        replyto(msg, "Packages are ready for *workers*")
 
 @SeuronBot.on_message("redeploy docker stack",
                       description="Restart the manager stack with updated docker images",
