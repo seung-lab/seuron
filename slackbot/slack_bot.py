@@ -6,7 +6,7 @@ from airflow_api import get_variable, \
     check_running, latest_dagrun_state, set_variable, \
     mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
-from kombu_helper import drain_messages
+from kombu_helper import drain_messages, visible_messages, get_message, put_message
 from bot_utils import replyto, extract_command, download_file
 from seuronbot import SeuronBot
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
@@ -45,11 +45,8 @@ param_updated = None
 
 
 def clear_queues():
-    with q_payload.mutex:
-        q_payload.queue.clear()
-
-    with q_cmd.mutex:
-        q_cmd.queue.clear()
+    drain_messages(broker_url, "seuronbot_payload")
+    drain_messages(broker_url, "seuronbot_cmd")
 
 
 def shut_down_clusters():
@@ -162,7 +159,7 @@ def update_inference_param(msg):
 
         if isinstance(json_obj, list):
             replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-            q_payload.put(json_obj)
+            put_message(broker_url, "seuronbot_payload", json_obj)
             json_obj = json_obj[0]
 
         supply_default_param(json_obj)
@@ -234,7 +231,7 @@ def on_cancel_run(msg):
     else:
         if check_running():
             clear_queues()
-            q_cmd.put("cancel")
+            put_message(broker_url, "seuronbot_cmd", "cancel")
             cancel_run(msg)
             set_variable("run_token", "")
         else:
@@ -252,11 +249,11 @@ def on_run_segmentations(msg):
     else:
         replyto(msg, "Start segmentation")
         param_updated = None
-        if q_payload.qsize() == 0:
+        if visible_messages(broker_url, "seuronbot_payload") == 0:
             run_dag("segmentation")
         else:
-            q_payload.put(msg)
-            q_cmd.put("seg_run")
+            put_message(broker_url, "seuronbot_payload", msg)
+            put_message(broker_url, "seuronbot_cmd", "seg_run")
 
 @SeuronBot.on_message(["run inference", "run inferences"],
                       description="Inference with updated parameters")
@@ -270,11 +267,11 @@ def on_run_inferences(msg):
     else:
         replyto(msg, "Start inference")
         param_updated = None
-        if q_payload.qsize() == 0:
+        if visible_messages(broker_url, "seuronbot_payload") == 0:
             run_dag("chunkflow_worker")
         else:
-            q_payload.put(msg)
-            q_cmd.put("inf_run")
+            put_message(broker_url, "seuronbot_payload", msg)
+            put_message(broker_url, "seuronbot_cmd", "inf_run")
 
 @SeuronBot.on_message(["run pipeline"],
                       description="Run pipeline with updated parameters")
@@ -320,7 +317,7 @@ def update_segmentation_param(msg, advanced=False):
         if isinstance(json_obj, list):
             if (len(json_obj) > 1):
                 replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-            q_payload.put(json_obj)
+            put_message(broker_url, "seuronbot_payload", json_obj)
             json_obj = json_obj[0]
 
         supply_default_param(json_obj)
@@ -435,15 +432,15 @@ def hello_world(client=None):
         text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 
 
-def handle_batch(q_payload, q_cmd):
+def handle_batch():
     while True:
         current_task="seg_run"
         logger.debug("check queue")
         time.sleep(1)
-        if q_payload.qsize() == 0:
+        if visible_messages(broker_url, "seuronbot_payload") == 0:
             continue
-        if q_cmd.qsize() != 0:
-            cmd = q_cmd.get()
+        if visible_messages(broker_url, "seuronbot_cmd") != 0:
+            cmd = get_message(broker_url, "seuronbot_cmd")
             if cmd != "seg_run" and cmd != "inf_run":
                 continue
             else:
@@ -453,8 +450,8 @@ def handle_batch(q_payload, q_cmd):
 
         logger.debug("get message from queue")
 
-        json_obj = q_payload.get()
-        msg = q_payload.get()
+        json_obj = get_message(broker_url, "seuronbot_payload")
+        msg = get_message(broker_url, "seuronbot_payload")
 
         if json_obj is None:
             continue
@@ -467,8 +464,8 @@ def handle_batch(q_payload, q_cmd):
 
         default_param = json_obj[0]
         for i, p in enumerate(json_obj):
-            if q_cmd.qsize() != 0:
-                cmd = q_cmd.get()
+            if visible_messages(broker_url, "seuronbot_cmd") != 0:
+                cmd = get_message(broker_url, "seuronbot_cmd")
                 if cmd == "cancel":
                     replyto(msg, "Cancel batch process")
                     break
@@ -518,9 +515,7 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
     seuronbot = SeuronBot(slack_token=slack_token)
 
-    q_payload = queue.Queue()
-    q_cmd = queue.Queue()
-    batch = threading.Thread(target=handle_batch, args=(q_payload, q_cmd,))
+    batch = threading.Thread(target=handle_batch)
 
     batch.start()
 
