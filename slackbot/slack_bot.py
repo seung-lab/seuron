@@ -22,6 +22,7 @@ import sys
 import traceback
 
 import update_python_packages
+import redeploy_docker_stack
 import igneous_tasks_commands
 import custom_tasks_commands
 
@@ -287,14 +288,6 @@ def on_run_pipeline(msg):
     else:
         replyto(msg, "Do not understand the parameters, please upload them again")
 
-@SeuronBot.on_message("redeploy docker stack",
-                      description="Restart the manager stack with updated docker images",
-                      cancelable=False)
-def on_redeploy_docker_stack(msg):
-    replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
-    set_redeploy_flag(True)
-    time.sleep(300)
-    replyto(msg, "Failed to restart the bot")
 
 @SeuronBot.on_message("extract contact surfaces",
                       description="Extract the contact surfaces between segments")
@@ -441,32 +434,6 @@ def hello_world(client=None):
         username=workerid,
         text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 
-    if get_instance_data("attributes/redeploy") == 'true':
-        set_redeploy_flag(False)
-        send_reset_message(client)
-
-
-def send_reset_message(client):
-    from airflow.hooks.base_hook import BaseHook
-    SLACK_CONN_ID = "Slack"
-    try:
-        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
-        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
-    except:
-        return
-
-    slack_username = slack_extra['user']
-    slack_channel = slack_extra['channel']
-    slack_thread = slack_extra['thread_ts']
-
-    client.chat_postMessage(
-        username=slack_workername,
-        channel=slack_channel,
-        thread_ts=slack_thread,
-        reply_broadcast=True,
-        text=f"<@{slack_username}>, bot upgraded/rebooted."
-    )
-
 
 def handle_batch(q_payload, q_cmd):
     while True:
@@ -544,20 +511,6 @@ def handle_batch(q_payload, q_cmd):
 
         replyto(msg, "*Batch process finished*")
 
-def set_redeploy_flag(value):
-    project_id = get_project_data("project-id")
-    vm_name = get_instance_data("name")
-    vm_zone = get_instance_data("zone").split('/')[-1]
-    data = get_instance_metadata(project_id, vm_zone, vm_name)
-    key_exist = False
-    for item in data['items']:
-        if item['key'] == 'redeploy':
-            item['value'] = value
-            key_exist = True
-
-    if not key_exist:
-        data['items'].append({'key': 'redeploy', 'value':value})
-    set_instance_metadata(project_id, vm_zone, vm_name, data)
 
 
 if __name__ == '__main__':
