@@ -50,6 +50,9 @@ def reset_flags(param):
         Variable.set("agg_done", "yes")
     else:
         Variable.set("agg_done", "no")
+
+    Variable.set("pp_done", "no")
+
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         for key in target_sizes:
