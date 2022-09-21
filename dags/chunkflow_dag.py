@@ -10,7 +10,7 @@ from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
-from helper_ops import slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op
+from helper_ops import slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
 
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
@@ -513,7 +513,7 @@ queue = 'gpu'
 for i in range(min(param.get("TASK_NUM", 1), total_gpus)):
     workers.append(inference_op(dag_worker, param, queue, i))
 
-scale_up_cluster_task >> workers >> scale_down_cluster_task
+collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down_cluster_task
 
 setup_redis_task >> sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
 
