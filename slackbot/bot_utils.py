@@ -2,8 +2,15 @@ import string
 import requests
 from secrets import token_hex
 import slack_sdk as slack
-from bot_info import slack_token, botid, workerid
+from bot_info import slack_token, botid, workerid, broker_url
 from airflow_api import update_slack_connection, set_variable
+from kombu_helper import drain_messages
+
+
+def clear_queues():
+    drain_messages(broker_url, "seuronbot_payload")
+    drain_messages(broker_url, "seuronbot_cmd")
+
 
 def extract_command(msg):
     cmd = msg["text"].replace(workerid, "").replace(botid, "")

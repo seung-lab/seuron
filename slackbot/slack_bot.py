@@ -7,7 +7,7 @@ from airflow_api import get_variable, \
     mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from kombu_helper import drain_messages, visible_messages, get_message, put_message
-from bot_utils import replyto, extract_command, download_file
+from bot_utils import replyto, extract_command, download_file, clear_queues
 from seuronbot import SeuronBot
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
 from copy import deepcopy
@@ -42,11 +42,6 @@ sys.excepthook = excepthook
 ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
 
 param_updated = None
-
-
-def clear_queues():
-    drain_messages(broker_url, "seuronbot_payload")
-    drain_messages(broker_url, "seuronbot_cmd")
 
 
 def shut_down_clusters():
