@@ -26,10 +26,10 @@ def run_cmd(func, context, exclusive=False, cancelable=False):
             return
         update_slack_thread(context)
 
-    func(context)
-
     if cancelable:
         create_run_token(context)
+
+    func(context)
 
 
 class SeuronBot:
