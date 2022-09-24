@@ -28,18 +28,6 @@ import custom_tasks_commands
 import synaptor_commands
 
 
-def excepthook(exctype, excvalue, exctraceback):
-    client = slack.WebClient(token=slack_token)
-    client.chat_postMessage(
-            channel=slack_notification_channel,
-            username=workerid,
-            text=f"An uncaught exception occured. Restart slackbot!\n ```{traceback.format_exc()}```",
-    )
-    sys.exit()
-
-
-sys.excepthook = excepthook
-
 ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
 
 param_updated = None
@@ -190,8 +178,7 @@ def on_run_segmentations(msg):
         if visible_messages(broker_url, "seuronbot_payload") == 0:
             run_dag("segmentation")
         else:
-            put_message(broker_url, "seuronbot_payload", msg)
-            put_message(broker_url, "seuronbot_cmd", "seg_run")
+            handle_batch("seg_run", msg)
 
 @SeuronBot.on_message(["run inference", "run inferences"],
                       description="Inference with updated parameters")
@@ -208,8 +195,7 @@ def on_run_inferences(msg):
         if visible_messages(broker_url, "seuronbot_payload") == 0:
             run_dag("chunkflow_worker")
         else:
-            put_message(broker_url, "seuronbot_payload", msg)
-            put_message(broker_url, "seuronbot_cmd", "inf_run")
+            handle_batch("inf_run", msg)
 
 @SeuronBot.on_message(["run pipeline"],
                       description="Run pipeline with updated parameters")
@@ -304,81 +290,67 @@ def hello_world(client=None):
         text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 
 
-def handle_batch():
-    while True:
-        current_task="seg_run"
-        logger.debug("check queue")
-        time.sleep(1)
-        if visible_messages(broker_url, "seuronbot_payload") == 0:
-            continue
+def handle_batch(task, msg):
+    current_task=task
+
+    logger.debug("get message from queue")
+
+    json_obj = get_message(broker_url, "seuronbot_payload")
+
+    if json_obj is None:
+        return
+
+    if (not isinstance(json_obj, list)) or (not isinstance(json_obj[0], dict)):
+        replyto(msg, "Batch process expects an array of dicts from the json file")
+        return
+
+    replyto(msg, "Batch jobs will reuse on the parameters from the first job unless new parameters are specified, *including those with default values*")
+
+    default_param = json_obj[0]
+    for i, p in enumerate(json_obj):
         if visible_messages(broker_url, "seuronbot_cmd") != 0:
             cmd = get_message(broker_url, "seuronbot_cmd")
-            if cmd != "seg_run" and cmd != "inf_run":
-                continue
-            else:
-                current_task = cmd
-        else:
-            continue
-
-        logger.debug("get message from queue")
-
-        json_obj = get_message(broker_url, "seuronbot_payload")
-        msg = get_message(broker_url, "seuronbot_payload")
-
-        if json_obj is None:
-            continue
-
-        if (not isinstance(json_obj, list)) or (not isinstance(json_obj[0], dict)):
-            replyto(msg, "Batch process expects an array of dicts from the json file")
-            continue
-
-        replyto(msg, "Batch jobs will reuse on the parameters from the first job unless new parameters are specified, *including those with default values*")
-
-        default_param = json_obj[0]
-        for i, p in enumerate(json_obj):
-            if visible_messages(broker_url, "seuronbot_cmd") != 0:
-                cmd = get_message(broker_url, "seuronbot_cmd")
-                if cmd == "cancel":
-                    replyto(msg, "Cancel batch process")
-                    break
-
-            if p.get("INHERIT_PARAMETERS", True):
-                param = deepcopy(default_param)
-            else:
-                param = {}
-
-            if i > 0:
-                if 'NAME' in param:
-                    del param['NAME']
-                for k in p:
-                    param[k] = p[k]
-                supply_default_param(param)
-                replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
-                state = "unknown"
-                current_task = guess_run_type(param)
-                if current_task == "seg_run":
-                    set_variable('param', param, serialize_json=True)
-                    state = run_dag("sanity_check", wait_for_completion=True).state
-                elif current_task == "inf_run":
-                    set_variable('inference_param', param, serialize_json=True)
-                    state = run_dag("chunkflow_generator", wait_for_completion=True).state
-
-                if state != "success":
-                    replyto(msg, "*Sanity check failed, abort!*")
-                    break
-
-            state = "unknown"
-            replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
-            if current_task == "seg_run":
-                state = run_dag('segmentation', wait_for_completion=True).state
-            elif current_task == "inf_run":
-                state = run_dag("chunkflow_worker", wait_for_completion=True).state
-
-            if state != "success":
-                replyto(msg, "*Bach job failed, abort!*")
+            if cmd == "cancel":
+                replyto(msg, "Cancel batch process")
                 break
 
-        replyto(msg, "*Batch process finished*")
+        if p.get("INHERIT_PARAMETERS", True):
+            param = deepcopy(default_param)
+        else:
+            param = {}
+
+        if i > 0:
+            if 'NAME' in param:
+                del param['NAME']
+            for k in p:
+                param[k] = p[k]
+            supply_default_param(param)
+            replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
+            state = "unknown"
+            current_task = guess_run_type(param)
+            if current_task == "seg_run":
+                set_variable('param', param, serialize_json=True)
+                state = run_dag("sanity_check", wait_for_completion=True).state
+            elif current_task == "inf_run":
+                set_variable('inference_param', param, serialize_json=True)
+                state = run_dag("chunkflow_generator", wait_for_completion=True).state
+
+            if state != "success":
+                replyto(msg, "*Sanity check failed, abort!*")
+                break
+
+        state = "unknown"
+        replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
+        if current_task == "seg_run":
+            state = run_dag('segmentation', wait_for_completion=True).state
+        elif current_task == "inf_run":
+            state = run_dag("chunkflow_worker", wait_for_completion=True).state
+
+        if state != "success":
+            replyto(msg, f"*Bach job failed, abort!* ({state})")
+            break
+
+    replyto(msg, "*Batch process finished*")
 
 
 
@@ -387,12 +359,4 @@ if __name__ == '__main__':
     logger = logging.getLogger(__name__)
     seuronbot = SeuronBot(slack_token=slack_token)
 
-    batch = threading.Thread(target=handle_batch)
-
-    batch.start()
-
-    #logger.info("subprocess pid: {}".format(batch.pid))
-
     seuronbot.start()
-
-    batch.join()
