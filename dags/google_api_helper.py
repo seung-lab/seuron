@@ -204,7 +204,7 @@ def collect_resource_metrics(start_time, end_time):
             "alignment_period": {"seconds": alignment_period},
             "per_series_aligner": monitoring_v3.Aggregation.Aligner.ALIGN_SUM,
             "cross_series_reducer": monitoring_v3.Aggregation.Reducer.REDUCE_SUM,
-            "group_by_fields": ["metadata.system_labels.instance_group"],
+            "group_by_fields": ["metadata.user_labels.vmrole", "metadata.user_labels.location", "metadata.system_labels.instance_group"],
         }
     )
 
@@ -214,7 +214,7 @@ def collect_resource_metrics(start_time, end_time):
             "alignment_period": {"seconds": alignment_period},
             "per_series_aligner": monitoring_v3.Aggregation.Aligner.ALIGN_MEAN,
             "cross_series_reducer": monitoring_v3.Aggregation.Reducer.REDUCE_SUM,
-            "group_by_fields": ["metadata.system_labels.instance_group"],
+            "group_by_fields": ["metadata.user_labels.vmrole", "metadata.user_labels.location", "metadata.system_labels.instance_group"],
         }
     )
 
