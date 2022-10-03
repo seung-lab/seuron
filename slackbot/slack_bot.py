@@ -103,9 +103,10 @@ def update_inference_param(msg):
         clear_queues()
         drain_messages(broker_url, "chunkflow")
 
+        put_message(broker_url, "seuronbot_payload", json_obj)
+
         if isinstance(json_obj, list):
             replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-            put_message(broker_url, "seuronbot_payload", json_obj)
             json_obj = json_obj[0]
 
         supply_default_param(json_obj)
@@ -174,11 +175,7 @@ def on_run_segmentations(msg):
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Start segmentation")
-        param_updated = None
-        if visible_messages(broker_url, "seuronbot_payload") == 0:
-            run_dag("segmentation")
-        else:
-            handle_batch("seg_run", msg)
+        handle_batch("seg_run", msg)
 
 @SeuronBot.on_message(["run inference", "run inferences"],
                       description="Inference with updated parameters")
@@ -192,10 +189,7 @@ def on_run_inferences(msg):
     else:
         replyto(msg, "Start inference")
         param_updated = None
-        if visible_messages(broker_url, "seuronbot_payload") == 0:
-            run_dag("chunkflow_worker")
-        else:
-            handle_batch("inf_run", msg)
+        handle_batch("inf_run", msg)
 
 @SeuronBot.on_message(["run pipeline"],
                       description="Run pipeline with updated parameters")
@@ -238,10 +232,11 @@ def update_segmentation_param(msg, advanced=False):
     if json_obj:
         clear_queues()
 
+        put_message(broker_url, "seuronbot_payload", json_obj)
+
         if isinstance(json_obj, list):
             if (len(json_obj) > 1):
                 replyto(msg, "*{} batch jobs detected, only sanity check the first one for now*".format(len(json_obj)))
-            put_message(broker_url, "seuronbot_payload", json_obj)
             json_obj = json_obj[0]
 
         supply_default_param(json_obj)
@@ -299,12 +294,14 @@ def handle_batch(task, msg):
 
     if json_obj is None:
         return
-
-    if (not isinstance(json_obj, list)) or (not isinstance(json_obj[0], dict)):
+    if isinstance(json_obj, dict):
+        json_obj = [json_obj]
+    elif (not isinstance(json_obj, list)) or (not isinstance(json_obj[0], dict)):
         replyto(msg, "Batch process expects an array of dicts from the json file")
         return
 
-    replyto(msg, "Batch jobs will reuse on the parameters from the first job unless new parameters are specified, *including those with default values*")
+    if len(json_obj) > 1:
+        replyto(msg, "Batch jobs will reuse on the parameters from the first job unless new parameters are specified, *including those with default values*")
 
     default_param = json_obj[0]
     for i, p in enumerate(json_obj):
