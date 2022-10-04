@@ -12,6 +12,8 @@ from slack_message import slack_message, task_retry_alert, task_failure_alert
 
 from helper_ops import slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
 
+from dag_utils import estimate_worker_instances
+
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 import os
@@ -20,6 +22,9 @@ import urllib
 from collections import OrderedDict
 
 param = Variable.get("inference_param", deserialize_json=True)
+cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
+total_workers = sum(c['max_size']*c['concurrency'] for c in cluster_info['gpu'])
 
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
@@ -479,10 +484,8 @@ process_output_task = PythonOperator(
     dag=dag_generator
 )
 
-cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
-total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
 
-scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), min(total_gpus, param.get("TASK_NUM",1)), "cluster")
+scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), estimate_worker_instances(param.get("TASK_NUM",1), cluster_info["gpu"]), "cluster")
 scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "cluster")
 
 wait_for_chunkflow_task = PythonOperator(
@@ -514,7 +517,7 @@ drain_tasks = drain_tasks_op(dag_generator, param, "manager")
 workers = []
 queue = 'gpu'
 
-for i in range(min(param.get("TASK_NUM", 1), total_gpus)):
+for i in range(min(param.get("TASK_NUM", 1), total_workers)):
     workers.append(inference_op(dag_worker, param, queue, i))
 
 collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down_cluster_task
