@@ -28,8 +28,6 @@ import custom_tasks_commands
 import synaptor_commands
 
 
-ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
-
 
 
 def upload_param(msg, param):
@@ -74,6 +72,7 @@ def download_json(msg):
 
 
 def check_advanced_settings(params):
+    ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
     if not isinstance(params, list):
         params = [params,]
 
