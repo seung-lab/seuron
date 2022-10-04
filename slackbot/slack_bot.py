@@ -6,7 +6,7 @@ from airflow_api import get_variable, \
     check_running, latest_dagrun_state, set_variable, \
     mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
-from kombu_helper import drain_messages, visible_messages, get_message, put_message
+from kombu_helper import drain_messages, visible_messages, peek_message, get_message, put_message
 from bot_utils import replyto, extract_command, download_file, clear_queues
 from seuronbot import SeuronBot
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata, gce_external_ip
@@ -30,7 +30,6 @@ import synaptor_commands
 
 ADVANCED_PARAMETERS=["BATCH_MIP_TIMEOUT", "HIGH_MIP_TIMEOUT", "REMAP_TIMEOUT", "OVERLAP_TIMEOUT", "CHUNK_SIZE", "CV_CHUNK_SIZE", "HIGH_MIP"]
 
-param_updated = None
 
 
 def upload_param(msg, param):
@@ -96,8 +95,20 @@ def guess_run_type(param):
         return None
 
 
+def latest_param_type():
+    json_obj = peek_message(broker_url, "seuronbot_payload")
+    if isinstance(json_obj, list):
+        param = json_obj[0]
+    else:
+        param = json_obj
+
+    if param:
+        return guess_run_type(param)
+    else:
+        return None
+
+
 def update_inference_param(msg):
-    global param_updated
     json_obj = download_json(msg)
     if json_obj:
         clear_queues()
@@ -112,7 +123,6 @@ def update_inference_param(msg):
         supply_default_param(json_obj)
         replyto(msg, "Running chunkflow setup_env, please wait")
         set_variable('inference_param', json_obj, serialize_json=True)
-        param_updated = "inf_run"
         run_dag("chunkflow_generator")
 
     return
@@ -167,9 +177,8 @@ def on_update_inference_parameters(msg):
 @SeuronBot.on_message(["run segmentation", "run segmentations"],
                       description="Create segmentation with updated parameters")
 def on_run_segmentations(msg):
-    global param_updated
     state = latest_dagrun_state("sanity_check")
-    if param_updated != 'seg_run':
+    if latest_param_type() != 'seg_run':
         replyto(msg, "You have to update the parameters before starting the segmentation")
     elif state != "success":
         replyto(msg, "Sanity check failed, try again")
@@ -180,20 +189,19 @@ def on_run_segmentations(msg):
 @SeuronBot.on_message(["run inference", "run inferences"],
                       description="Inference with updated parameters")
 def on_run_inferences(msg):
-    global param_updated
     state = latest_dagrun_state("chunkflow_generator")
-    if param_updated != 'inf_run':
+    if latest_param_type() != 'inf_run':
         replyto(msg, "You have to update the parameters before starting the inference")
     elif state != "success":
         replyto(msg, "Chunkflow set_env failed, try again")
     else:
         replyto(msg, "Start inference")
-        param_updated = None
         handle_batch("inf_run", msg)
 
 @SeuronBot.on_message(["run pipeline"],
                       description="Run pipeline with updated parameters")
 def on_run_pipeline(msg):
+    param_updated = latest_param_type()
     if not param_updated:
         replyto(msg, "You have to update the parameters before starting the pipeline")
     elif param_updated == 'inf_run':
@@ -207,17 +215,14 @@ def on_run_pipeline(msg):
 @SeuronBot.on_message("extract contact surfaces",
                       description="Extract the contact surfaces between segments")
 def on_extract_contact_surfaces(msg):
-    global param_updated
     state = latest_dagrun_state("sanity_check")
     if state != "success":
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Extract contact surfaces")
-        param_updated = None
         run_dag("contact_surface")
 
 def update_segmentation_param(msg, advanced=False):
-    global param_updated
     json_obj = download_json(msg)
     kw = check_advanced_settings(json_obj)
 
@@ -242,7 +247,6 @@ def update_segmentation_param(msg, advanced=False):
         supply_default_param(json_obj)
         replyto(msg, "Running sanity check, please wait")
         set_variable('param', json_obj, serialize_json=True)
-        param_updated = "seg_run"
         run_dag("sanity_check")
 
     return
