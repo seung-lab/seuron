@@ -59,7 +59,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     docker_image = worker.get('workerImage', context.properties['seuronImage'])
 
     if worker['type'] == 'gpu':
-        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=worker['concurrency'])
     elif worker['type'] == 'atomic':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     elif worker['type'] == 'composite':

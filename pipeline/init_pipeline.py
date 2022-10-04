@@ -23,6 +23,7 @@ def get_clusters(deployment):
                         'name': c['name'],
                         'zone': c['zone'],
                         'max_size': int(c['sizeLimit']),
+                        'concurrency': int(c.get('concurrency', 1)),
                     },
                 )
 
