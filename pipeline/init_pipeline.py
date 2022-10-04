@@ -5,30 +5,26 @@ from google_metadata import get_project_data, get_instance_data, get_instance_me
 from param_default import param_default, inference_param_default
 import os
 import requests
-import re
 import json
 from collections import defaultdict
 
 def get_clusters(deployment):
-    re_ig = deployment+r'''-([\w-]+)-workers-([\w-]+)'''
-
     project_id = get_project_data("project-id")
     vm_name = get_instance_data("name")
     vm_zone = get_instance_data("zone").split('/')[-1]
     data = get_instance_metadata(project_id, vm_zone, vm_name)
     instance_groups = defaultdict(list)
     for item in data['items']:
-        m = re.match(re_ig, item['key'])
-        if m:
-            cluster = m[1]
-            zone = m[2]
-            instance_groups[cluster].append(
-                {
-                    'name': item['key'],
-                    'zone': zone,
-                    'max_size': int(item['value']),
-                },
-            )
+        if item['key'] == "cluster-info":
+            clusters = json.loads(item['value'])
+            for c in clusters:
+                instance_groups[c['type']].append(
+                    {
+                        'name': c['name'],
+                        'zone': c['zone'],
+                        'max_size': int(c['sizeLimit']),
+                    },
+                )
 
     return instance_groups
 

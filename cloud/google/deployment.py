@@ -1,3 +1,4 @@
+import json
 from workers import GenerateWorkers
 from manager import GenerateManager
 from networks import GenerateNetworks
@@ -9,14 +10,17 @@ def GenerateConfig(context):
     worker_resource = []
     worker_metadata = []
     worker_subnetworks = set()
-    for w in workers:
+    clusters = workers.copy()
+    for w in clusters:
         resource = GenerateWorkers(context, hostname_manager, w)
         worker_resource += resource
-        worker_metadata.append({
-            'key': resource[1]['name'],
-            'value': w['sizeLimit']
-        })
+        w['name'] = resource[1]['name']
         worker_subnetworks.add(w['subnetwork'])
+
+    worker_metadata = [{
+        'key': 'cluster-info',
+        'value': json.dumps(clusters)
+    }]
 
     manager_resource = GenerateManager(context, hostname_manager, worker_metadata)
 
