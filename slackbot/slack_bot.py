@@ -2,12 +2,9 @@ import slack_sdk as slack
 import json
 import json5
 from collections import OrderedDict
-from airflow_api import get_variable, run_segmentation, \
-    update_slack_connection, check_running, dag_state, set_variable, \
-    sanity_check, chunkflow_set_env, run_inference, run_contact_surface, \
-    mark_dags_success, run_dag, run_igneous_tasks, run_custom_tasks, \
-    synaptor_sanity_check, run_synaptor_file_seg, run_synaptor_db_seg, \
-    run_synaptor_assignment
+from airflow_api import get_variable, \
+    check_running, latest_dagrun_state, set_variable, \
+    mark_dags_success, run_dag
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from kombu_helper import drain_messages
 from bot_utils import replyto, extract_command
@@ -186,8 +183,8 @@ def update_inference_param(msg):
         supply_default_param(json_obj)
         replyto(msg, "Running chunkflow setup_env, please wait")
         set_variable('inference_param', json_obj, serialize_json=True)
-        chunkflow_set_env()
         param_updated = "inf_run"
+        run_dag("chunkflow_generator")
 
     return
 
@@ -262,7 +259,7 @@ def on_cancel_run(msg):
                       description="Create segmentation with updated parameters")
 def on_run_segmentations(msg):
     global param_updated
-    state, _ = dag_state("sanity_check")
+    state = latest_dagrun_state("sanity_check")
     if param_updated != 'seg_run':
         replyto(msg, "You have to update the parameters before starting the segmentation")
     elif state != "success":
@@ -271,7 +268,7 @@ def on_run_segmentations(msg):
         replyto(msg, "Start segmentation")
         param_updated = None
         if q_payload.qsize() == 0:
-            run_segmentation()
+            run_dag("segmentation")
         else:
             q_payload.put(msg)
             q_cmd.put("seg_run")
@@ -280,7 +277,7 @@ def on_run_segmentations(msg):
                       description="Inference with updated parameters")
 def on_run_inferences(msg):
     global param_updated
-    state, _ = dag_state("chunkflow_generator")
+    state = latest_dagrun_state("chunkflow_generator")
     if param_updated != 'inf_run':
         replyto(msg, "You have to update the parameters before starting the inference")
     elif state != "success":
@@ -289,7 +286,7 @@ def on_run_inferences(msg):
         replyto(msg, "Start inference")
         param_updated = None
         if q_payload.qsize() == 0:
-            run_inference()
+            run_dag("chunkflow_worker")
         else:
             q_payload.put(msg)
             q_cmd.put("inf_run")
@@ -356,13 +353,13 @@ def on_redeploy_docker_stack(msg):
                       description="Extract the contact surfaces between segments")
 def on_extract_contact_surfaces(msg):
     global param_updated
-    state, _ = dag_state("sanity_check")
+    state = latest_dagrun_state("sanity_check")
     if state != "success":
         replyto(msg, "Sanity check failed, try again")
     else:
         replyto(msg, "Extract contact surfaces")
         param_updated = None
-        run_contact_surface()
+        run_dag("contact_surface")
 
 def update_segmentation_param(msg, advanced=False):
     global param_updated
@@ -389,9 +386,8 @@ def update_segmentation_param(msg, advanced=False):
         supply_default_param(json_obj)
         replyto(msg, "Running sanity check, please wait")
         set_variable('param', json_obj, serialize_json=True)
-        time.sleep(30)
-        sanity_check()
         param_updated = "seg_run"
+        run_dag("sanity_check")
 
     return
 
@@ -424,7 +420,7 @@ def update_synaptor_params(msg):
         param = config_to_json(content)
 
         set_variable("synaptor_param.json", param, serialize_json=True)
-        synaptor_sanity_check()
+        run_dag("synaptor_sanity_check")
 
     else:
         replyto(msg, "Error reading file")
@@ -436,7 +432,7 @@ def update_synaptor_params(msg):
 def synaptor_file_seg(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
-    run_synaptor_file_seg()
+    run_dag("synaptor_file_seg")
 
 @seuronbot.on_message(["run synaptor db segmentation",
                        "run synaptor database segmentation"],
@@ -447,7 +443,7 @@ def synaptor_file_seg(msg):
 def synaptor_db_seg(msg):
     """Runs the database segmentation DAG."""
     replyto(msg, "Running synaptor file segmentation. Please wait.")
-    run_synaptor_db_seg()
+    run_dag("synaptor_db_seg")
 
 @seuronbot.on_message("run synaptor synapse assignment",
                       description=(
@@ -458,7 +454,7 @@ def synaptor_db_seg(msg):
 def synaptor_assignment(msg):
     """Runs the synapse assignment DAG."""
     replyto(msg, "Running synaptor synapse assignment. Please wait.")
-    run_synaptor_assignment()
+    run_dag("synaptor_assignment")
 
 
 def run_igneous_scripts(msg):
@@ -469,7 +465,7 @@ def run_igneous_scripts(msg):
         drain_messages(broker_url, "igneous_err")
         set_variable('igneous_script', payload)
         replyto(msg, "Execute `submit_tasks` function")
-        run_igneous_tasks()
+        run_dag("igneous")
 
     return
 
@@ -483,7 +479,7 @@ def run_custom_scripts(msg, task_type):
             drain_messages(broker_url, f"custom-{t}_err")
         set_variable('custom_script', payload)
         replyto(msg, "Execute `submit_tasks` function")
-        run_custom_tasks(task_type)
+        run_dag(f"custom-{task_type}")
 
     return
 
@@ -606,14 +602,10 @@ def handle_batch(q_payload, q_cmd):
                 current_task = guess_run_type(param)
                 if current_task == "seg_run":
                     set_variable('param', param, serialize_json=True)
-                    sanity_check()
-                    wait_for_airflow()
-                    state, _ = dag_state("sanity_check")
+                    state = run_dag("sanity_check", wait_for_completion=True).state
                 elif current_task == "inf_run":
                     set_variable('inference_param', param, serialize_json=True)
-                    chunkflow_set_env()
-                    wait_for_airflow()
-                    state, _ = dag_state("chunkflow_generator")
+                    state = run_dag("chunkflow_generator", wait_for_completion=True).state
 
                 if state != "success":
                     replyto(msg, "*Sanity check failed, abort!*")
@@ -622,13 +614,9 @@ def handle_batch(q_payload, q_cmd):
             state = "unknown"
             replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
             if current_task == "seg_run":
-                run_segmentation()
-                wait_for_airflow()
-                state, _ = dag_state("segmentation")
+                state = run_dag('segmentation', wait_for_completion=True).state
             elif current_task == "inf_run":
-                run_inference()
-                wait_for_airflow()
-                state, _ = dag_state("chunkflow_worker")
+                state = run_dag("chunkflow_worker", wait_for_completion=True).state
 
             if state != "success":
                 replyto(msg, "*Bach job failed, abort!*")
@@ -651,11 +639,6 @@ def set_redeploy_flag(value):
         data['items'].append({'key': 'redeploy', 'value':value})
     set_instance_metadata(project_id, vm_zone, vm_name, data)
 
-def wait_for_airflow():
-    time.sleep(60)
-    while check_running():
-        logger.debug("waiting for airflow")
-        time.sleep(60)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
