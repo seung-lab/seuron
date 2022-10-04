@@ -1,11 +1,12 @@
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.dummy import DummyOperator
 from airflow.utils.weight_rule import WeightRule
 from airflow.models import Variable
 from time import sleep
 from slack_message import slack_message
 from param_default import default_args
-from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster
+from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster, collect_resource_metrics
 
 def slack_message_op(dag, tid, msg):
     return PythonOperator(
@@ -50,6 +51,9 @@ def reset_flags(param):
         Variable.set("agg_done", "yes")
     else:
         Variable.set("agg_done", "no")
+
+    Variable.set("pp_done", "no")
+
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         for key in target_sizes:
@@ -164,4 +168,19 @@ def reset_cluster_op(dag, stage, key, initial_size, queue):
         trigger_rule="all_success",
         queue=queue,
         dag=dag
+    )
+
+
+def collect_metrics_op(dag):
+    return TriggerDagRunOperator(
+        task_id="trigger_compute_metrics",
+        trigger_dag_id="compute_metrics",
+        conf={
+            "dag_id": "{{ dag_run.dag_id }}",
+            "run_id": "{{ dag_run.run_id }}",
+        },
+        weight_rule=WeightRule.ABSOLUTE,
+        priority_weight=1000,
+        dag=dag,
+        queue = "manager"
     )

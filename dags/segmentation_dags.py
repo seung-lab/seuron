@@ -10,7 +10,7 @@ from chunkiterator import ChunkIterator
 
 from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
 from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, composite_chunks_wrap_op, remap_chunks_batch_op
-from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op
+from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op, collect_metrics_op
 
 from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_files_job, get_atomic_files_job, dataset_resolution
@@ -114,9 +114,12 @@ dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=N
 
 dag["cs"] = DAG("contact_surface", default_args=default_args, schedule_interval=None, tags=['segmentation'])
 
+dag["pp"] = DAG("postprocess", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+
 dag_ws = dag["ws"]
 dag_agg = dag["agg"]
 dag_cs = dag["cs"]
+dag_pp= dag["pp"]
 
 param = Variable.get("param", deserialize_json=True)
 image = param["WORKER_IMAGE"]
@@ -467,6 +470,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         queue = "manager"
     )
 
+    init["ws"] >> collect_metrics_op(dag["ws"])
+
     init["agg"] = PythonOperator(
         task_id = "Init_Agglomeration",
         python_callable=create_info,
@@ -479,7 +484,11 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         queue = "manager"
     )
 
+    init["agg"] >> collect_metrics_op(dag["agg"])
+
     init['cs'] = slack_message_op(dag['cs'], "init_cs", ":arrow_forward: Start extracting contact surfaces")
+
+    init["cs"] >> collect_metrics_op(dag["cs"])
 
     generate_chunks = {
         "ws": {},
@@ -537,6 +546,18 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         wait["agg"] = wait_op(dag_manager, "agg_done")
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
+
+    triggers["pp"] = TriggerDagRunOperator(
+        task_id="trigger_pp",
+        trigger_dag_id="postprocess",
+        queue="manager",
+        dag=dag_manager
+    )
+
+    wait["pp"] = wait_op(dag_manager, "pp_done")
+
+    mark_done["pp"] = mark_done_op(dag["pp"], "pp_done")
+
 
     check_seg = PythonOperator(
         task_id="Check_Segmentation",
@@ -629,15 +650,16 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         slack_ops['agg']['remap'] >> comp_seg_task >> mark_done['agg']
 
 
-    igneous_tasks = create_igneous_ops(param, dag_manager)
+    igneous_tasks = create_igneous_ops(param, dag_pp)
+    igneous_tasks[-1] >> mark_done['pp']
+    igneous_tasks[0] >> collect_metrics_op(dag_pp)
 
     scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0, "cluster")
 
-    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> igneous_tasks[0]
-    igneous_tasks[-1] >> ending_op
+    starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> triggers["pp"] >> wait["pp"]
+    wait["pp"] >> ending_op
     reset_flags >> scaling_global_start
-    igneous_tasks[-1]>> scaling_igneous_finish
-    wait["agg"] >> scaling_global_finish
+    wait["pp"] >> scaling_igneous_finish
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
@@ -648,7 +670,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         dag=dag_manager,
         queue = "manager"
     )
-    igneous_tasks[-1] >> nglink_task >> ending_op
+    wait["pp"] >> nglink_task >> ending_op
+
     if "GT_PATH" in param:
         evaluation_task = PythonOperator(
             task_id = "Evaluate_Segmentation",
@@ -659,7 +682,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             dag=dag_manager,
             queue = "manager"
         )
-        igneous_tasks[-1] >> evaluation_task >> ending_op
+        wait["pp"] >> evaluation_task
 
 
     if min(high_mip, top_mip) - batch_mip > 2:

@@ -21,7 +21,7 @@ curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list
 add-apt-repository -y ppa:graphics-drivers/ppa
 apt-get update -y
-DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nvidia-headless-515 nvidia-container-toolkit nvidia-container-runtime
+DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nvidia-headless-515 nvidia-utils-515 nvidia-container-toolkit nvidia-container-runtime
 cat << EOF > /etc/docker/daemon.json
 {
   "default-runtime": "nvidia",
@@ -34,6 +34,22 @@ cat << EOF > /etc/docker/daemon.json
 }
 EOF
 systemctl restart docker
+'''
+
+# https://cloud.google.com/compute/docs/gpus/monitor-gpus
+INSTALL_GPU_MONITORING = '''
+apt-get update -y
+DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install python3-venv
+mkdir -p /opt/google
+cd /opt/google
+git clone https://github.com/GoogleCloudPlatform/compute-gpu-monitoring.git
+cd /opt/google/compute-gpu-monitoring/linux
+python3 -m venv venv
+venv/bin/pip install wheel
+venv/bin/pip install -Ur requirements.txt
+cp /opt/google/compute-gpu-monitoring/linux/systemd/google_gpu_monitoring_agent_venv.service /lib/systemd/system
+systemctl daemon-reload
+systemctl --no-reload --now enable /lib/systemd/system/google_gpu_monitoring_agent_venv.service
 '''
 
 DOCKER_CMD = 'docker run --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'

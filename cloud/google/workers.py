@@ -1,5 +1,5 @@
 from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, GenerateNetworkInterface, GenerateAirflowVar
-from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
+from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_GPU_MONITORING, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 
 GPU_TYPES = ['gpu', 'custom-gpu', 'synaptor-gpu']
@@ -27,6 +27,7 @@ DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -
 
     if use_gpu:
         startup_script += INSTALL_NVIDIA_DOCKER_CMD
+        startup_script += INSTALL_GPU_MONITORING
 
     startup_script += f'''
 {GenerateEnvironVar(context, env_variables)}

@@ -174,3 +174,86 @@ def reduce_instance_group_size(key, size):
         real_size = resize_instance_group(project_id, cluster_info[key], size)
         slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stablize".format(key, real_size))
         sleep(60)
+
+def collect_resource_metrics(start_time, end_time):
+    import pendulum
+    from google.cloud import monitoring_v3
+
+    project_id = get_project_id()
+    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+
+    resources = {}
+
+    for k in cluster_info:
+        resources |= {ig['name'] : {} for ig in cluster_info[k]}
+
+    alignment_period = 60
+
+    client = monitoring_v3.MetricServiceClient()
+    project_name = f"projects/{project_id}"
+
+    interval = monitoring_v3.TimeInterval(
+        {
+            "end_time": {"seconds": int(end_time.timestamp()), "nanos": 0},
+            "start_time": {"seconds": int(start_time.timestamp()), "nanos": 0},
+        }
+    )
+    aggregation_sum = monitoring_v3.Aggregation(
+        {
+            # Use SUM for DELTA metrics
+            "alignment_period": {"seconds": alignment_period},
+            "per_series_aligner": monitoring_v3.Aggregation.Aligner.ALIGN_SUM,
+            "cross_series_reducer": monitoring_v3.Aggregation.Reducer.REDUCE_SUM,
+            "group_by_fields": ["metadata.user_labels.vmrole", "metadata.user_labels.location", "metadata.system_labels.instance_group"],
+        }
+    )
+
+    aggregation_mean = monitoring_v3.Aggregation(
+        {
+            # SUM over series so we can average by uptime
+            "alignment_period": {"seconds": alignment_period},
+            "per_series_aligner": monitoring_v3.Aggregation.Aligner.ALIGN_MEAN,
+            "cross_series_reducer": monitoring_v3.Aggregation.Reducer.REDUCE_SUM,
+            "group_by_fields": ["metadata.user_labels.vmrole", "metadata.user_labels.location", "metadata.system_labels.instance_group"],
+        }
+    )
+
+    def query_metric(metric, aggregation):
+        return client.list_time_series(
+           request={
+               "name": project_name,
+               "filter": f'metric.type = "{metric}"',
+               "interval": interval,
+               "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+               "aggregation": aggregation,
+           }
+        )
+
+    for result in query_metric("compute.googleapis.com/instance/uptime", aggregation_sum):
+        group_name = result.metadata.system_labels.fields['instance_group'].string_value
+        if group_name in resources:
+            resources[group_name]["uptime"] = pendulum.duration(seconds=sum(p.value.double_value for p in result.points))
+
+    for result in query_metric("compute.googleapis.com/instance/cpu/usage_time", aggregation_sum):
+        group_name = result.metadata.system_labels.fields['instance_group'].string_value
+        if group_name in resources:
+            resources[group_name]["cputime"] = pendulum.duration(seconds=sum(p.value.double_value for p in result.points))
+            resources[group_name]["cpu_utilization"] = resources[group_name]["cputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
+
+    for result in query_metric("compute.googleapis.com/instance/network/received_bytes_count", aggregation_sum):
+        group_name = result.metadata.system_labels.fields['instance_group'].string_value
+        if group_name in resources:
+            resources[group_name]["received_bytes"] = sum(p.value.int64_value for p in result.points)
+
+    for result in query_metric("compute.googleapis.com/instance/network/sent_bytes_count", aggregation_sum):
+        group_name = result.metadata.system_labels.fields['instance_group'].string_value
+        if group_name in resources:
+            resources[group_name]["sent_bytes"] = sum(p.value.int64_value for p in result.points)
+
+    for result in query_metric("custom.googleapis.com/instance/gpu/utilization", aggregation_mean):
+        group_name = result.metadata.system_labels.fields['instance_group'].string_value
+        if group_name in resources:
+            resources[group_name]["gputime"] = pendulum.duration(seconds=sum(p.value.double_value*alignment_period/100 for p in result.points))
+            resources[group_name]["gpu_utilization"] = resources[group_name]["gputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
+
+    return resources

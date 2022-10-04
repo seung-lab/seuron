@@ -4,7 +4,7 @@ from datetime import datetime
 from airflow import DAG
 from airflow.models import Variable
 
-from helper_ops import scale_up_cluster_op, scale_down_cluster_op
+from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from param_default import default_synaptor_param
 from synaptor_ops import manager_op, drain_op
 from synaptor_ops import synaptor_op, wait_op, generate_op
@@ -84,7 +84,7 @@ wait_remap = wait_op(fileseg_dag, "remap")
 
 # DEPENDENCIES
 # Drain old tasks before doing anything
-drain >> sanity_check >> init_cloudvols  # >> generate_ngl_link
+collect_metrics_op(fileseg_dag) >> drain >> sanity_check >> init_cloudvols  # >> generate_ngl_link
 
 # Worker dag
 (init_cloudvols >> scale_up_cluster >> workers >> scale_down_cluster)
@@ -162,7 +162,7 @@ wait_remap = wait_op(dbseg_dag, "remap")
 
 # DEPENDENCIES
 # Drain old tasks before doing anything
-drain >> sanity_check >> init_cloudvols >> init_db  # >> generate_ngl_link
+collect_metrics_op(dbseg_dag) >> drain >> sanity_check >> init_cloudvols >> init_db  # >> generate_ngl_link
 
 # Worker dag
 (init_db >> scale_up_cluster >> workers >> scale_down_cluster)
@@ -282,7 +282,7 @@ wait_remap = wait_op(assign_dag, "remap")
 
 # DEPENDENCIES
 # Drain old tasks before doing anything
-drain >> sanity_check >> init_cloudvols >> init_db  # >> generate_ngl_link
+collect_metrics_op(assign_dag) >> drain >> sanity_check >> init_cloudvols >> init_db  # >> generate_ngl_link
 
 # Worker dag
 (
