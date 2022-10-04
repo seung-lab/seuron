@@ -15,11 +15,14 @@ def visible_messages(broker_url, queue):
         simple_queue = conn.SimpleQueue(queue)
         return simple_queue.qsize()
 
-def get_message(broker_url, queue):
+def get_message(broker_url, queue, ack=True):
     with Connection(broker_url) as conn:
         simple_queue = conn.SimpleQueue(queue)
+        if simple_queue.qsize() == 0:
+            return None
         msg = simple_queue.get()
-        msg.ack()
+        if ack:
+            msg.ack()
         return msg.payload
 
 def put_message(broker_url, queue, msg):
