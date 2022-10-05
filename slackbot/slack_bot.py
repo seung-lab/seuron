@@ -20,9 +20,9 @@ import queue
 import sys
 import traceback
 
-import update_python_packages
-import redeploy_docker_stack
-import cancel_run
+import update_packages_commands
+import redeploy_commands
+import cancel_run_commands
 import igneous_tasks_commands
 import custom_tasks_commands
 import synaptor_commands
