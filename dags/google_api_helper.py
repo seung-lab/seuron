@@ -219,15 +219,19 @@ def collect_resource_metrics(start_time, end_time):
     )
 
     def query_metric(metric, aggregation):
-        return client.list_time_series(
-           request={
-               "name": project_name,
-               "filter": f'metric.type = "{metric}"',
-               "interval": interval,
-               "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
-               "aggregation": aggregation,
-           }
-        )
+        try:
+            return client.list_time_series(
+               request={
+                   "name": project_name,
+                   "filter": f'metric.type = "{metric}"',
+                   "interval": interval,
+                   "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+                   "aggregation": aggregation,
+               }
+            )
+        except:
+            print(f"Cannot fetch metric {metric}")
+            return []
 
     for result in query_metric("compute.googleapis.com/instance/uptime", aggregation_sum):
         group_name = result.metadata.system_labels.fields['instance_group'].string_value
