@@ -240,23 +240,23 @@ def collect_resource_metrics(start_time, end_time):
 
     for result in query_metric("compute.googleapis.com/instance/cpu/usage_time", aggregation_sum):
         group_name = result.metadata.system_labels.fields['instance_group'].string_value
-        if group_name in resources:
+        if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["cputime"] = pendulum.duration(seconds=sum(p.value.double_value for p in result.points))
             resources[group_name]["cpu_utilization"] = resources[group_name]["cputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
 
     for result in query_metric("compute.googleapis.com/instance/network/received_bytes_count", aggregation_sum):
         group_name = result.metadata.system_labels.fields['instance_group'].string_value
-        if group_name in resources:
+        if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["received_bytes"] = sum(p.value.int64_value for p in result.points)
 
     for result in query_metric("compute.googleapis.com/instance/network/sent_bytes_count", aggregation_sum):
         group_name = result.metadata.system_labels.fields['instance_group'].string_value
-        if group_name in resources:
+        if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["sent_bytes"] = sum(p.value.int64_value for p in result.points)
 
     for result in query_metric("custom.googleapis.com/instance/gpu/utilization", aggregation_mean):
         group_name = result.metadata.system_labels.fields['instance_group'].string_value
-        if group_name in resources:
+        if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["gputime"] = pendulum.duration(seconds=sum(p.value.double_value*alignment_period/100 for p in result.points))
             resources[group_name]["gpu_utilization"] = resources[group_name]["gputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
 
