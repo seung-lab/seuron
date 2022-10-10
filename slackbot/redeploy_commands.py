@@ -1,0 +1,64 @@
+import sys
+import time
+import json
+import slack_sdk as slack
+from airflow.hooks.base_hook import BaseHook
+from seuronbot import SeuronBot
+from bot_utils import replyto
+from bot_info import slack_token
+from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
+
+
+@SeuronBot.on_message("redeploy docker stack",
+                      description="Restart the manager stack with updated docker images",
+                      cancelable=False)
+def on_redeploy_docker_stack(msg):
+    replyto(msg, "Redeploy seuronbot docker stack on the bootstrap node")
+    set_redeploy_flag(True)
+    time.sleep(300)
+    replyto(msg, "Failed to restart the bot")
+
+
+@SeuronBot.on_hello()
+def bot_restarted():
+    if get_instance_data("attributes/redeploy") == 'true':
+        set_redeploy_flag(False)
+        send_reset_message()
+
+
+def set_redeploy_flag(value):
+    project_id = get_project_data("project-id")
+    vm_name = get_instance_data("name")
+    vm_zone = get_instance_data("zone").split('/')[-1]
+    data = get_instance_metadata(project_id, vm_zone, vm_name)
+    key_exist = False
+    for item in data['items']:
+        if item['key'] == 'redeploy':
+            item['value'] = value
+            key_exist = True
+
+    if not key_exist:
+        data['items'].append({'key': 'redeploy', 'value':value})
+    set_instance_metadata(project_id, vm_zone, vm_name, data)
+
+
+def send_reset_message():
+    SLACK_CONN_ID = "Slack"
+    try:
+        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
+        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
+    except:
+        return
+
+    client = slack.WebClient(token=slack_token)
+    slack_username = slack_extra['user']
+    slack_channel = slack_extra['channel']
+    slack_thread = slack_extra['thread_ts']
+
+    client.chat_postMessage(
+        username=slack_workername,
+        channel=slack_channel,
+        thread_ts=slack_thread,
+        reply_broadcast=True,
+        text=f"<@{slack_username}>, bot upgraded/rebooted."
+    )
