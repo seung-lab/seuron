@@ -10,6 +10,7 @@ from kombu_helper import drain_messages, put_message
 @SeuronBot.on_message("cancel run",
                       description="Cancel the current run, must provide a matching token",
                       exclusive=False,
+                      cancelable=False,
                       extra_parameters=True)
 def on_cancel_run(msg):
     token = get_variable("run_token")
