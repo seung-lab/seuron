@@ -151,7 +151,7 @@ def scale_down_cluster_op(dag, stage, key, size, queue):
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
-        trigger_rule="all_success",
+        trigger_rule="all_done",
         queue=queue,
         dag=dag
     )
