@@ -63,7 +63,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     elif worker['type'] == 'atomic':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     elif worker['type'] == 'composite':
-        atomic_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+        atomic_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue='atomic', concurrency=1)
         workers = [(5, 4), (6, 2), (7, 1), (8, 1)]
         cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
     elif worker['type'] == 'igneous':
