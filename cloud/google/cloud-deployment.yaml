@@ -62,6 +62,15 @@ resources:
               subnetwork: us-east1
               machineType: e2-standard-32
               preemptible: False
+              workerConcurrencies:
+                - layer: 5
+                  concurrency: 4
+                - layer: 6
+                  concurrency: 2
+                - layer: 7
+                  concurrency: 1
+                - layer: 8
+                  concurrency: 1
               sizeLimit: 1
             - type: igneous
               zone: us-east1-c
