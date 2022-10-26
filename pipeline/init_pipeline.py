@@ -18,14 +18,16 @@ def get_clusters(deployment):
         if item['key'] == "cluster-info":
             clusters = json.loads(item['value'])
             for c in clusters:
-                instance_groups[c['type']].append(
-                    {
+                worker_setting = {
                         'name': c['name'],
                         'zone': c['zone'],
                         'max_size': int(c['sizeLimit']),
-                        'concurrency': int(c.get('concurrency', 1)),
-                    },
-                )
+                }
+                if c['type'] == 'gpu':
+                    worker_setting['concurrency'] = c['concurrency']
+                elif c['type'] == 'composite':
+                    worker_setting['workerConcurrencies'] = c['workerConcurrencies']
+                instance_groups[c['type']].append(worker_setting)
 
     return instance_groups
 
