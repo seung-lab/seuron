@@ -274,6 +274,7 @@ def check_worker_image_op(dag):
 
 def print_summary():
     from docker_helper import health_check_info
+    from dag_utils import check_manager_node
     param = Variable.get("param", deserialize_json=True)
     data_bbox = param["BBOX"]
 
@@ -308,6 +309,9 @@ def print_summary():
                     hchunks+=1
         ntasks += bchunks
         ntasks *= 2
+
+    if not check_manager_node(bchunks):
+        raise RuntimeError("Not enough resources")
 
     paths = {}
 

@@ -392,6 +392,7 @@ def inference_op(dag, param, queue, wid):
 def process_output(**kwargs):
     from igneous_and_cloudvolume import upload_json
     from airflow import configuration as conf
+    from dag_utils import check_manager_node
     import re
     param = Variable.get("inference_param", deserialize_json=True)
     ti = kwargs['ti']
@@ -413,6 +414,9 @@ def process_output(**kwargs):
             m = re.search("\d+", l)
             task_number = int(m.group(0))
             param["TASK_NUM"] = task_number
+
+    if not check_manager_node(min(task_number, total_workers)):
+        raise RuntimeError("Not enough resources")
 
     for k in ['PATCH_NUM', 'EXPAND_MARGIN_SIZE', 'TASK_NUM']:
         if k not in param:
