@@ -23,10 +23,10 @@ def get_clusters(deployment):
                         'zone': c['zone'],
                         'max_size': int(c['sizeLimit']),
                 }
-                if c['type'] == 'gpu':
-                    worker_setting['concurrency'] = c['concurrency']
-                elif c['type'] == 'composite':
+                if c['type'] == 'composite':
                     worker_setting['workerConcurrencies'] = c['workerConcurrencies']
+                else:
+                    worker_setting['concurrency'] = c.get('concurrency', 1)
                 instance_groups[c['type']].append(worker_setting)
 
     return instance_groups
