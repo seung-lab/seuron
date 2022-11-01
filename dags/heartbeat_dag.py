@@ -119,14 +119,14 @@ def delete_dead_instances():
 latest = LatestOnlyOperator(
     task_id='latest_only',
     priority_weight=1000,
-    queue='manager',
+    queue='cluster',
     dag=dag)
 
 queue_sizes_task = PythonOperator(
     task_id="check_task_status",
     python_callable=get_num_task_instances,
     priority_weight=1000,
-    queue="manager",
+    queue="cluster",
     dag=dag)
 
 delete_dead_instances_task = PythonOperator(

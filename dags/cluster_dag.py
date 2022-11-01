@@ -115,7 +115,7 @@ latest = LatestOnlyOperator(
     task_id='latest_only',
     priority_weight=100000,
     weight_rule=WeightRule.ABSOLUTE,
-    queue='manager',
+    queue='cluster',
     dag=dag)
 
 queue_sizes_task = PythonOperator(
