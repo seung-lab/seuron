@@ -24,6 +24,32 @@ def instance_group_info(project_id, instance_group):
     request = service.instanceGroups().get(project=project_id, zone=instance_group['zone'], instanceGroup=instance_group['name'])
     return request.execute()
 
+def list_managed_instances(project_id, instance_group):
+    service = discovery.build("compute", "v1")
+    page_token = None
+    instances = []
+    while True:
+        request = service.instanceGroupManagers().listManagedInstances(project=project_id, zone=instance_group["zone"], instanceGroupManager=instance_group["name"], pageToken=page_token)
+        ret = request.execute()
+        if not ret:
+            return instances
+        instances += [r["instance"] for r in ret['managedInstances']]
+        page_token = ret.get("nextPageToken", None)
+        if not page_token:
+            break
+
+    return instances
+
+def delete_instances(project_id, ig, instances):
+    request_body = {
+        "instances": instances,
+        "skipInstancesOnValidationError": True,
+    }
+    service = discovery.build('compute', 'v1')
+    request = service.instanceGroupManagers().deleteInstances(project=project_id, zone=ig["zone"], instanceGroupManager=ig["name"], body=request_body)
+    ret = request.execute()
+    print(ret)
+
 def get_cluster_target_size(project_id, instance_groups):
     total_size = 0
     for ig in instance_groups:
