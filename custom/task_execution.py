@@ -8,6 +8,9 @@ import queue
 import socket
 import json
 import base64
+import requests
+from datetime import datetime
+import redis
 
 import click
 from kombu import Connection
@@ -15,6 +18,13 @@ from kombu.simple import SimpleQueue
 from statsd import StatsClient
 import psutil
 import custom_worker
+
+METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/"
+METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
+
+def get_hostname():
+    data = requests.get(METADATA_URL + 'hostname', headers=METADATA_HEADERS).text
+    return data.split(".")[0]
 
 @click.command()
 @click.option('--tag', default='',  help='kind of task to execute')
@@ -152,6 +162,7 @@ def wait_for_task(q_state, ret_queue, err_queue, conn):
                 print("message unknown: {}".format(msg))
                 return False
         else: #busy
+            redis_conn.set(hostname, datetime.now().timestamp())
             cpu_usage = psutil.Process().cpu_percent(interval=1)
             if cpu_usage < 5:
                 print("task stalled: {}".format(cpu_usage))
@@ -170,6 +181,8 @@ def wait_for_task(q_state, ret_queue, err_queue, conn):
 
 
 if __name__ == '__main__':
+    redis_conn = redis.Redis(os.environ["REDIS_SERVER"])
+    hostname = get_hostname()
     q_state = queue.Queue()
     q_task = queue.Queue()
     command()
