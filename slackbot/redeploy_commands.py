@@ -7,6 +7,7 @@ from seuronbot import SeuronBot
 from bot_utils import replyto
 from bot_info import slack_token
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
+import tenacity
 
 
 @SeuronBot.on_message("redeploy docker stack",
@@ -42,13 +43,15 @@ def set_redeploy_flag(value):
     set_instance_metadata(project_id, vm_zone, vm_name, data)
 
 
+@tenacity.retry(
+            reraise=True,
+            stop=tenacity.stop_after_attempt(10),
+            wait=tenacity.wait_random_exponential(multiplier=0.5, max=60.0),
+)
 def send_reset_message():
     SLACK_CONN_ID = "Slack"
-    try:
-        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
-        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
-    except:
-        return
+    slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
+    slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
 
     client = slack.WebClient(token=slack_token)
     slack_username = slack_extra['user']
