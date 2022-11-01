@@ -30,7 +30,7 @@ default_args = {
     'retries': 0,
 }
 
-SCHEDULE_INTERVAL = '*/20 * * * *'
+SCHEDULE_INTERVAL = '2-59/5 * * * *'
 
 dag = DAG(
     dag_id=DAG_ID,
