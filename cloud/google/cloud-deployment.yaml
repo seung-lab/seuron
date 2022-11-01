@@ -40,6 +40,7 @@ resources:
               subnetwork: us-east1
               machineType: n1-highmem-4
               gpuWorkerAcceleratorType: nvidia-tesla-t4
+              concurrency: 2
               preemptible: True
               sizeLimit: 4
             - type: gpu
@@ -47,6 +48,7 @@ resources:
               subnetwork: us-central1
               machineType: n1-highmem-4
               gpuWorkerAcceleratorType: nvidia-tesla-t4
+              concurrency: 2
               preemptible: True
               sizeLimit: 4
             - type: atomic
@@ -60,17 +62,28 @@ resources:
               subnetwork: us-east1
               machineType: e2-standard-32
               preemptible: False
+              workerConcurrencies:
+                - layer: 5
+                  concurrency: 4
+                - layer: 6
+                  concurrency: 2
+                - layer: 7
+                  concurrency: 1
+                - layer: 8
+                  concurrency: 1
               sizeLimit: 1
             - type: igneous
               zone: us-east1-c
               subnetwork: us-east1
               machineType: e2-standard-32
               preemptible: True
+              concurrency: 32
               sizeLimit: 50
             - type: custom-cpu
               zone: us-east1-c
               subnetwork: us-east1
               machineType: e2-standard-32
+              concurrency: 32
               preemptible: True
               sizeLimit: 50
             - type: custom-gpu
@@ -79,6 +92,7 @@ resources:
               machineType: n1-highmem-8
               gpuWorkerAcceleratorType: nvidia-tesla-t4
               workerImage: ranlu/air-tasks:airflow2
+              concurrency: 2
               preemptible: True
               sizeLimit: 4
             - type: synaptor-cpu

@@ -5,6 +5,14 @@ from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_GPU_MO
 GPU_TYPES = ['gpu', 'custom-gpu', 'synaptor-gpu']
 SYNAPTOR_TYPES = ['synaptor-cpu', 'synaptor-gpu', 'synaptor-seggraph']
 
+def checkConsecutiveWorkers(concurrencies):
+    l = [d['layer'] for d in sorted(concurrencies, key=lambda x: x['layer'])]
+    if l == list(range(l[0], l[-1]+1)):
+        return True
+    else:
+        missing = set(range(l[0], l[-1]+1)) - set(l)
+        raise ValueError(f"missing worker for layer {','.join(str(x) for x in missing)}")
+
 
 def GenerateEnvironVar(context, env_variables):
     export_variables = "\n".join([f'''export {e}={env_variables[e]}''' for e in env_variables])
@@ -59,19 +67,20 @@ def GenerateWorkers(context, hostname_manager, worker):
     docker_image = worker.get('workerImage', context.properties['seuronImage'])
 
     if worker['type'] == 'gpu':
-        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=worker['concurrency'])
     elif worker['type'] == 'atomic':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     elif worker['type'] == 'composite':
         atomic_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue='atomic', concurrency=1)
-        workers = [(5, 4), (6, 2), (7, 1), (8, 1)]
-        cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(queue), concurrency=concurrency) for queue, concurrency in workers])
+        concurrencies = worker['workerConcurrencies']
+        if checkConsecutiveWorkers(concurrencies):
+            cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(c['layer']), concurrency=c['concurrency']) for c in concurrencies])
     elif worker['type'] == 'igneous':
-        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "python custom/task_execution.py --queue igneous", 'jobs': 32}
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "python custom/task_execution.py --queue igneous", 'jobs': worker["concurrency"]}
     elif worker['type'] == 'custom-cpu':
-        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': 32}
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_cpu.sh", 'jobs': worker["concurrency"]}
     elif worker['type'] == 'custom-gpu':
-        cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': 2}
+        cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + PARALLEL_CMD % {'cmd': "custom/worker_gpu.sh", 'jobs': worker["concurrency"]}
     elif worker['type'] in SYNAPTOR_TYPES:
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     else:
