@@ -35,8 +35,6 @@ def get_clusters(deployment):
 deployment = os.environ["DEPLOYMENT"]
 zone = os.environ["ZONE"]
 
-instance_groups = get_clusters(deployment)
-
 target_sizes = {
     'gpu': 0,
     'atomic': 0,
@@ -57,7 +55,7 @@ db_utils.merge_conn(
 db_utils.merge_conn(
         models.Connection(
             conn_id='InstanceGroups', conn_type='http',
-            host=deployment, login=zone, extra=json.dumps(instance_groups, indent=4)))
+            host=deployment, login=zone, extra=json.dumps(get_clusters(deployment), indent=4)))
 db_utils.merge_conn(
         models.Connection(
             conn_id='Slack', conn_type='http',
