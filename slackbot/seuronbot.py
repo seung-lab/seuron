@@ -106,8 +106,8 @@ class SeuronBot:
             return True
 
     def process_message(self, client: RTMClient, event: dict):
-        print(json.dumps(event, indent=4))
         if self.filter_msg(event):
+            print(json.dumps(event, indent=4))
             handled = False
             for listener in self.message_listeners:
                 handled |= listener["command"](event)
