@@ -81,7 +81,7 @@ def cluster_control():
                     continue
                 else:
                     if num_tasks < target_sizes[key]:
-                        target_sizes[key] = num_tasks
+                        target_sizes[key] = max(num_tasks, 1)
 
                 if total_target_size == 0 and num_tasks != 0:
                     gapi.resize_instance_group(project_id, cluster_info[key], 1)
