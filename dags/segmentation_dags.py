@@ -688,12 +688,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         wait["pp"] >> evaluation_task
 
 
-    if min(high_mip, top_mip) - batch_mip > 2:
-        for stage in ["ws", "agg", "cs"]:
-            dsize = len(generate_chunks[stage][batch_mip+2])*2
-            scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize, "cluster")
-            scaling_ops[stage]["extra_down"].set_upstream(slack_ops[stage][batch_mip+1])
-
     if top_mip >= high_mip:
         for stage in ["ws", "agg", "cs"]:
             scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0, "cluster")
