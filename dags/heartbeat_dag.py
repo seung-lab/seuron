@@ -97,6 +97,8 @@ def delete_dead_instances():
 
         for ig in cluster_info[key]:
             instances = gapi.list_managed_instances(project_id, ig)
+            if not instances:
+                continue
 
             dead_instances = []
             msg = ["The follow instances are deleted due to heartbeat timeout:"]
@@ -110,6 +112,9 @@ def delete_dead_instances():
                     if delta > 300:
                         msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
                         dead_instances.append(instance_url)
+
+            if len(instances) == len(dead_instances):
+                dead_instances = dead_instances[:-1]
 
             if dead_instances:
                 gapi.delete_instances(project_id, ig, dead_instances)
