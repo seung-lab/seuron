@@ -632,7 +632,10 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     if cluster1_size >= 100:
         reset_cluster_after_ws = reset_cluster_op(dag['ws'], "ws", CLUSTER_1_CONN_ID, 20, "cluster")
-        slack_ops['ws']['remap'] >> reset_cluster_after_ws
+    else:
+        reset_cluster_after_ws = scale_up_cluster_op(dag['ws'], "reset_cluster_target", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
+
+    slack_ops['ws']['remap'] >> reset_cluster_after_ws
 
 
     scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
