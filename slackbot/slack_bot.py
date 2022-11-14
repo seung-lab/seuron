@@ -27,6 +27,7 @@ import igneous_tasks_commands
 import custom_tasks_commands
 import synaptor_commands
 import pipeline_commands
+import heartbeat_commands
 
 
 def update_ip_address():

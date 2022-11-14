@@ -4,7 +4,7 @@ import functools
 import concurrent.futures
 
 from airflow import settings
-from airflow.models import DagBag, Variable, Connection
+from airflow.models import DagBag, DagModel, Variable, Connection
 from airflow.models.dagrun import DagRun, DagRunType
 from airflow.api.common.mark_tasks import set_dag_run_state_to_success
 from airflow.api.common.trigger_dag import trigger_dag
@@ -132,3 +132,13 @@ def __latest_dagrun_state(dag_id):
 
 def latest_dagrun_state(dag_id):
     return run_in_executor(__latest_dagrun_state, dag_id)
+
+def set_is_paused(dag_id, is_paused):
+    dag = DagModel.get_dagmodel(dag_id)
+
+    if not dag:
+        return False
+
+    dag.set_is_paused(is_paused=is_paused)
+
+    return True
