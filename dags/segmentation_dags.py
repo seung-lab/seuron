@@ -632,7 +632,10 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     if cluster1_size >= 100:
         reset_cluster_after_ws = reset_cluster_op(dag['ws'], "ws", CLUSTER_1_CONN_ID, 20, "cluster")
-        slack_ops['ws']['remap'] >> reset_cluster_after_ws
+    else:
+        reset_cluster_after_ws = scale_up_cluster_op(dag['ws'], "reset_cluster_target", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
+
+    slack_ops['ws']['remap'] >> reset_cluster_after_ws
 
 
     scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
@@ -684,12 +687,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         )
         wait["pp"] >> evaluation_task
 
-
-    if min(high_mip, top_mip) - batch_mip > 2:
-        for stage in ["ws", "agg", "cs"]:
-            dsize = len(generate_chunks[stage][batch_mip+2])*2
-            scaling_ops[stage]["extra_down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, dsize, "cluster")
-            scaling_ops[stage]["extra_down"].set_upstream(slack_ops[stage][batch_mip+1])
 
     if top_mip >= high_mip:
         for stage in ["ws", "agg", "cs"]:

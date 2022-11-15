@@ -78,13 +78,14 @@ def cluster_control():
                     slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
                     continue
                 if num_tasks < total_size:
-                    if 10 < num_tasks < total_size//10:
-                        target_sizes[key] = total_size//10
-                        gapi.resize_instance_group(project_id, cluster_info[key], target_sizes[key])
                     continue
                 else:
                     if num_tasks < target_sizes[key]:
-                        target_sizes[key] = num_tasks
+                        target_sizes[key] = max(num_tasks, 1)
+
+                if total_target_size == 0 and num_tasks != 0:
+                    gapi.resize_instance_group(project_id, cluster_info[key], 1)
+                    continue
 
                 if (total_target_size - total_size) > 0.1 * total_target_size:
                     slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, total_size, total_target_size))
@@ -114,7 +115,7 @@ latest = LatestOnlyOperator(
     task_id='latest_only',
     priority_weight=100000,
     weight_rule=WeightRule.ABSOLUTE,
-    queue='manager',
+    queue='cluster',
     dag=dag)
 
 queue_sizes_task = PythonOperator(

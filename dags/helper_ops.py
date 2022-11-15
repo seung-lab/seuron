@@ -74,6 +74,8 @@ def setup_redis(varname, dbname):
         param["REDIS_SERVER"] = os.environ['REDIS_SERVER']
         param["REDIS_DB"] = redis_databases[dbname]
         slack_message(f'*Use redis database {param["REDIS_DB"]} to track the progress of the run*')
+        r = redis.Redis(host=param["REDIS_SERVER"], db=redis_databases["SEURON"])
+        r.flushdb()
         if param.get("RESET_REDIS_DB", True):
             r = redis.Redis(host=param["REDIS_SERVER"], db=param["REDIS_DB"])
             r.flushdb()

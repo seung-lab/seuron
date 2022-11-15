@@ -30,7 +30,7 @@ default_args = {
     'retries': 0,
 }
 
-SCHEDULE_INTERVAL = '*/20 * * * *'
+SCHEDULE_INTERVAL = '2-59/5 * * * *'
 
 dag = DAG(
     dag_id=DAG_ID,
@@ -73,17 +73,72 @@ def get_num_task_instances(session):
 *{}* tasks running, *{}* tasks queued, *{}* tasks up for retry'''.format(running, queued, up_for_retry)
     slack_message(message, notification=True)
 
+def delete_dead_instances():
+    import os
+    import json
+    import redis
+    import humanize
+    from datetime import datetime
+    from airflow.models import Variable
+    from airflow.hooks.base_hook import BaseHook
+    import google_api_helper as gapi
+
+    project_id = gapi.get_project_id()
+    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+
+    redis_host = os.environ['REDIS_SERVER']
+    timestamp = datetime.now().timestamp()
+    r = redis.Redis(redis_host)
+
+    for key in cluster_info:
+        if target_sizes.get(key, 0) == 0:
+            continue
+
+        for ig in cluster_info[key]:
+            instances = gapi.list_managed_instances(project_id, ig)
+            if not instances:
+                continue
+
+            dead_instances = []
+            msg = ["The follow instances are deleted due to heartbeat timeout:"]
+            for instance_url in instances:
+                instance = instance_url.split("/")[-1]
+                ts = r.get(instance)
+                if not ts:
+                    r.set(instance, timestamp)
+                else:
+                    delta = timestamp - float(ts)
+                    if delta > 300:
+                        msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
+                        dead_instances.append(instance_url)
+
+            if len(instances) == len(dead_instances):
+                dead_instances = dead_instances[:-1]
+
+            if dead_instances:
+                gapi.delete_instances(project_id, ig, dead_instances)
+                slack_message("\n".join(msg), notification=True)
+
+
 latest = LatestOnlyOperator(
     task_id='latest_only',
     priority_weight=1000,
-    queue='manager',
+    queue='cluster',
     dag=dag)
 
 queue_sizes_task = PythonOperator(
     task_id="check_task_status",
     python_callable=get_num_task_instances,
     priority_weight=1000,
-    queue="manager",
+    queue="cluster",
     dag=dag)
 
-latest.set_downstream(queue_sizes_task)
+delete_dead_instances_task = PythonOperator(
+    task_id="delete_dead_instances",
+    python_callable=delete_dead_instances,
+    priority_weight=1000,
+    queue="cluster",
+    dag=dag)
+
+latest >> queue_sizes_task >> delete_dead_instances_task
