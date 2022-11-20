@@ -100,7 +100,7 @@ def delete_dead_instances():
             if not instances:
                 continue
 
-            dead_instances = []
+            idle_instances = []
             msg = ["The follow instances are deleted due to heartbeat timeout:"]
             for instance_url in instances:
                 instance = instance_url.split("/")[-1]
@@ -111,13 +111,13 @@ def delete_dead_instances():
                     delta = timestamp - float(ts)
                     if delta > 300:
                         msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
-                        dead_instances.append(instance_url)
+                        idle_instances.append(instance_url)
 
-            if len(instances) == len(dead_instances):
-                dead_instances = dead_instances[:-1]
+            if len(instances) == len(idle_instances):
+                idle_instances = idle_instances[:-1]
 
-            if dead_instances:
-                gapi.delete_instances(project_id, ig, dead_instances)
+            if idle_instances:
+                gapi.delete_instances(project_id, ig, idle_instances)
                 slack_message("\n".join(msg), notification=True)
 
 
