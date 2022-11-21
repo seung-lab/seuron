@@ -101,6 +101,7 @@ def delete_dead_instances():
                 continue
 
             idle_instances = []
+            dead_instances = []
             msg = ["The follow instances are deleted due to heartbeat timeout:"]
             for instance_url in instances:
                 instance = instance_url.split("/")[-1]
@@ -109,11 +110,14 @@ def delete_dead_instances():
                     r.set(instance, timestamp)
                 else:
                     delta = timestamp - float(ts)
-                    if delta > 300:
+                    if delta > 3600:
+                        msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
+                        dead_instances.append(instance_url)
+                    elif delta > 300:
                         msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
                         idle_instances.append(instance_url)
 
-            if len(instances) == len(idle_instances):
+            if (len(instances) == (len(idle_instances) + len(dead_instances))) and len(idle_instances) > 0:
                 idle_instances = idle_instances[:-1]
 
             if idle_instances:
