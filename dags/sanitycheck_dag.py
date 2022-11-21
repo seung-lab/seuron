@@ -232,9 +232,9 @@ def check_cv_data():
 
 #        else:
     if "CHUNK_SIZE" not in param:
-        param["CHUNK_SIZE"] = [512,512,64]
+        param["CHUNK_SIZE"] = [512,512,256]
         Variable.set("param", param, serialize_json=True)
-        slack_message(":exclamation:*Process dataset in 512x512x64 chunks by default*")
+        slack_message(":exclamation:*Process dataset in 512x512x256 chunks by default*")
 
     cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,64])
     if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
