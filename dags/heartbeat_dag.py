@@ -46,7 +46,7 @@ dag = DAG(
 def get_num_task_instances(session):
     query = (session
         .query(DagRun)
-        .filter(DagRun.dag_id == "segmentation")
+        .filter(DagRun.dag_id.in_(("watershed", "agglomeration", "chunkflow_worker")))
         .filter(DagRun.state == State.RUNNING))
     if query.count() == 0:
         return
