@@ -127,6 +127,10 @@ def GenerateWorkers(context, hostname_manager, worker):
                 'acceleratorType': worker['gpuWorkerAcceleratorType'],
         }]
 
+    if worker['type'] == "atomic":
+        instance_template['advancedMachineFeatures'] = {
+            'threadsPerCore': 1
+        }
 
     template_name = f"{context.env['deployment']}-template-{worker['type']}-worker-{worker['zone']}"
     template_resource = {
