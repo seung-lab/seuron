@@ -29,7 +29,7 @@ def list_managed_instances(project_id, instance_group):
     page_token = None
     instances = []
     while True:
-        request = service.instanceGroupManagers().listManagedInstances(project=project_id, zone=instance_group["zone"], instanceGroupManager=instance_group["name"], pageToken=page_token)
+        request = service.instanceGroupManagers().listManagedInstances(project=project_id, zone=instance_group["zone"], instanceGroupManager=instance_group["name"], pageToken=page_token, maxResults=20)
         ret = request.execute()
         if not ret:
             return instances
