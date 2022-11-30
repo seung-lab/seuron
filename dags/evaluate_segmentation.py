@@ -1,25 +1,28 @@
-def read_chunk(f, s_i, t_j, p_ji):
+def read_chunks(f, s_i, t_j, p_ji):
     import struct
-    try:
-        count, = struct.unpack('q', f.read(8))
-    except:
-        return False
+    unpack_count = struct.Struct('q').unpack
+    unpack_seg = struct.Struct('qq').unpack
+    unpack_seg_pair = struct.Struct('qqq').unpack
+    while True:
+        count_data = f.read(8)
+        if count_data:
+            count, = unpack_count(count_data)
+        else:
+            return
 
-    for i in range(count):
-        seg, vx = struct.unpack('qq', f.read(16))
-        s_i[int(seg)] += vx
+        for i in range(count):
+            seg, vx = unpack_seg(f.read(16))
+            s_i[int(seg)] += vx
 
-    count, = struct.unpack('q', f.read(8))
-    for i in range(count):
-        seg, vx = struct.unpack('qq', f.read(16))
-        t_j[int(seg)] += vx
+        count, = unpack_count(f.read(8))
+        for i in range(count):
+            seg, vx = unpack_seg(f.read(16))
+            t_j[int(seg)] += vx
 
-    count, = struct.unpack('q', f.read(8))
-    for i in range(count):
-        s1, s2, vx = struct.unpack('qqq', f.read(24))
-        p_ji[int(s1)][int(s2)] += vx
-
-    return True
+        count, = unpack_count(f.read(8))
+        for i in range(count):
+            s1, s2, vx = unpack_seg_pair(f.read(24))
+            p_ji[int(s1)][int(s2)] += vx
 
 
 def evaluate_rand(s_i, t_j, p_ji):

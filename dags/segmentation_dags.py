@@ -253,7 +253,7 @@ def compare_segmentation(param, **kwargs):
     from io import BytesIO
     import os
     from collections import defaultdict
-    from evaluate_segmentation import read_chunk, evaluate_rand, evaluate_voi, find_large_diff
+    from evaluate_segmentation import read_chunks, evaluate_rand, evaluate_voi, find_large_diff
     from igneous_and_cloudvolume import upload_json
     from airflow import configuration as conf
     segs = classify_segmentats(param)
@@ -266,9 +266,7 @@ def compare_segmentation(param, **kwargs):
     ng_host = param.get("NG_HOST", "neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
     payload['layers']['size']['visible'] = False
-    while True:
-        if not read_chunk(f, s_i, t_j, p_ij):
-            break
+    read_chunks(f, s_i, t_j, p_ij)
     rand_split, rand_merge = evaluate_rand(s_i, t_j, p_ij)
     voi_split, voi_merge = evaluate_voi(s_i, t_j, p_ij)
     seg_pairs = find_large_diff(s_i, t_j, p_ij, segs)
