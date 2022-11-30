@@ -13,7 +13,7 @@ from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, compos
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op, collect_metrics_op
 
 from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
-from igneous_and_cloudvolume import create_info, downsample_and_mesh, get_files_job, get_atomic_files_job, dataset_resolution
+from igneous_and_cloudvolume import create_info
 from igneous_ops import create_igneous_ops
 import numpy as np
 import json
@@ -21,6 +21,7 @@ import urllib
 from collections import OrderedDict
 
 def generate_ng_payload(param):
+    from igneous_and_cloudvolume import dataset_resolution
     ng_resolution = dataset_resolution(param["SEG_PATH"])
     seg_resolution = ng_resolution
     layers = OrderedDict()
@@ -222,6 +223,7 @@ def generate_batches(param):
 
 
 def get_atomic_files(param, prefix):
+    from igneous_and_cloudvolume import get_atomic_files_job
     v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
 
     content = get_atomic_files_job(v, param, prefix)
