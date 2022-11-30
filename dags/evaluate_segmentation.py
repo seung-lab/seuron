@@ -23,19 +23,9 @@ def read_chunk(f, s_i, t_j, p_ji):
 
 
 def evaluate_rand(s_i, t_j, p_ji):
-    sum_p_ji_square = 0
-    for j in p_ji:
-        for i in p_ji[j]:
-            sum_p_ji_square += p_ji[j][i]*p_ji[j][i]
-
-    sum_s_i_square = 0
-    for i in s_i:
-        sum_s_i_square += s_i[i]*s_i[i]
-
-    sum_t_j_square = 0
-    for j in t_j:
-        sum_t_j_square += t_j[j]*t_j[j]
-
+    sum_p_ji_square = sum(v * v for j in p_ji for v in p_ji[j].values())
+    sum_s_i_square = sum(v * v for v in s_i.values())
+    sum_t_j_square = sum(v * v for v in t_j.values())
     rand_split = sum_p_ji_square/sum_t_j_square
     rand_merge = sum_p_ji_square/sum_s_i_square
 
@@ -44,23 +34,11 @@ def evaluate_rand(s_i, t_j, p_ji):
 
 def evaluate_voi(s_i, t_j, p_ji):
     from math import log
-    total = 0
-    for i in s_i:
-        total += s_i[i]
 
-    H_st = 0
-    for j in p_ji:
-        for i in p_ji[j]:
-            H_st -= p_ji[j][i]/total * log(p_ji[j][i]/total)
-
-    H_s = 0
-    for i in s_i:
-        H_s -= s_i[i]/total * log(s_i[i]/total)
-
-    H_t = 0
-    for j in t_j:
-        H_t -= t_j[j]/total * log(t_j[j]/total)
-
+    total = sum(s_i.values())
+    H_st = - sum(v/total * log(v/total) for j in p_ji for v in p_ji[j].values())
+    H_s = - sum(v/total * log(v/total) for v in s_i.values())
+    H_t = - sum(v/total * log(v/total) for v in t_j.values())
     voi_split = H_st - H_t
     voi_merge = H_st - H_s
 
