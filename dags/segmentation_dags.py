@@ -222,16 +222,9 @@ def generate_batches(param):
 
 
 def get_atomic_files(param, prefix):
-    from multiprocessing import current_process
-    from joblib import Parallel, delayed
+    v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
 
-    current_process()._config['daemon'] = False
-    high_mip_chunks, batch_chunks = generate_batches(param)
-    contents = Parallel(n_jobs=-2)(delayed(get_atomic_files_job)(sv, param, prefix) for sv in batch_chunks)
-
-    content = b''
-    for c in contents:
-        content+=c
+    content = get_atomic_files_job(v, param, prefix)
 
     return content
 
@@ -370,18 +363,9 @@ output location: `{url}`
 
 def get_files(param, prefix):
     from igneous_and_cloudvolume import get_files_job, put_file_job
-    from multiprocessing import current_process
-    from joblib import Parallel, delayed
+    v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
 
-    current_process()._config['daemon'] = False
-    high_mip_chunks, batch_chunks = generate_batches(param)
-    print("get {} high mip files".format(len(high_mip_chunks)))
-    content = get_files_job(high_mip_chunks, param, prefix)
-    print("get lower mip files")
-    contents = Parallel(n_jobs=-2)(delayed(get_files_job)(sv, param, prefix) for sv in batch_chunks)
-
-    for c in contents:
-        content+=c
+    content = get_files_job(v, param, prefix)
 
     put_file_job(content, param, prefix)
 

@@ -372,27 +372,25 @@ def upload_json(path, filename, content):
 
 def get_atomic_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
-    content = b''
-    cf = CloudFiles(param["SCRATCH_PATH"])
-    for c in v:
-        if c.mip_level() != 0:
-            continue
-        tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-        content += cf[f'{prefix}_{tag}.data']
+    def filename_sequence():
+        for c in v:
+            if c.mip_level() != 0:
+                continue
+            tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
+            yield f'{prefix}_{tag}.data'
 
-    return content
+    cf = CloudFiles(param["SCRATCH_PATH"])
+
+    data = cf.get(filename_sequence())
+    return b"".join(x["content"] for x in data)
 
 
 def get_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
-#    try:
-    content = b''
     cf = CloudFiles(param["SCRATCH_PATH"])
-    for c in v:
-        tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
-        content += cf[f'{prefix}_{tag}.data']
+    data = cf.get((prefix+"_"+str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])+".data" for c in v))
+    return b"".join(x["content"] for x in data)
 
-    return content
 
 def put_file_job(content, param, prefix):
     from cloudfiles import CloudFiles
