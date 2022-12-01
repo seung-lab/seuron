@@ -193,35 +193,6 @@ def process_composite_tasks(c, cm, top_mip, params):
                 generate_chunks[stage][c.mip_level()][tag].set_downstream(generate_chunks[stage][c.mip_level()+1][parent_tag])
 
 
-def generate_batches(param):
-    v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
-    top_mip = v.top_mip_level()
-    batch_mip = 3
-    batch_chunks = []
-    high_mip_chunks = []
-    current_mip = top_mip
-    mip_tasks = 0
-    if top_mip > batch_mip:
-        for c in v:
-            if c.mip_level() > batch_mip:
-                if current_mip != c.mip_level():
-                    if current_mip > batch_mip and mip_tasks > 50:
-                        batch_mip = c.mip_level()
-                    current_mip = c.mip_level()
-                    mip_tasks = 1
-                else:
-                    mip_tasks += 1
-                high_mip_chunks.append(c)
-            elif c.mip_level() < batch_mip:
-                break
-            elif c.mip_level() == batch_mip:
-                batch_chunks.append(ChunkIterator(param["BBOX"], param["CHUNK_SIZE"], start_from = [batch_mip]+c.coordinate()))
-    else:
-        batch_chunks=[v]
-
-    return high_mip_chunks, batch_chunks
-
-
 def get_atomic_files(param, prefix):
     from igneous_and_cloudvolume import get_atomic_files_job
     v = ChunkIterator(param["BBOX"], param["CHUNK_SIZE"])
