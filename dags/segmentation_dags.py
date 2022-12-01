@@ -201,7 +201,7 @@ def get_atomic_files(param, prefix):
 
     return content
 
-def classify_segmentats(param):
+def classify_segmentations(param):
     prefix = "agg/info/semantic_labels"
     content = get_files(param, prefix)
     sem_type = [('s', np.uint64), ('dendrite', np.uint64), ('axon', np.uint64), ('glia', np.uint64)]
@@ -222,7 +222,7 @@ def compare_segmentation(param, **kwargs):
     from evaluate_segmentation import read_chunks, evaluate_rand, evaluate_voi, find_large_diff
     from igneous_and_cloudvolume import upload_json
     from airflow import configuration as conf
-    segs = classify_segmentats(param)
+    segs = classify_segmentations(param)
     prefix = "agg/evaluation/evaluation"
     content = get_atomic_files(param, prefix)
     f = BytesIO(content)
