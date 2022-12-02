@@ -91,7 +91,7 @@ def generate_ng_payload(param):
     payload = OrderedDict([("layers", layers),("navigation", navigation),("showSlices", False),("layout", "xy-3d")])
     return payload
 
-def generate_link(param, broadcast, **kwargs):
+def generate_link(param, broadcast):
     ng_host = param.get("NG_HOST", "neuromancer-seung-import.appspot.com")
     payload = generate_ng_payload(param)
 
@@ -215,7 +215,7 @@ def classify_segmentations(param):
 
     return segs
 
-def compare_segmentation(param, **kwargs):
+def compare_segmentation(param):
     from io import BytesIO
     import os
     from collections import defaultdict
@@ -254,7 +254,7 @@ def compare_segmentation(param, **kwargs):
     upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
 
 
-def evaluate_results(param, **kwargs):
+def evaluate_results(param):
     if "GT_PATH" not in param:
         return
 
@@ -369,7 +369,7 @@ def humanize_volume(volume_in_nm, precision=0):
     return f"{volume_in_nm / factor:,.{precision}f} {suffix}"
 
 
-def process_infos(param, **kwargs):
+def process_infos(param):
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     prefix = "agg/info/seg_size"
     content = get_files(param, prefix)
