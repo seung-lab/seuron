@@ -18,7 +18,7 @@ ENV AIRFLOW_USER ${AIRFLOW_USER}
 ARG AIRFLOW_VERSION=2.4.3
 ENV AIRFLOW_VERSION ${AIRFLOW_VERSION}
 ARG MINICONDA_PATH=/opt/conda
-ARG MINICONDA_URL=https://repo.anaconda.com/miniconda/Miniconda3-py39_4.12.0-Linux-x86_64.sh
+ARG MINICONDA_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 ENV PATH ${MINICONDA_PATH}/bin:${PATH}
 
 WORKDIR ${AIRFLOW_HOME}
@@ -28,7 +28,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && apt-get -y update \
     && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends ca-certificates curl lsb-release parallel sudo tzdata $buildDeps \
     && mkdir -p /opt \
-    && curl -o ~/miniconda.sh ${MINICONDA_URL} \
+    && curl -L -o ~/miniconda.sh ${MINICONDA_URL} \
     && chmod +x ~/miniconda.sh \
     && ~/miniconda.sh -b -p ${MINICONDA_PATH} \
     && rm ~/miniconda.sh \
