@@ -46,7 +46,7 @@ def drain_messages(broker_url, queue):
                     sleep(30)
                     continue
                 elif status["messages"] > 0:
-                    print(f'still {status["messages"]} messages left in the queue, sleep for 30s')
+                    print(f'still {status["messages"]} messages left in {queue}, sleep for 30s')
                     sleep(30)
                     continue
                 else:
