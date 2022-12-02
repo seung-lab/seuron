@@ -3,7 +3,7 @@ from igneous import EmptyVolumeException
 
 import igneous.tasks
 
-task_timeout = 600
+task_timeout = 300
 
 def process_task(msg):
     task = totask(msg)
