@@ -345,25 +345,50 @@ def get_files(param, prefix):
     return content
 
 
+def voxel_size(param):
+    resolution = param["AFF_RESOLUTION"]
+    return resolution[0] * resolution[1] * resolution[2]
+
+
+def humanize_volume(volume_in_nm, precision=0):
+    abbrevs = (
+        (1e21, 'cm^3'),
+        (1e18, 'mm^3'),
+        (1e9, 'μm^3'),
+        (1, 'nm^3')
+    )
+
+    factor = 1
+    suffix = "nm^3"
+    for factor, suffix in abbrevs:
+        if volume_in_nm >= factor:
+            break
+    if factor == 1:
+        precision = 0
+
+    return f"{volume_in_nm / factor:,.{precision}f} {suffix}"
+
+
 def process_infos(param, **kwargs):
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     prefix = "agg/info/seg_size"
     content = get_files(param, prefix)
     data = np.frombuffer(content, dtype=dt_count)
+    vol_data = np.copy(data['count']) * voxel_size(param)
     title = "Distribution of the segment sizes"
-    xlabel = "Number of voxels in the segments"
+    xlabel = f"Size of segments (nm^3)"
     ylabel = "Number of segments"
-    plot_histogram(data['count'], title, xlabel, ylabel, '/tmp/hist.png')
-    order = np.argsort(data['count'])[::-1]
+    plot_histogram(vol_data, title, xlabel, ylabel, '/tmp/hist.png')
+    order = np.argsort(vol_data)[::-1]
     ntops = min(20,len(data))
     msg = '''*Agglomeration Finished*
-*{nseg}* segments (*{nsv}* voxels)
+*{nseg}* segments (*{nsv}*)
 
 Largest segments:
 {top20list}'''.format(
     nseg=len(data),
-    nsv=np.sum(data['count']),
-    top20list="\n".join("id: {} ({})".format(data[order[i]][0], data[order[i]][1]) for i in range(ntops))
+    nsv=humanize_volume(np.sum(vol_data)),
+    top20list="\n".join(f"id: {data[order[i]][0]} ({humanize_volume(vol_data[order[i]])})" for i in range(ntops))
     )
     slack_message(msg, attachment='/tmp/hist.png')
     Variable.set("topsegs", " ".join(str(int(data[order[i]][0])) for i in range(ntops)))
