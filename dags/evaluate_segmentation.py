@@ -47,11 +47,9 @@ def evaluate_voi(s_i, t_j, p_ji):
 
     return voi_split, voi_merge
 
-def find_large_diff(s_i, t_j, p_ji, valid_segs):
-    flatten_p_ji = []
-    for j in p_ji:
-        for i in p_ji[j]:
-            flatten_p_ji.append((j,i,p_ji[j][i]))
+
+def find_large_diff(s_i, t_j, p_ji, valid_segs, size_threshold):
+    flatten_p_ji = ((j, i, p_ji[j][i]) for j in p_ji for i in p_ji[j] if s_i[i] > size_threshold and t_j[j] > size_threshold)
 
     sorted_p = sorted(flatten_p_ji, key=lambda kv: kv[2], reverse=True)
 
