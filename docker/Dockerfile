@@ -32,6 +32,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && chmod +x ~/miniconda.sh \
     && ~/miniconda.sh -b -p ${MINICONDA_PATH} \
     && rm ~/miniconda.sh \
+    && conda update conda \
     && conda install -y nomkl \
     && conda install -y -c conda-forge numpy=1.22.4 scipy cryptography=36.0.2 redis-py boto3=1.24.94 botocore=1.27.94 boto=2.49.0 celery=5.2.7 psycopg2=2.9.3 networkx gevent pillow matplotlib-base kombu=5.2.4 pysimdjson zstandard \
     && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
