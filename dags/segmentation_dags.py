@@ -120,7 +120,7 @@ dag["pp"] = DAG("postprocess", default_args=default_args, schedule_interval=None
 dag_ws = dag["ws"]
 dag_agg = dag["agg"]
 dag_cs = dag["cs"]
-dag_pp= dag["pp"]
+dag_pp = dag["pp"]
 
 param = Variable.get("param", deserialize_json=True)
 image = param["WORKER_IMAGE"]
