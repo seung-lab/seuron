@@ -72,41 +72,42 @@ def cluster_control():
                         num_tasks = sum(tasks)
                     else:
                         num_tasks = check_queue(key)
-                    total_size = gapi.get_cluster_size(project_id, cluster_info[key])
-                    total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
+                    current_size = gapi.get_cluster_size(project_id, cluster_info[key])
+                    requested_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
                 except:
                     slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
                     continue
-                if num_tasks < total_size:
+
+                if num_tasks < current_size:
                     continue
                 else:
                     if num_tasks < target_sizes[key]:
                         target_sizes[key] = max(num_tasks, 1)
 
-                if total_target_size == 0 and num_tasks != 0:
+                if requested_size == 0 and num_tasks != 0:
                     gapi.resize_instance_group(project_id, cluster_info[key], 1)
                     continue
 
-                if (total_target_size - total_size) > 0.1 * total_target_size:
-                    slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, total_size, total_target_size))
-                    if (total_target_size > 0):
-                        gapi.resize_instance_group(project_id, cluster_info[key], total_target_size)
+                if (requested_size - current_size) > 0.1 * requested_size:
+                    slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, current_size, requested_size))
+                    if (requested_size > 0):
+                        gapi.resize_instance_group(project_id, cluster_info[key], requested_size)
                 else:
-                    if total_target_size < target_sizes[key] and total_target_size != 0:
+                    if requested_size < target_sizes[key] and requested_size != 0:
                         max_size = 0
                         for ig in cluster_info[key]:
                             max_size += ig['max_size']
-                        new_target_size = min([target_sizes[key], total_target_size*2, max_size])
-                        if total_target_size != new_target_size:
-                            gapi.resize_instance_group(project_id, cluster_info[key], new_target_size)
-                            slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, total_target_size, new_target_size))
+                        updated_size = min([target_sizes[key], requested_size*2, max_size])
+                        if requested_size != updated_size:
+                            gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
+                            slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
                     else:
-                        if (total_target_size != 0):
-                            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, total_size, total_target_size), notification=True)
+                        if (requested_size != 0):
+                            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, current_size, requested_size), notification=True)
 
             else:
-                total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
-                if total_target_size != 0:
+                requested_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
+                if requested_size != 0:
                     gapi.resize_instance_group(project_id, cluster_info[key], 0)
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
