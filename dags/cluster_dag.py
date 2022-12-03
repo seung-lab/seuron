@@ -99,26 +99,23 @@ def cluster_control():
         if num_tasks < target_sizes[key]:
             target_sizes[key] = max(num_tasks, 1)
 
-        if requested_size == 0 and num_tasks != 0:
-            gapi.resize_instance_group(project_id, cluster_info[key], 1)
+        if requested_size == 0:
+            if num_tasks != 0:
+                gapi.resize_instance_group(project_id, cluster_info[key], 1)
             continue
 
         if (requested_size - current_size) > 0.1 * requested_size:
             slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, current_size, requested_size))
-            if (requested_size > 0):
-                gapi.resize_instance_group(project_id, cluster_info[key], requested_size)
+            continue
+
+        if requested_size < target_sizes[key]:
+            max_size = sum(ig['max_size'] for ig in cluster_info[key])
+            updated_size = min([target_sizes[key], requested_size*2, max_size])
+            if requested_size != updated_size:
+                gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
+                slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
         else:
-            if requested_size < target_sizes[key] and requested_size != 0:
-                max_size = 0
-                for ig in cluster_info[key]:
-                    max_size += ig['max_size']
-                updated_size = min([target_sizes[key], requested_size*2, max_size])
-                if requested_size != updated_size:
-                    gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
-                    slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
-            else:
-                if (requested_size != 0):
-                    slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, current_size, requested_size), notification=True)
+            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, current_size, requested_size), notification=True)
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
