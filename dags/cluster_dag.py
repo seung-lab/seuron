@@ -88,6 +88,9 @@ def cluster_control():
             slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
             continue
 
+        if num_tasks < target_sizes[key]:
+            target_sizes[key] = max(num_tasks, 1)
+
         if target_sizes[key] == 0:
             if requested_size != 0:
                 gapi.resize_instance_group(project_id, cluster_info[key], 0)
@@ -95,9 +98,6 @@ def cluster_control():
 
         if num_tasks < current_size:
             continue
-
-        if num_tasks < target_sizes[key]:
-            target_sizes[key] = max(num_tasks, 1)
 
         if requested_size == 0:
             if num_tasks != 0:
