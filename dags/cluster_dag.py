@@ -51,6 +51,17 @@ def check_queue(queue):
     queue_status = ret.json()
     return queue_status["messages"]
 
+
+def get_num_task(cluster):
+    if cluster == "composite":
+        min_layer, max_layer = get_composite_worker_limits()
+        tasks = [check_queue(f"{cluster}_{layer}") for layer in range(min_layer, max_layer+1)]
+        num_tasks = sum(tasks)
+    else:
+        num_tasks = check_queue(cluster)
+    return num_tasks
+
+
 def cluster_control():
     from dag_utils import get_composite_worker_limits
 
@@ -68,12 +79,7 @@ def cluster_control():
 
         print(f"processing cluster: {key}")
         try:
-            if key == "composite":
-                min_layer, max_layer = get_composite_worker_limits()
-                tasks = [check_queue(f"{key}_{layer}") for layer in range(min_layer, max_layer+1)]
-                num_tasks = sum(tasks)
-            else:
-                num_tasks = check_queue(key)
+            num_tasks = get_num_task(key)
             current_size = gapi.get_cluster_size(project_id, cluster_info[key])
             requested_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
         except:
