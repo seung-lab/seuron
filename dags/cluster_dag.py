@@ -64,9 +64,20 @@ def get_num_task(cluster):
     return num_tasks
 
 
-def cluster_control():
-    from dag_utils import get_composite_worker_limits
+def cluster_status(project_id, name, cluster):
+    current_size = gapi.get_cluster_size(project_id, cluster)
+    requested_size = gapi.get_cluster_target_size(project_id, cluster)
+    stable = True
+    slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
 
+    if (requested_size - current_size) > 0.1 * requested_size:
+        slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
+        stable = False
+
+    return stable, requested_size
+
+
+def cluster_control():
     try:
         project_id = gapi.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
@@ -82,8 +93,7 @@ def cluster_control():
         print(f"processing cluster: {key}")
         try:
             num_tasks = get_num_task(key)
-            current_size = gapi.get_cluster_size(project_id, cluster_info[key])
-            requested_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
+            stable, requested_size = cluster_status(project_id, key, cluster_info[key])
         except:
             slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
             continue
@@ -96,7 +106,7 @@ def cluster_control():
                 gapi.resize_instance_group(project_id, cluster_info[key], 0)
             continue
 
-        if num_tasks < current_size:
+        if num_tasks < requested_size:
             continue
 
         if requested_size == 0:
@@ -104,18 +114,12 @@ def cluster_control():
                 gapi.resize_instance_group(project_id, cluster_info[key], 1)
             continue
 
-        if (requested_size - current_size) > 0.1 * requested_size:
-            slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, current_size, requested_size))
-            continue
-
-        if requested_size < target_sizes[key]:
+        if stable and requested_size < target_sizes[key]:
             max_size = sum(ig['max_size'] for ig in cluster_info[key])
             updated_size = min([target_sizes[key], requested_size*2, max_size])
             if requested_size != updated_size:
                 gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
                 slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
-        else:
-            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, current_size, requested_size), notification=True)
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
