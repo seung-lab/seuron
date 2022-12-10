@@ -68,7 +68,8 @@ def cluster_status(project_id, name, cluster):
     current_size = gapi.get_cluster_size(project_id, cluster)
     requested_size = gapi.get_cluster_target_size(project_id, cluster)
     stable = True
-    slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
+    if requested_size > 0:
+        slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
 
     if (requested_size - current_size) > 0.1 * requested_size:
         slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
