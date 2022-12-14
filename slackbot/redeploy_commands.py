@@ -4,7 +4,7 @@ import json
 import slack_sdk as slack
 from airflow.hooks.base_hook import BaseHook
 from seuronbot import SeuronBot
-from bot_utils import replyto
+from bot_utils import replyto, fetch_slack_thread
 from bot_info import slack_token
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 import tenacity
@@ -49,9 +49,7 @@ def set_redeploy_flag(value):
             wait=tenacity.wait_random_exponential(multiplier=0.5, max=60.0),
 )
 def send_reset_message():
-    SLACK_CONN_ID = "Slack"
-    slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
-    slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
+    slack_workername, slack_extra = fetch_slack_thread()
 
     client = slack.WebClient(token=slack_token)
     slack_username = slack_extra['user']
