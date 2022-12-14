@@ -186,6 +186,14 @@ services:
             restart_policy:
                 condition: any
 
+    oom-detector:
+        image: ranlu/seuron-oom-canary:latest
+        command: python oom_monitor.py amqp://rabbitmq oom-queue
+        deploy:
+            restart_policy:
+                delay: 60s
+                condition: any
+
     proxy:
         image: nginx:1.23.0-alpine
         restart: always
