@@ -66,6 +66,8 @@ def GenerateWorkers(context, hostname_manager, worker):
 
     docker_image = worker.get('workerImage', context.properties['seuronImage'])
 
+    oom_canary_cmd = GenerateDockerCommand("ranlu/seuron-oom-canary:latest", docker_env) + ' ' + "python oom_monitor.py ${AIRFLOW__CELERY__BROKER_URL} oom-queue"
+
     if worker['type'] == 'gpu':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=worker['concurrency'])
     elif worker['type'] == 'atomic':
@@ -86,7 +88,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     else:
         raise ValueError(f"unknown worker type: {worker['type']}")
 
-    startup_script = GenerateWorkerStartupScript(context, env_variables, cmd, (worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']))
+    startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, (worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']))
 
     instance_template = {
         'zone': worker['zone'],
