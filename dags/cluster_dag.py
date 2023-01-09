@@ -46,14 +46,39 @@ def check_queue(queue):
     import requests
     ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
     if not ret.ok:
-        slack_message(f"Cannot get info for queue {queue}, assume 0 tasks", notification=True)
+        print(f"Cannot get info for queue {queue}, assume 0 tasks")
         return 0
     queue_status = ret.json()
     return queue_status["messages"]
 
-def cluster_control():
+
+def get_num_task(cluster):
     from dag_utils import get_composite_worker_limits
 
+    if cluster == "composite":
+        min_layer, max_layer = get_composite_worker_limits()
+        tasks = [check_queue(f"{cluster}_{layer}") for layer in range(min_layer, max_layer+1)]
+        num_tasks = sum(tasks)
+    else:
+        num_tasks = check_queue(cluster)
+    return num_tasks
+
+
+def cluster_status(project_id, name, cluster):
+    current_size = gapi.get_cluster_size(project_id, cluster)
+    requested_size = gapi.get_cluster_target_size(project_id, cluster)
+    stable = True
+    if requested_size > 0:
+        slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
+
+    if (requested_size - current_size) > 0.1 * requested_size:
+        slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
+        stable = False
+
+    return stable, requested_size
+
+
+def cluster_control():
     try:
         project_id = gapi.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
@@ -61,53 +86,33 @@ def cluster_control():
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"), notification=True)
         return
+
     for key in cluster_info:
-        if key in target_sizes:
-            print(f"processing cluster: {key}")
-            if target_sizes[key] != 0:
-                try:
-                    if key == "composite":
-                        min_layer, max_layer = get_composite_worker_limits()
-                        tasks = [check_queue(f"{key}_{layer}") for layer in range(min_layer, max_layer+1)]
-                        num_tasks = sum(tasks)
-                    else:
-                        num_tasks = check_queue(key)
-                    total_size = gapi.get_cluster_size(project_id, cluster_info[key])
-                    total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
-                except:
-                    slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
-                    continue
-                if num_tasks < total_size:
-                    continue
-                else:
-                    if num_tasks < target_sizes[key]:
-                        target_sizes[key] = max(num_tasks, 1)
+        if key not in target_sizes:
+            continue
 
-                if total_target_size == 0 and num_tasks != 0:
-                    gapi.resize_instance_group(project_id, cluster_info[key], 1)
-                    continue
+        print(f"processing cluster: {key}")
+        try:
+            num_tasks = get_num_task(key)
+            stable, requested_size = cluster_status(project_id, key, cluster_info[key])
+        except:
+            slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
+            continue
 
-                if (total_target_size - total_size) > 0.1 * total_target_size:
-                    slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(key, total_size, total_target_size))
-                    if (total_target_size > 0):
-                        gapi.resize_instance_group(project_id, cluster_info[key], total_target_size)
-                else:
-                    if total_target_size < target_sizes[key] and total_target_size != 0:
-                        max_size = 0
-                        for ig in cluster_info[key]:
-                            max_size += ig['max_size']
-                        new_target_size = min([target_sizes[key], total_target_size*2, max_size])
-                        if total_target_size != new_target_size:
-                            gapi.resize_instance_group(project_id, cluster_info[key], new_target_size)
-                            slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, total_target_size, new_target_size))
-                    else:
-                        if (total_target_size != 0):
-                            slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(key, total_size, total_target_size), notification=True)
+        if num_tasks != target_sizes[key]:
+            target_sizes[key] = max(num_tasks, 1)
 
-            else:
-                total_target_size = gapi.get_cluster_target_size(project_id, cluster_info[key])
-                if total_target_size != 0:
-                    gapi.resize_instance_group(project_id, cluster_info[key], 0)
+        if target_sizes[key] == 0:
+            if requested_size != 0:
+                gapi.resize_instance_group(project_id, cluster_info[key], 0)
+            continue
+
+        if stable and requested_size < target_sizes[key]:
+            max_size = sum(ig['max_size'] for ig in cluster_info[key])
+            updated_size = min([target_sizes[key], requested_size*2, max_size])
+            if requested_size != updated_size:
+                gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
+                slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
