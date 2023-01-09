@@ -61,7 +61,7 @@ def hello_world(client=None):
 def fetch_oom_messages(queue="oom-queue"):
     client = slack.WebClient(token=slack_token)
     while True:
-        msg = get_message(broker_url, queue)
+        msg = get_message(broker_url, queue, timeout=30)
         if msg:
             slack_workername, slack_info = fetch_slack_thread()
             slack_username = slack_info["user"]
@@ -71,7 +71,7 @@ def fetch_oom_messages(queue="oom-queue"):
                 thread_ts=slack_info["thread_ts"],
                 text=f"<@{slack_username}>, :u6e80: *OOM detected from instance* `{msg}`!"
             )
-        time.sleep(10)
+            time.sleep(1)
 
 
 if __name__ == '__main__':

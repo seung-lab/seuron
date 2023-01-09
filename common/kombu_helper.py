@@ -18,15 +18,16 @@ def visible_messages(broker_url, queue):
 def peek_message(broker_url, queue):
     return get_message(broker_url, queue, ack=False)
 
-def get_message(broker_url, queue, ack=True):
+def get_message(broker_url, queue, ack=True, timeout=None):
     with Connection(broker_url) as conn:
-        simple_queue = conn.SimpleQueue(queue)
-        if simple_queue.qsize() == 0:
+        try:
+            simple_queue = conn.SimpleQueue(queue)
+            msg = simple_queue.get(timeout=timeout)
+            if ack:
+                msg.ack()
+            return msg.payload
+        except:
             return None
-        msg = simple_queue.get()
-        if ack:
-            msg.ack()
-        return msg.payload
 
 def put_message(broker_url, queue, msg):
     with Connection(broker_url) as conn:
