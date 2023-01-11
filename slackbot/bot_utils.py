@@ -1,9 +1,11 @@
 import string
 import requests
+import json
 import json5
 from collections import OrderedDict
 from secrets import token_hex
 import slack_sdk as slack
+from airflow.hooks.base_hook import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url
 from airflow_api import update_slack_connection, set_variable
 from kombu_helper import drain_messages, peek_message
@@ -46,6 +48,13 @@ def update_slack_thread(msg):
         'thread_ts': msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
     }
     update_slack_connection(payload, slack_token)
+
+
+def fetch_slack_thread():
+    SLACK_CONN_ID = "Slack"
+    slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
+    slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
+    return slack_workername, slack_extra
 
 
 def create_run_token(msg):
