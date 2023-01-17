@@ -51,7 +51,7 @@ def command(queue, timeout):
 
     try:
         timeout = custom_worker.task_timeout
-    except:
+    except AttributeError:
         pass
 
     conn = Connection(qurl, heartbeat=timeout)
@@ -136,7 +136,7 @@ def wait_for_task(futures, ret_queue, err_queue, conn):
                         if msg.get('ret', None):
                             try:
                                 ret_queue.put(json.dumps(msg['ret']))
-                            except:
+                            except TypeError:
                                 err_queue.put("Cannot jsonify the result from the worker")
                         print("task done")
                         return True
