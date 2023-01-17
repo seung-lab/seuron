@@ -10,6 +10,7 @@ import requests
 from datetime import datetime
 import redis
 from concurrent.futures import ProcessPoolExecutor
+from collections import namedtuple
 
 import click
 from kombu import Connection
@@ -20,6 +21,8 @@ import custom_worker
 
 METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/"
 METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
+
+CustomTask = namedtuple("CustomTask", ["message", "future"])
 
 
 def get_hostname():
@@ -60,34 +63,60 @@ def command(queue, timeout):
     return
 
 
+def process_output(conn, queue_name, task):
+    if not task.future.done():
+        raise RuntimeError("Task not finished")
+
+    ret = task.future.result()
+
+    if ret == "done":
+        task.message.ack()
+        return
+    elif isinstance(ret, dict):
+        ret_queue = conn.SimpleQueue(queue_name+"_ret")
+        err_queue = conn.SimpleQueue(queue_name+"_err")
+        if ret.get('msg', None) == "done":
+            if ret.get('ret', None):
+                try:
+                    ret_queue.put(json.dumps(ret['ret']))
+                except TypeError:
+                    err_queue.put("Cannot jsonify the result from the worker")
+            task.message.ack()
+        elif ret.get('msg', None) == "error":
+            if ret.get('ret', None):
+                err_queue.put(json.dumps(ret['ret']))
+        else:
+            raise RuntimeError("Unknown message from worker: {ret}")
+    else:
+        raise RuntimeError("Unknown message from worker: {ret}")
+
+
 def execute(conn, queue_name, qurl, statsd):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue_name)
-    ret_queue = conn.SimpleQueue(queue_name+"_ret")
-    err_queue = conn.SimpleQueue(queue_name+"_err")
-    executor = ProcessPoolExecutor()
-    futures = []
+    ncpus = len(os.sched_getaffinity(0))
+    executor = ProcessPoolExecutor(ncpus)
+
+    running_tasks = []
 
     while True:
         task = 'unknown'
         try:
-            message = queue.get_nowait()
-            print("put message into queue: {}".format(message.payload))
-            futures.append(executor.submit(handle_task, message.payload, statsd))
-            if wait_for_task(futures, ret_queue, err_queue, conn):
-                print("delete task in queue...")
-                message.ack()
-                print('INFO', task, "succesfully executed")
-            else:
-                break
-            for f in futures[:]:
-                if f.done():
-                    futures.remove(f)
+            while len(running_tasks) < ncpus:
+                message = queue.get_nowait()
+                print("put message into queue: {}".format(message.payload))
+                future = executor.submit(handle_task, message.payload, statsd)
+                running_tasks.append(CustomTask(message, future))
         except SimpleQueue.Empty:
-            time.sleep(10)
-            print("heart beat")
-            conn.heartbeat_check()
-            continue
+            pass
+
+        try:
+            worker_heartbeat(conn, running_tasks, interval=30)
+            done_tasks = [t for t in running_tasks if t.future.done()]
+            for t in done_tasks:
+                process_output(conn, queue_name, t)
+            if done_tasks:
+                running_tasks = [t for t in running_tasks if t not in done_tasks]
         except Exception as e:
             print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
             conn.release()
@@ -121,54 +150,23 @@ def handle_task(msg, statsd):
         return "done"
 
 
-def wait_for_task(futures, ret_queue, err_queue, conn):
-    idle_count = 0
-    while True:
-        for f in futures:
-            if f.done():
-                msg = f.result()
-                print(msg)
-                if msg == "done":
-                    print("task done")
-                    return True
-                elif isinstance(msg, dict):
-                    if msg.get('msg', None) == "done":
-                        if msg.get('ret', None):
-                            try:
-                                ret_queue.put(json.dumps(msg['ret']))
-                            except TypeError:
-                                err_queue.put("Cannot jsonify the result from the worker")
-                        print("task done")
-                        return True
-                    elif msg.get('msg', None) == "error":
-                        if msg.get('ret', None):
-                            err_queue.put(json.dumps(msg['ret']))
-                        print("task error")
-                        time.sleep(30)
-                        return False
-                    else:
-                        print("message unknown: {}".format(msg))
-                        return False
-                else:
-                    print("message unknown: {}".format(msg))
-                    return False
+def worker_heartbeat(conn, running_tasks, interval):
+    try:
+        conn.drain_events(timeout=1)
+    except socket.timeout:
+        conn.heartbeat_check()
 
+    cpu_usage = sum(psutil.cpu_percent(interval=1, percpu=True))
+    if cpu_usage < 5:
+        print("task stalled: {}".format(cpu_usage))
+    else:
+        print("task busy: {}".format(cpu_usage))
         redis_conn.set(hostname, datetime.now().timestamp())
-        cpu_usage = psutil.Process().cpu_percent(interval=1)
-        if cpu_usage < 5:
-            print("task stalled: {}".format(cpu_usage))
-            idle_count += 1
-        else:
-            print("task busy: {}".format(cpu_usage))
-            idle_count = 0
 
-        if idle_count > 6:
-            return False
-
-        try:
-            conn.drain_events(timeout=10)
-        except socket.timeout:
-            conn.heartbeat_check()
+    for _ in range(interval):
+        if any(t.future.done() for t in running_tasks):
+            return
+        time.sleep(1)
 
 
 if __name__ == '__main__':
