@@ -22,9 +22,11 @@ import custom_worker
 METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/"
 METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
 
+
 def get_hostname():
     data = requests.get(METADATA_URL + 'hostname', headers=METADATA_HEADERS).text
     return data.split(".")[0]
+
 
 @click.command()
 @click.option('--queue', default="",  help='Name of pull queue to use.')
@@ -37,7 +39,7 @@ def command(queue, timeout):
     statsd = StatsClient(host=statsd_host, port=statsd_port)
 
     param = Variable.get("param", deserialize_json=True)
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+    cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
@@ -61,6 +63,7 @@ def command(queue, timeout):
     conn.release()
     return
 
+
 def execute(conn, queue_name, qurl):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue_name)
@@ -76,7 +79,7 @@ def execute(conn, queue_name, qurl):
             if wait_for_task(q_state, ret_queue, err_queue, conn):
                 print("delete task in queue...")
                 message.ack()
-                print('INFO', task , "succesfully executed")
+                print('INFO', task, "succesfully executed")
             else:
                 break
         except SimpleQueue.Empty:
@@ -88,9 +91,9 @@ def execute(conn, queue_name, qurl):
             print('bye bye')
             break
         except Exception as e:
-            print('ERROR', task, "raised {}\n {}".format(e , traceback.format_exc()))
+            print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
             conn.release()
-            raise #this will restart the container in kubernetes
+            raise  # this will restart the container in kubernetes
 
 
 def handle_task(q_task, q_state, statsd):
