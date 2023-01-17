@@ -57,10 +57,7 @@ def command(queue, timeout):
     except AttributeError:
         pass
 
-    conn = Connection(qurl, heartbeat=timeout)
-    execute(conn, queue, qurl, statsd)
-    conn.release()
-    return
+    execute(qurl, timeout, queue, statsd)
 
 
 def process_output(conn, queue_name, task):
@@ -91,39 +88,36 @@ def process_output(conn, queue_name, task):
         raise RuntimeError("Unknown message from worker: {ret}")
 
 
-def execute(conn, queue_name, qurl, statsd):
-    print("Pulling from {}".format(qurl))
-    queue = conn.SimpleQueue(queue_name)
+def execute(qurl, timeout, queue_name, statsd):
     ncpus = len(os.sched_getaffinity(0))
-    executor = ProcessPoolExecutor(ncpus)
+    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(ncpus) as executor:
+        queue = conn.SimpleQueue(queue_name)
 
-    running_tasks = []
+        running_tasks = []
 
-    while True:
-        task = 'unknown'
-        try:
-            while len(running_tasks) < ncpus:
-                message = queue.get_nowait()
-                print("put message into queue: {}".format(message.payload))
-                future = executor.submit(handle_task, message.payload, statsd)
-                running_tasks.append(CustomTask(message, future))
-        except SimpleQueue.Empty:
-            pass
+        while True:
+            task = 'unknown'
+            try:
+                while len(running_tasks) < ncpus:
+                    message = queue.get_nowait()
+                    print("put message into queue: {}".format(message.payload))
+                    future = executor.submit(handle_task, message.payload, statsd)
+                    running_tasks.append(CustomTask(message, future))
+            except SimpleQueue.Empty:
+                pass
 
-        try:
-            worker_heartbeat(conn, running_tasks, interval=30)
-            done_tasks = [t for t in running_tasks if t.future.done()]
-            for t in done_tasks:
-                process_output(conn, queue_name, t)
-            if done_tasks:
-                running_tasks = [t for t in running_tasks if t not in done_tasks]
-        except Exception as e:
-            print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
-            conn.release()
-            executor.shutdown()
-            raise  # this will restart the container in kubernetes
-
-    executor.shutdown()
+            try:
+                worker_heartbeat(conn, running_tasks, interval=30)
+                done_tasks = [t for t in running_tasks if t.future.done()]
+                for t in done_tasks:
+                    process_output(conn, queue_name, t)
+                if done_tasks:
+                    running_tasks = [t for t in running_tasks if t not in done_tasks]
+            except Exception as e:
+                print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
+                conn.release()
+                executor.shutdown()
+                raise  # this will restart the container in kubernetes
 
 
 def handle_task(msg, statsd):
