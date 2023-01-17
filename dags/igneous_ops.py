@@ -29,7 +29,7 @@ def create_igneous_ops(param, dag):
         current_op = PythonOperator(
             task_id="mesh",
             python_callable=mesh,
-            op_args = [run_name, seg_cloudpath, param.get("MESH_QUALITY", "NORMAL"), param.get("SHARDED_MESH", False), ],
+            op_args = [run_name, seg_cloudpath, param.get("MESH_QUALITY", "NORMAL"), param.get("SHARDED_MESH", True), ],
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
             queue="manager",
@@ -39,7 +39,7 @@ def create_igneous_ops(param, dag):
         ops[-1] >> current_op
         ops.append(current_op)
 
-        if param.get("SHARDED_MESH", False):
+        if param.get("SHARDED_MESH", True):
             current_op = PythonOperator(
                 task_id="merge_mesh_fragments",
                 python_callable=merge_mesh_fragments,
