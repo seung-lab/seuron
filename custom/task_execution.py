@@ -57,11 +57,11 @@ def command(queue, timeout):
     worker = threading.Thread(target=handle_task, args=(q_task, q_state, statsd))
     worker.daemon = True
     worker.start()
-    execute(conn, queue, qurl, timeout)
+    execute(conn, queue, qurl)
     conn.release()
     return
 
-def execute(conn, queue_name, qurl, timeout):
+def execute(conn, queue_name, qurl):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue_name)
     ret_queue = conn.SimpleQueue(queue_name+"_ret")
