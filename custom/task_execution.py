@@ -33,7 +33,8 @@ def get_hostname():
 @click.command()
 @click.option('--queue', default="",  help='Name of pull queue to use.')
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
-def command(queue, timeout):
+@click.option('--concurrency', default=0,  help='Number of tasks to process at the same time')
+def command(queue, timeout, concurrency):
     qurl = conf.get('celery', 'broker_url')
     statsd_host = conf.get('metrics', 'statsd_host')
     statsd_port = conf.get('metrics', 'statsd_port')
@@ -57,7 +58,9 @@ def command(queue, timeout):
     except AttributeError:
         pass
 
-    execute(qurl, timeout, queue, statsd)
+    if concurrency == 0:
+        concurrency = len(os.sched_getaffinity(0))
+    execute(qurl, timeout, queue, statsd, concurrency)
 
 
 def process_output(conn, queue_name, task):
@@ -88,9 +91,8 @@ def process_output(conn, queue_name, task):
         raise RuntimeError("Unknown message from worker: {ret}")
 
 
-def execute(qurl, timeout, queue_name, statsd):
-    ncpus = len(os.sched_getaffinity(0))
-    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(ncpus) as executor:
+def execute(qurl, timeout, queue_name, statsd, concurrency):
+    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(concurrency) as executor:
         queue = conn.SimpleQueue(queue_name)
 
         running_tasks = []
@@ -98,7 +100,7 @@ def execute(qurl, timeout, queue_name, statsd):
         while True:
             task = 'unknown'
             try:
-                while len(running_tasks) < ncpus:
+                while len(running_tasks) < concurrency:
                     message = queue.get_nowait()
                     print("put message into queue: {}".format(message.payload))
                     future = executor.submit(handle_task, message.payload, statsd)
