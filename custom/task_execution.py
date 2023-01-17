@@ -30,8 +30,7 @@ def get_hostname():
 @click.option('--tag', default='',  help='kind of task to execute')
 @click.option('--queue', default="",  help='Name of pull queue to use.')
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
-@click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
-def command(tag, queue, timeout, loop):
+def command(tag, queue, timeout):
     qurl = conf.get('celery', 'broker_url')
     statsd_host = conf.get('metrics', 'statsd_host')
     statsd_port = conf.get('metrics', 'statsd_port')
@@ -59,11 +58,11 @@ def command(tag, queue, timeout, loop):
     worker = threading.Thread(target=handle_task, args=(q_task, q_state, statsd))
     worker.daemon = True
     worker.start()
-    execute(conn, tag, queue, qurl, timeout, loop)
+    execute(conn, tag, queue, qurl, timeout)
     conn.release()
     return
 
-def execute(conn, tag, queue_name, qurl, timeout, loop):
+def execute(conn, tag, queue_name, qurl, timeout):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue_name)
     ret_queue = conn.SimpleQueue(queue_name+"_ret")
@@ -93,9 +92,6 @@ def execute(conn, tag, queue_name, qurl, timeout, loop):
             print('ERROR', task, "raised {}\n {}".format(e , traceback.format_exc()))
             conn.release()
             raise #this will restart the container in kubernetes
-        if not loop:
-            print("not in loop mode, will break the loop and exit")
-            break
 
 
 def handle_task(q_task, q_state, statsd):
