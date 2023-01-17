@@ -27,10 +27,9 @@ def get_hostname():
     return data.split(".")[0]
 
 @click.command()
-@click.option('--tag', default='',  help='kind of task to execute')
 @click.option('--queue', default="",  help='Name of pull queue to use.')
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
-def command(tag, queue, timeout):
+def command(queue, timeout):
     qurl = conf.get('celery', 'broker_url')
     statsd_host = conf.get('metrics', 'statsd_host')
     statsd_port = conf.get('metrics', 'statsd_port')
@@ -58,11 +57,11 @@ def command(tag, queue, timeout):
     worker = threading.Thread(target=handle_task, args=(q_task, q_state, statsd))
     worker.daemon = True
     worker.start()
-    execute(conn, tag, queue, qurl, timeout)
+    execute(conn, queue, qurl, timeout)
     conn.release()
     return
 
-def execute(conn, tag, queue_name, qurl, timeout):
+def execute(conn, queue_name, qurl, timeout):
     print("Pulling from {}".format(qurl))
     queue = conn.SimpleQueue(queue_name)
     ret_queue = conn.SimpleQueue(queue_name+"_ret")
