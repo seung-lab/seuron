@@ -87,9 +87,6 @@ def execute(conn, queue_name, qurl):
             print("heart beat")
             conn.heartbeat_check()
             continue
-        except KeyboardInterrupt:
-            print('bye bye')
-            break
         except Exception as e:
             print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
             conn.release()
