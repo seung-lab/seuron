@@ -79,8 +79,7 @@ def chunk_tasks(tasks, chunk_size):
      for i in range(0, len(tasks), chunk_size):
          yield tasks[i:i + chunk_size]
 
-def tasks_with_metadata(run_name, tasks):
-    metadata = {'statsd_task_key': run_name}
+def tasks_with_metadata(metadata, tasks):
     return {
         'metadata': metadata,
         'task_list': tasks,
@@ -417,7 +416,8 @@ def downsample_for_meshing(run_name, seg_cloudpath, mask):
         return []
     tasks = tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=(target_mip - mip), preserve_chunk_size=True)
     slack_message(":arrow_forward: Start downsampling `{}` at `{}`: {} tasks in total".format(seg_cloudpath, resolution, len(tasks)))
-    return tasks_with_metadata(f"{run_name}.igneous.downsampleForMeshing", tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.downsampleForMeshing"}
+    return tasks_with_metadata(metadata, tasks)
 
 
 @mount_secrets
@@ -435,7 +435,8 @@ def downsample(run_name, cloudpaths):
         tasks = list(tc.create_downsampling_tasks(seg_cloudpath, mip=mip, fill_missing=False, num_mips=(target_mip - mip), preserve_chunk_size=True))
         slack_message(":arrow_forward: Start downsampling `{}` at `{}`: {} tasks in total".format(seg_cloudpath, resolution, len(tasks)))
         total_tasks += tasks
-    return tasks_with_metadata(f"{run_name}.igneous.downsample", total_tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.downsample"}
+    return tasks_with_metadata(metadata, total_tasks)
 
 
 @mount_secrets
@@ -477,7 +478,8 @@ def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
                                     shape=Vec(256, 256, 256))
     slack_message(":arrow_forward: Start meshing `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
-    return tasks_with_metadata(f"{run_name}.igneous.createMeshFragments", tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.createMeshFragments"}
+    return tasks_with_metadata(metadata, tasks)
 
 
 @mount_secrets
@@ -488,7 +490,8 @@ def merge_mesh_fragments(run_name, seg_cloudpath):
     tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath, max_labels_per_shard=10000)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
-    return tasks_with_metadata(f"{run_name}.igneous.mergeMesh", tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.mergeMesh"}
+    return tasks_with_metadata(metadata, tasks)
 
 
 @mount_secrets
@@ -549,7 +552,8 @@ def mesh_manifest(run_name, seg_cloudpath, bbox, chunk_size):
         tasks.append(t)
 
     slack_message(":arrow_forward: Generating mesh manifest for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks_with_metadata(f"{run_name}.igneous.createMeshManifest", tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.createMeshManifest"}
+    return tasks_with_metadata(metadata, tasks)
 
 
 @mount_secrets
@@ -576,7 +580,8 @@ def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param):
                 parallel=1, # Number of parallel processes to use (more useful locally)
             )
     slack_message(":arrow_forward: Creating skeleton fragments for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks_with_metadata(f"{run_name}.igneous.createSkeletonFragments", tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.createSkeletonFragments"}
+    return tasks_with_metadata(metadata, tasks)
 
 
 @mount_secrets
@@ -592,7 +597,8 @@ def merge_skeleton_fragments(run_name, seg_cloudpath):
                 max_labels_per_shard=10000,
             )
     slack_message(":arrow_forward: Merging skeleton fragments for `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
-    return tasks_with_metadata(f"{run_name}.igneous.mergeSkeleton", tasks)
+    metadata = {"statsd_task_key": f"{run_name}.igneous.mergeSkeleton"}
+    return tasks_with_metadata(metadata, tasks)
 
 
 def downsample_and_mesh(param):
