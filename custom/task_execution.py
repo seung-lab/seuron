@@ -3,14 +3,14 @@ from airflow.configuration import conf
 import os
 import time
 import traceback
-import threading
-import queue
 import socket
 import json
 import base64
 import requests
 from datetime import datetime
 import redis
+from concurrent.futures import ProcessPoolExecutor
+from collections import namedtuple
 
 import click
 from kombu import Connection
@@ -22,16 +22,19 @@ import custom_worker
 METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/"
 METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
 
+CustomTask = namedtuple("CustomTask", ["message", "future"])
+
+
 def get_hostname():
     data = requests.get(METADATA_URL + 'hostname', headers=METADATA_HEADERS).text
     return data.split(".")[0]
 
+
 @click.command()
-@click.option('--tag', default='',  help='kind of task to execute')
 @click.option('--queue', default="",  help='Name of pull queue to use.')
 @click.option('--timeout', default=60,  help='SQS Queue URL if using SQS')
-@click.option('--loop/--no-loop', default=True, help='run execution in infinite loop or not', is_flag=True)
-def command(tag, queue, timeout, loop):
+@click.option('--concurrency', default=0,  help='Number of tasks to process at the same time')
+def command(queue, timeout, concurrency):
     qurl = conf.get('celery', 'broker_url')
     statsd_host = conf.get('metrics', 'statsd_host')
     statsd_port = conf.get('metrics', 'statsd_port')
@@ -39,7 +42,7 @@ def command(tag, queue, timeout, loop):
     statsd = StatsClient(host=statsd_host, port=statsd_port)
 
     param = Variable.get("param", deserialize_json=True)
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+    cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
@@ -52,137 +55,117 @@ def command(tag, queue, timeout, loop):
 
     try:
         timeout = custom_worker.task_timeout
-    except:
+    except AttributeError:
         pass
 
-    conn = Connection(qurl, heartbeat=timeout)
-    worker = threading.Thread(target=handle_task, args=(q_task, q_state, statsd))
-    worker.daemon = True
-    worker.start()
-    execute(conn, tag, queue, qurl, timeout, loop)
-    conn.release()
-    return
-
-def execute(conn, tag, queue_name, qurl, timeout, loop):
-    print("Pulling from {}".format(qurl))
-    queue = conn.SimpleQueue(queue_name)
-    ret_queue = conn.SimpleQueue(queue_name+"_ret")
-    err_queue = conn.SimpleQueue(queue_name+"_err")
-
-    while True:
-        task = 'unknown'
-        try:
-            message = queue.get_nowait()
-            print("put message into queue: {}".format(message.payload))
-            q_task.put(message.payload)
-            if wait_for_task(q_state, ret_queue, err_queue, conn):
-                print("delete task in queue...")
-                message.ack()
-                print('INFO', task , "succesfully executed")
-            else:
-                break
-        except SimpleQueue.Empty:
-            time.sleep(10)
-            print("heart beat")
-            conn.heartbeat_check()
-            continue
-        except KeyboardInterrupt:
-            print('bye bye')
-            break
-        except Exception as e:
-            print('ERROR', task, "raised {}\n {}".format(e , traceback.format_exc()))
-            conn.release()
-            raise #this will restart the container in kubernetes
-        if not loop:
-            print("not in loop mode, will break the loop and exit")
-            break
+    if concurrency == 0:
+        concurrency = len(os.sched_getaffinity(0))
+    execute(qurl, timeout, queue, statsd, concurrency)
 
 
-def handle_task(q_task, q_state, statsd):
-    while True:
-        if q_task.qsize() == 0:
-            time.sleep(1)
-            continue
-        if q_task.qsize() > 0:
-            msg = q_task.get()
-            print("run task: {}".format(msg))
-            statsd_task_key = msg['metadata'].get('statsd_task_key', 'task')
+def process_output(conn, queue_name, task):
+    if not task.future.done():
+        raise RuntimeError("Task not finished")
+
+    ret = task.future.result()
+
+    if ret == "done":
+        task.message.ack()
+        return
+    elif isinstance(ret, dict):
+        ret_queue = conn.SimpleQueue(queue_name+"_ret")
+        err_queue = conn.SimpleQueue(queue_name+"_err")
+        if ret.get('msg', None) == "done":
+            if ret.get('ret', None):
+                try:
+                    ret_queue.put(json.dumps(ret['ret']))
+                except TypeError:
+                    err_queue.put("Cannot jsonify the result from the worker")
+            task.message.ack()
+        elif ret.get('msg', None) == "error":
+            if ret.get('ret', None):
+                err_queue.put(json.dumps(ret['ret']))
+        else:
+            raise RuntimeError("Unknown message from worker: {ret}")
+    else:
+        raise RuntimeError("Unknown message from worker: {ret}")
+
+
+def execute(qurl, timeout, queue_name, statsd, concurrency):
+    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(concurrency) as executor:
+        queue = conn.SimpleQueue(queue_name)
+
+        running_tasks = []
+
+        while True:
+            task = 'unknown'
             try:
-                with statsd.timer(f'{statsd_task_key}.duration'):
-                    val = custom_worker.process_task(msg['task'])
-            except BaseException as e:
-                val = traceback.format_exc()
-                ret = {
-                    'msg': "error",
-                    'ret': base64.b64encode(val.encode("UTF-8")).decode("UTF-8")
-                }
-                q_state.put(ret)
-                return
-
-            if val:
-                ret = {
-                    'msg': "done",
-                    'ret': val
-                }
-                q_state.put(ret)
-            else:
-                q_state.put("done")
-
-
-def wait_for_task(q_state, ret_queue, err_queue, conn):
-    idle_count = 0
-    while True:
-        if q_state.qsize() > 0:
-            msg = q_state.get()
-            while q_state.qsize() > 0:
-                msg = q_state.get()
-            print(msg)
-            if msg == "done":
-                print("task done")
-                return True
-            elif isinstance(msg, dict):
-                if msg.get('msg', None) == "done":
-                    if msg.get('ret', None):
-                        try:
-                            ret_queue.put(json.dumps(msg['ret']))
-                        except:
-                            err_queue.put("Cannot jsonify the result from the worker")
-                    print("task done")
-                    return True
-                elif msg.get('msg', None) == "error":
-                    if msg.get('ret', None):
-                        err_queue.put(json.dumps(msg['ret']))
-                    print("task error")
-                    time.sleep(30)
-                    return False
-                else:
-                    print("message unknown: {}".format(msg))
-                    return False
-            else:
-                print("message unknown: {}".format(msg))
-                return False
-        else: #busy
-            redis_conn.set(hostname, datetime.now().timestamp())
-            cpu_usage = psutil.Process().cpu_percent(interval=1)
-            if cpu_usage < 5:
-                print("task stalled: {}".format(cpu_usage))
-                idle_count += 1
-            else:
-                print("task busy: {}".format(cpu_usage))
-                idle_count = 0
-
-            if idle_count > 6:
-                return False
+                while len(running_tasks) < concurrency:
+                    message = queue.get_nowait()
+                    print("put message into queue: {}".format(message.payload))
+                    future = executor.submit(handle_task, message.payload, statsd)
+                    running_tasks.append(CustomTask(message, future))
+            except SimpleQueue.Empty:
+                pass
 
             try:
-                conn.drain_events(timeout=10)
-            except socket.timeout:
-                conn.heartbeat_check()
+                worker_heartbeat(conn, running_tasks, interval=30)
+                done_tasks = [t for t in running_tasks if t.future.done()]
+                for t in done_tasks:
+                    process_output(conn, queue_name, t)
+                if done_tasks:
+                    running_tasks = [t for t in running_tasks if t not in done_tasks]
+            except Exception as e:
+                print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
+                conn.release()
+                executor.shutdown()
+                raise  # this will restart the container in kubernetes
+
+
+def handle_task(msg, statsd):
+    print("run task: {}".format(msg))
+    statsd_task_key = msg['metadata'].get('statsd_task_key', 'task')
+    try:
+        with statsd.timer(f'{statsd_task_key}.duration'):
+            val = custom_worker.process_task(msg['task'])
+    except BaseException:
+        val = traceback.format_exc()
+        ret = {
+            'msg': "error",
+            'ret': base64.b64encode(val.encode("UTF-8")).decode("UTF-8")
+        }
+        return ret
+
+    if val:
+        ret = {
+            'msg': "done",
+            'ret': val
+        }
+        return ret
+    else:
+        return "done"
+
+
+def worker_heartbeat(conn, running_tasks, interval):
+    try:
+        conn.drain_events(timeout=1)
+    except socket.timeout:
+        conn.heartbeat_check()
+
+    cpu_usage = sum(psutil.cpu_percent(interval=1, percpu=True))
+    if cpu_usage < 5:
+        print("task stalled: {}".format(cpu_usage))
+    else:
+        print("task busy: {}".format(cpu_usage))
+        redis_conn.set(hostname, datetime.now().timestamp())
+
+    for _ in range(interval):
+        if any(t.future.done() for t in running_tasks):
+            return
+        time.sleep(1)
 
 
 if __name__ == '__main__':
     redis_conn = redis.Redis(os.environ["REDIS_SERVER"])
     hostname = get_hostname()
-    q_state = queue.Queue()
-    q_task = queue.Queue()
     command()
