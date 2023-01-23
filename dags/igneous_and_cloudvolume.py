@@ -484,13 +484,17 @@ def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8)
-def merge_mesh_fragments(run_name, seg_cloudpath):
+def merge_mesh_fragments(run_name, seg_cloudpath, concurrency=None):
     import igneous.task_creation as tc
     from slack_message import slack_message
     tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath, max_labels_per_shard=10000)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
-    metadata = {"statsd_task_key": f"{run_name}.igneous.mergeMesh"}
+    if concurrency:
+        slack_message(f":arrow_forward: Set the worker concurrency to `{int(concurrency)}`")
+        metadata = {"statsd_task_key": f"{run_name}.igneous.mergeMesh", "concurrency": concurrency}
+    else:
+        metadata = {"statsd_task_key": f"{run_name}.igneous.mergeMesh"}
     return tasks_with_metadata(metadata, tasks)
 
 
