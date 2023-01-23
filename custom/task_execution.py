@@ -91,11 +91,21 @@ def process_output(conn, queue_name, task):
         raise RuntimeError("Unknown message from worker: {ret}")
 
 
-def execute(qurl, timeout, queue_name, statsd, concurrency):
-    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(concurrency) as executor:
+def update_concurrency(running_tasks, max_concurrency):
+    if len(running_tasks) == 0:
+        return max_concurrency
+
+    concurrencies = [t.message.payload['metadata'].get('concurrency', max_concurrency) for t in running_tasks]
+    return min(*concurrencies, max_concurrency)
+
+
+def execute(qurl, timeout, queue_name, statsd, max_concurrency):
+    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(max_concurrency) as executor:
         queue = conn.SimpleQueue(queue_name)
 
         running_tasks = []
+
+        concurrency = max_concurrency
 
         while True:
             task = 'unknown'
@@ -105,6 +115,7 @@ def execute(qurl, timeout, queue_name, statsd, concurrency):
                     print("put message into queue: {}".format(message.payload))
                     future = executor.submit(handle_task, message.payload, statsd)
                     running_tasks.append(CustomTask(message, future))
+                    concurrency = update_concurrency(running_tasks, max_concurrency)
             except SimpleQueue.Empty:
                 pass
 
@@ -115,6 +126,7 @@ def execute(qurl, timeout, queue_name, statsd, concurrency):
                     process_output(conn, queue_name, t)
                 if done_tasks:
                     running_tasks = [t for t in running_tasks if t not in done_tasks]
+                    concurrency = update_concurrency(running_tasks, max_concurrency)
             except Exception as e:
                 print('ERROR', task, "raised {}\n {}".format(e, traceback.format_exc()))
                 conn.release()
