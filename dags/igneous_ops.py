@@ -43,7 +43,7 @@ def create_igneous_ops(param, dag):
             current_op = PythonOperator(
                 task_id="merge_mesh_fragments",
                 python_callable=merge_mesh_fragments,
-                op_args = [run_name, seg_cloudpath, ],
+                op_args = [run_name, seg_cloudpath, param.get("SHARDED_MESH_WORKER_CONCURRENCY", None)],
                 on_retry_callback=task_retry_alert,
                 weight_rule=WeightRule.ABSOLUTE,
                 queue="manager",
