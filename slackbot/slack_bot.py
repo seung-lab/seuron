@@ -32,6 +32,7 @@ import synaptor_commands
 import pipeline_commands
 import heartbeat_commands
 import warm_up_commands
+import webknossos_commands
 
 
 def update_ip_address():
