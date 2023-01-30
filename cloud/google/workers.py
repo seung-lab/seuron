@@ -88,7 +88,9 @@ def GenerateWorkers(context, hostname_manager, worker):
     else:
         raise ValueError(f"unknown worker type: {worker['type']}")
 
-    startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, (worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']))
+    use_gpu = worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']
+
+    startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, use_gpu=use_gpu)
 
     instance_template = {
         'zone': worker['zone'],
