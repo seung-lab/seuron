@@ -22,7 +22,7 @@ def GenerateEnvironVar(context, env_variables):
     return "\n".join([export_variables, save_variables])
 
 
-def GenerateWorkerStartupScript(context, env_variables, cmd, use_gpu=False):
+def GenerateWorkerStartupScript(context, env_variables, cmd, use_gpu=False, use_hugepages=False):
     startup_script = f'''
 #!/bin/bash
 set -e
@@ -32,6 +32,9 @@ chmod 777 /var/log/airflow/logs
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 {INSTALL_DOCKER_CMD}
 '''
+
+    if use_hugepages:
+        startup_script += "echo $(free -g|grep Mem|awk '{print int($2/2)}') > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages"
 
     if use_gpu:
         startup_script += INSTALL_NVIDIA_DOCKER_CMD
@@ -88,7 +91,10 @@ def GenerateWorkers(context, hostname_manager, worker):
     else:
         raise ValueError(f"unknown worker type: {worker['type']}")
 
-    startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, (worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']))
+    use_gpu = worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']
+    use_hugepages = worker.get('reserveHugePages', False)
+
+    startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, use_gpu=use_gpu, use_hugepages=use_hugepages)
 
     instance_template = {
         'zone': worker['zone'],

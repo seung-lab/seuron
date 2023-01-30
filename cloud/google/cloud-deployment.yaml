@@ -56,12 +56,14 @@ resources:
               subnetwork: us-east1
               machineType: e2-standard-32
               preemptible: True
+              reserveHugePages: True
               sizeLimit: 100
             - type: composite
               zone: us-east1-c
               subnetwork: us-east1
               machineType: e2-standard-32
               preemptible: False
+              reserveHugePages: True
               workerConcurrencies:
                 - layer: 5
                   concurrency: 4
