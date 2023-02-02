@@ -46,7 +46,7 @@ def hello_world(client=None):
         text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
 
 
-def fetch_oom_messages(queue="oom-queue"):
+def fetch_oom_messages(queue="worker-message-queue"):
     client = slack.WebClient(token=slack_token)
     while True:
         msg = get_message(broker_url, queue, timeout=30)
@@ -57,7 +57,7 @@ def fetch_oom_messages(queue="oom-queue"):
                 username=slack_workername,
                 channel=slack_info["channel"],
                 thread_ts=slack_info["thread_ts"],
-                text=f"<@{slack_username}>, :u6e80: *OOM detected from instance* `{msg}`!"
+                text=f"<@{slack_username}>, {msg}"
             )
             time.sleep(1)
 
