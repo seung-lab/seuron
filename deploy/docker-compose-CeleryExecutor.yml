@@ -187,8 +187,10 @@ services:
                 condition: any
 
     oom-detector:
-        image: ranlu/seuron-oom-canary:latest
-        command: python oom_monitor.py amqp://rabbitmq oom-queue
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+        command: python utils/memory_monitor.py amqp://rabbitmq worker-client-queue
         deploy:
             restart_policy:
                 delay: 60s
