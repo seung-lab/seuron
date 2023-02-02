@@ -163,5 +163,3 @@ def GenerateWorkers(context, hostname_manager, worker):
     }
 
     return [template_resource, ig_resource]
-
-
