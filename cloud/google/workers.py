@@ -69,7 +69,7 @@ def GenerateWorkers(context, hostname_manager, worker):
 
     docker_image = worker.get('workerImage', context.properties['seuronImage'])
 
-    oom_canary_cmd = GenerateDockerCommand("ranlu/seuron-oom-canary:latest", docker_env) + ' ' + "python oom_monitor.py ${AIRFLOW__CELERY__BROKER_URL} oom-queue"
+    oom_canary_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python utils/memory_monitor.py ${AIRFLOW__CELERY__BROKER_URL} worker-message-queue"
 
     if worker['type'] == 'gpu':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=worker['concurrency'])
