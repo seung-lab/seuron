@@ -96,6 +96,8 @@ def GenerateWorkers(context, hostname_manager, worker):
 
     startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, use_gpu=use_gpu, use_hugepages=use_hugepages)
 
+    provisioning_model = 'SPOT' if worker.get('preemptible', False) else 'STANDARD'
+
     instance_template = {
         'zone': worker['zone'],
         'machineType': worker['machineType'],
@@ -111,7 +113,7 @@ def GenerateWorkers(context, hostname_manager, worker):
             'deployment': context.env['deployment'],
         },
         'scheduling': {
-            'preemptible': worker['preemptible'],
+            'provisioningModel': provisioning_model,
         },
         'metadata': {
             'items': [{
