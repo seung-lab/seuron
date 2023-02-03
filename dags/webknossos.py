@@ -64,6 +64,26 @@ def report_cutout(**kwargs):
             slack_message(f"Created task ID: `{taskid}`")
 
 
+def export_op(dag: DAG) -> Operator:
+    command = make_command("wk2cv")
+
+    return manager_op(dag, "export_labels", command)
+
+
+def report_export(**kwargs):
+    ti = kwargs['ti']
+    output = ti.xcom_pull(task_ids="export_labels")
+
+    output_to_send = ""
+    for line in output:
+        if line.startswith("INFO:__main__:Exporting"):
+            output_to_send += f"{line[14:]}\n"
+        if line.startswith("WARNING:"):
+            output_to_send += f"`{line}`\n"
+
+    slack_message(output_to_send)
+
+
 # Helper fns
 def make_command(scriptname: str, **args):
     """Makes a command-line argument string for a given wktools function.
@@ -100,6 +120,8 @@ sanity_check_dag = DAG(
 # Individual ops test whether the current params are enough for
 # the webknossos tools tasks
 sanity_check_op(sanity_check_dag, "cv2wk")
+sanity_check_op(sanity_check_dag, "wk2cv")
+
 
 # Cutouts
 cutout_dag = DAG(
@@ -122,3 +144,26 @@ report_cutout_task = PythonOperator(
 )
 
 cutout >> report_cutout_task
+
+
+# Independent export to Zettaset (see training.py for coupled training)
+export_dag = DAG(
+    "wkt_export",
+    default_args=default_args,
+    schedule_interval=None,
+    tags=["webknossos", "training"],
+)
+
+export = export_op(export_dag)
+report_export_task = PythonOperator(
+    task_id="report_export",
+    provide_context=True,
+    python_callable=report_export,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=export_dag,
+)
+
+export >> report_export_task
