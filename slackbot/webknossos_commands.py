@@ -106,3 +106,34 @@ def extract_cvpath(msgtext: str) -> str:
         raw = raw[1:-1]
 
     return raw
+
+
+@SeuronBot.on_message("export annotations",
+                      description="Exports annotations from webknossos to a Zettaset.",
+                      exclusive=True,
+                      extra_parameters=True)
+def export_annotations(msg) -> None:
+    try:
+        annotation_ids = extract_annotation_ids(msg["text"])
+    except Exception as e:
+        replyto(msg, f"Error parsing message: {e}")
+        return
+
+    param = get_variable("webknossos_param", deserialize_json=True)
+    param["annotation_ids"] = " ".join(annotation_ids)
+    set_variable("webknossos_param", param, serialize_json=True)
+
+    replyto(msg, "Running export")
+    run_dag("wkt_export")
+
+
+def extract_annotation_ids(msgtext: str) -> list[str]:
+    """Extracts annotation ids from an export command."""
+    words = msgtext.split()
+    assert "annotations" in words or "annotation" in words
+    if "annotation" in words:
+        i = words.index("annotation")
+    else:
+        i = words.index("annotations")
+
+    return [word.replace(",", "") for word in words[i + 1:]]
