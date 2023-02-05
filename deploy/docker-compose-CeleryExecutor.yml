@@ -33,7 +33,6 @@ services:
             - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
         volumes:
             - /var/lib/rabbitmq:/var/lib/rabbitmq
-            - /enabled_plugins:/etc/rabbitmq/enabled_plugins
         ports:
             - "5672:5672"
             - "15672:15672"
