@@ -19,6 +19,8 @@ def GenerateEnvironVar(context, hostname_manager):
         'POSTGRES_MAX_CONN': """$(free -m|grep Mem|awk '{print int($2/32)}')""",
         'GRAFANA_USERNAME': context.properties['grafana']['user'],
         'GRAFANA_PASSWORD': context.properties['grafana']['password'],
+        'BASIC_AUTH_USERNAME': context.properties['nginx'].get('user', ''),
+        'BASIC_AUTH_PASSWORD': context.properties['nginx'].get('password', ''),
     }
 
     env_variables.update(GenerateAirflowVar(context, hostname_manager))
@@ -47,14 +49,6 @@ systemctl start cron.service
 echo "0 0 * * * docker system prune -f"|crontab -
 
 docker swarm init
-
-echo '{str(context.properties["nginx"]["user"] or "")}' | docker secret create basic_auth_username -
-echo '{str(context.properties["nginx"]["password"] or "")}' | docker secret create basic_auth_password -
-
-sudo openssl genrsa 2048 | tee >(
-    docker secret create ssl_certificate_key -) |
-    sudo openssl req -x509 -nodes -days 365 -new -key /dev/stdin -subj "/C=US/ST=NJ/L=P/O=P/OU=SL/CN=SEURON" |
-    docker secret create ssl_certificate -
 
 wget -O compose.yml {context.properties["composeLocation"]}
 
