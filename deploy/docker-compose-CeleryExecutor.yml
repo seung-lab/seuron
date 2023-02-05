@@ -5,6 +5,7 @@ x-airflow-common:
     restart: always
     environment:
         &airflow-common-env
+        VENDOR:
         AIRFLOW__CORE__FERNET_KEY:
         AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:
         AIRFLOW__CELERY__BROKER_URL:
