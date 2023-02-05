@@ -8,7 +8,7 @@ import requests
 import json
 from collections import defaultdict
 
-def get_clusters(deployment):
+def get_clusters():
     project_id = get_project_data("project-id")
     vm_name = get_instance_data("name")
     vm_zone = get_instance_data("zone").split('/')[-1]
