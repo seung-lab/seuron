@@ -4,14 +4,21 @@ from bot_info import slack_token, workerid, broker_url, slack_notification_chann
 from kombu_helper import get_message
 from bot_utils import fetch_slack_thread
 from seuronbot import SeuronBot
-from google_metadata import gce_external_ip
+
+import os
 import time
 import logging
 import sys
 import concurrent.futures
 
+if os.environ.get("VENDOR", None) == "Google":
+    from google_metadata import gce_external_ip
+else:
+    import socket
+
 import update_packages_commands
-import redeploy_commands
+if os.environ.get("VENDOR", None) == "Google":
+    import redeploy_commands
 import cancel_run_commands
 import igneous_tasks_commands
 import custom_tasks_commands
@@ -21,7 +28,11 @@ import heartbeat_commands
 
 
 def update_ip_address():
-    host_ip = gce_external_ip()
+    if os.environ.get("VENDOR", None) == "Google":
+        host_ip = gce_external_ip()
+    else:
+        hostname = socket.gethostname()
+        host_ip = socket.gethostbyname(hostname)
     try:
         set_variable("webui_ip", host_ip)
     except:
