@@ -32,8 +32,6 @@ def get_clusters():
     return instance_groups
 
 
-deployment = os.environ["DEPLOYMENT"]
-zone = os.environ["ZONE"]
 
 target_sizes = {
     'gpu': 0,
@@ -51,13 +49,23 @@ Variable.setdefault("vendor", os.environ.get("VENDOR", "Google"))
 
 db_utils.merge_conn(
         models.Connection(
-            conn_id='GCSConn', conn_type='google_cloud_platform',
-            schema='default',))
-db_utils.merge_conn(
-        models.Connection(
-            conn_id='InstanceGroups', conn_type='http',
-            host=deployment, login=zone, extra=json.dumps(get_clusters(deployment), indent=4)))
-db_utils.merge_conn(
-        models.Connection(
             conn_id='Slack', conn_type='http',
             host='localhost', extra=json.dumps({"notification_channel": os.environ["SLACK_NOTIFICATION_CHANNEL"]})))
+
+if os.environ.get("VENDOR", None) == "Google":
+    deployment = os.environ.get("DEPLOYMENT", None)
+    zone = os.environ.get("ZONE", None)
+    db_utils.merge_conn(
+            models.Connection(
+                conn_id='GCSConn', conn_type='google_cloud_platform',
+                schema='default',))
+
+    db_utils.merge_conn(
+            models.Connection(
+                conn_id='InstanceGroups', conn_type='http',
+                host=deployment, login=zone, extra=json.dumps(get_clusters(), indent=4)))
+else:
+    db_utils.merge_conn(
+            models.Connection(
+                conn_id='InstanceGroups', conn_type='http',
+                host="localhost", login="local", extra="{}"))
