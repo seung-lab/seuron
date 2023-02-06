@@ -3,6 +3,9 @@ from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, Generate
 from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 def GenerateEnvironVar(context, hostname_manager):
+    basic_auth_username = context.properties['nginx'].get('user', '')
+    basic_auth_password = context.properties['nginx'].get('password', '')
+
     env_variables = {
         'VENDOR': 'Google',
         'SLACK_TOKEN': context.properties['slack']['botToken'],
@@ -19,9 +22,11 @@ def GenerateEnvironVar(context, hostname_manager):
         'POSTGRES_MAX_CONN': """$(free -m|grep Mem|awk '{print int($2/32)}')""",
         'GRAFANA_USERNAME': context.properties['grafana']['user'],
         'GRAFANA_PASSWORD': context.properties['grafana']['password'],
-        'BASIC_AUTH_USERNAME': context.properties['nginx'].get('user', ''),
-        'BASIC_AUTH_PASSWORD': context.properties['nginx'].get('password', ''),
     }
+
+    if basic_auth_username and basic_auth_password:
+        env_variables['BASIC_AUTH_USERNAME'] = basic_auth_username
+        env_variables['BASIC_AUTH_PASSWORD'] = basic_auth_password
 
     env_variables.update(GenerateAirflowVar(context, hostname_manager))
 
