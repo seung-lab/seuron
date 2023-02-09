@@ -12,7 +12,7 @@ from airflow_api import cluster_exists, get_variable, set_variable, run_dag
     cancelable=False,
     extra_parameters=True,
 )
-def warm_up(msg: dict) -> None:
+def on_warm_up(msg: dict) -> None:
     """Sets the min size variable for a cluster and runs cluster_management."""
 
     # bot_utils.extract_command removes punctuation from some cluster names
@@ -25,6 +25,11 @@ def warm_up(msg: dict) -> None:
     if not cluster_exists(clustername):
         replyto(msg, f"cluster {clustername} not found. Please try again.")
 
+    else:
+        warm_up(clustername, msg)
+
+
+def warm_up(clustername: str, msg: dict, run_cluster_management=True) -> None:
     try:
         min_sizes = get_variable('cluster_min_size', deserialize_json=True)
         target_sizes = get_variable('cluster_target_size', deserialize_json=True)
@@ -38,7 +43,8 @@ def warm_up(msg: dict) -> None:
         set_variable("cluster_target_size", target_sizes, serialize_json=True)
         replyto(msg, f":fire: cluster {clustername} warming up")
 
-        run_dag("cluster_management")
+        if run_cluster_management:
+            run_dag("cluster_management")
 
     except Exception as e:
         replyto(msg, f"Unable to warm up {clustername}: ({type(e)}, {str(e)})")
