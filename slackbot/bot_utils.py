@@ -135,6 +135,8 @@ def guess_run_type(param):
         return "seg_run"
     elif "CHUNKFLOW_IMAGE" in param:
         return "inf_run"
+    elif "Workflow" in param and "synaptor_image" in param["Workflow"]:
+        return "syn_run"
     else:
         return None
 

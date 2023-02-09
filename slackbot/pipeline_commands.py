@@ -229,6 +229,9 @@ def handle_batch(task, msg):
             elif current_task == "inf_run":
                 set_variable('inference_param', param, serialize_json=True)
                 state = run_dag("chunkflow_generator", wait_for_completion=True).state
+            elif current_task == "syn_run":
+                set_variable("synaptor_param.json", param, serialize_json=True)
+                state = run_dag("synaptor_sanity_check", wait_for_completion=True).state
 
             if state != "success":
                 replyto(msg, "*Sanity check failed, abort!*")
@@ -236,10 +239,13 @@ def handle_batch(task, msg):
 
         state = "unknown"
         replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
+
         if current_task == "seg_run":
             state = run_dag('segmentation', wait_for_completion=True).state
         elif current_task == "inf_run":
             state = run_dag("chunkflow_worker", wait_for_completion=True).state
+        elif current_task == "syn_run":
+            state = run_dag("synaptor_file_seg", wait_for_completion=True).state
 
         if state != "success":
             replyto(msg, f"*Bach job failed, abort!* ({state})")
