@@ -33,6 +33,7 @@ import pipeline_commands
 import heartbeat_commands
 import warm_up_commands
 import webknossos_commands
+import easy_seg_commands
 
 
 def update_ip_address():
