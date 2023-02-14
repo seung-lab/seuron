@@ -1,3 +1,4 @@
+import re
 import string
 import requests
 import json
@@ -149,3 +150,48 @@ def latest_param_type():
         return guess_run_type(param)
     else:
         return None
+
+
+def extract_bbox(msgtext: str) -> tuple[int, int, int, int, int, int]:
+    """Extracts a bounding box of coordinates from a message's text."""
+    regexp = re.compile(
+        ".* @ "
+        "\(?\[?"  # noqa
+        "([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+)"
+        "\)?\]?"  # noqa
+        "[ \n]*"
+    )
+    rematch = regexp.match(msgtext)
+    if rematch:
+        coords = tuple(map(int, rematch.groups()))
+    else:
+        raise ValueError("unable to match text")
+        return
+
+    return coords
+
+
+def extract_point(msgtext: str) -> tuple[int, int, int]:
+    """Extracts a point of coordinates from the end of a message's text."""
+    regexp = re.compile(
+        ".* @ "
+        "\(?\[?"  # noqa
+        "([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+)"
+        "\)?\]?"  # noqa
+        "[ \n]*"
+    )
+    rematch = regexp.match(msgtext)
+    if rematch:
+        coords = tuple(map(int, rematch.groups()))
+    else:
+        raise ValueError("unable to match text")
+        return
+
+    return coords
