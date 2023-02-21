@@ -26,6 +26,7 @@ import heartbeat_commands
 import weburl_commands
 import webknossos_commands
 import easy_seg_commands
+import training_commands
 
 
 def update_ip_address():
