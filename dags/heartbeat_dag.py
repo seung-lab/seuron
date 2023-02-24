@@ -81,7 +81,13 @@ def delete_dead_instances():
     from datetime import datetime
     from airflow.models import Variable
     from airflow.hooks.base_hook import BaseHook
-    import google_api_helper as gapi
+    if Variable.get("vendor") == "Google":
+        import google_api_helper as cluster_api
+    else:
+        cluster_api = None
+
+    if cluster_api is None:
+        return
 
     cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
@@ -95,7 +101,7 @@ def delete_dead_instances():
             continue
 
         for ig in cluster_info[key]:
-            instances = gapi.list_managed_instances(ig)
+            instances = cluster_api.list_managed_instances(ig)
             if not instances:
                 continue
 
@@ -120,7 +126,7 @@ def delete_dead_instances():
                 idle_instances = idle_instances[:-1]
 
             if idle_instances:
-                gapi.delete_instances(ig, idle_instances)
+                cluster_api.delete_instances(ig, idle_instances)
                 slack_message("\n".join(msg), notification=True)
 
 
