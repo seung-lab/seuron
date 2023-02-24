@@ -201,6 +201,22 @@ def reduce_instance_group_size(key, size):
         slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stablize".format(key, real_size))
         sleep(60)
 
+
+def cluster_status(name, cluster):
+    project_id = get_project_id()
+    current_size = get_cluster_size(project_id, cluster)
+    requested_size = get_cluster_target_size(project_id, cluster)
+    stable = True
+    if requested_size > 0:
+        slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
+
+    if (requested_size - current_size) > 0.1 * requested_size:
+        slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
+        stable = False
+
+    return stable, requested_size
+
+
 def collect_resource_metrics(start_time, end_time):
     import pendulum
     from google.cloud import monitoring_v3

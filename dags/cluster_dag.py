@@ -64,20 +64,6 @@ def get_num_task(cluster):
     return num_tasks
 
 
-def cluster_status(project_id, name, cluster):
-    current_size = gapi.get_cluster_size(project_id, cluster)
-    requested_size = gapi.get_cluster_target_size(project_id, cluster)
-    stable = True
-    if requested_size > 0:
-        slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
-
-    if (requested_size - current_size) > 0.1 * requested_size:
-        slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
-        stable = False
-
-    return stable, requested_size
-
-
 def cluster_control():
     try:
         project_id = gapi.get_project_id()
@@ -94,7 +80,7 @@ def cluster_control():
         print(f"processing cluster: {key}")
         try:
             num_tasks = get_num_task(key)
-            stable, requested_size = cluster_status(project_id, key, cluster_info[key])
+            stable, requested_size = gapi.cluster_status(key, cluster_info[key])
         except:
             slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
             continue
