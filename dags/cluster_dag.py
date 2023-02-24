@@ -66,7 +66,6 @@ def get_num_task(cluster):
 
 def cluster_control():
     try:
-        project_id = gapi.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
     except:
@@ -90,14 +89,14 @@ def cluster_control():
 
         if target_sizes[key] == 0:
             if requested_size != 0:
-                gapi.resize_instance_group(project_id, cluster_info[key], 0)
+                gapi.resize_instance_group(cluster_info[key], 0)
             continue
 
         if stable and requested_size < target_sizes[key]:
             max_size = sum(ig['max_size'] for ig in cluster_info[key])
             updated_size = min([target_sizes[key], requested_size*2, max_size])
             if requested_size != updated_size:
-                gapi.resize_instance_group(project_id, cluster_info[key], updated_size)
+                gapi.resize_instance_group(cluster_info[key], updated_size)
                 slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
