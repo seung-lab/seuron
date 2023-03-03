@@ -11,7 +11,7 @@ from airflow.models import Variable, BaseOperator as Operator
 
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op
-from slack_message import task_failure_alert, task_done_alert
+from slack_message import slack_message, task_failure_alert, task_done_alert
 from webknossos import export_op, report_export
 
 
@@ -108,6 +108,33 @@ def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
     )
 
 
+def report_model() -> None:
+    """Tells the user where the last model checkpoint lives."""
+    import re
+    import operator
+    from cloudfiles import CloudFiles
+
+    model_dir = os.path.join(PARAM["remote_dir"], PARAM["exp_name"], "models")
+    cf = CloudFiles(model_dir)
+    number_regexp = re.compile("model([0-9]+).onnx")
+
+    try:
+        onnx_files = [f for f in cf.list() if number_regexp.match(f)]
+        assert len(onnx_files) > 0, "No onnx checkpoints found"
+        numbers = [int(number_regexp.match(f).groups()[0]) for f in onnx_files]
+
+        latest = sorted(zip(onnx_files, numbers), key=operator.itemgetter(1))[-1][0]
+
+    except Exception as e:
+        slack_message(
+            f"Error finding onnx checkpoints for experiment directory: `{model_dir}`"
+            f" - {e}"
+        )
+        return
+
+    slack_message(f"Latest export: `{os.path.join(model_dir, latest)}`")
+
+
 training_dag = DAG(
     "training",
     default_args=default_args,
@@ -132,12 +159,21 @@ scale_down = scale_down_cluster_op(
     training_dag, "training", "deepem-gpu", 0, "cluster", trigger_rule="all_done"
 )
 training = training_op(training_dag)
+report_training = PythonOperator(
+    task_id="report_model",
+    python_callable=report_model,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=training_dag,
+)
 
 (
     export
     >> report_export_task
     >> scale_up
     >> training
+    >> report_training
     >> scale_down
-    # >> report_training_task
 )
