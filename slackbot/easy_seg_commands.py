@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any, Optional
+from typing import Any
 from datetime import datetime
 
 from seuronbot import SeuronBot
 from bot_info import broker_url
-from bot_utils import clear_queues, replyto, download_json, extract_bbox, extract_point
+from bot_utils import clear_queues, replyto, download_json
+from bot_utils import extract_bbox, extract_point, bbox_and_center
 from kombu_helper import put_message
 from airflow_api import get_variable, set_variable, run_dag
 from pipeline_commands import handle_batch, supply_default_param
@@ -272,40 +273,3 @@ def warm_up_clusters(defaults: dict, msg: dict) -> None:
 
     if "synaptor" in defaults:
         warm_up("synaptor-cpu", msg)
-
-
-def bbox_and_center(
-    defaults: dict,
-    bbox: Optional[tuple[tuple[int, int, int], tuple[int, int, int]]] = None,
-    center_pt: Optional[tuple[int, int, int]] = None,
-) -> tuple[tuple[int, int, int, int, int, int], tuple[int, int, int]]:
-    assert bbox is not None or center_pt is not None, (
-        "either bbox or center_pt needs to be filled in"
-    )
-
-    if center_pt is None:
-        bboxsz = (bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[2])
-
-        center_pt = (
-            bbox[0] + bboxsz[0] // 2,
-            bbox[1] + bboxsz[1] // 2,
-            bbox[2] + bboxsz[2] // 2,
-        )
-
-    if bbox is None:
-        assert "bbox_width" in defaults, "no bbox and default box width"
-        bbox_width = defaults["bbox_width"]
-        bbox = (
-            center_pt[0] - bbox_width[0],
-            center_pt[1] - bbox_width[1],
-            center_pt[2] - bbox_width[2],
-            center_pt[0] + bbox_width[0],
-            center_pt[1] + bbox_width[1],
-            center_pt[2] + bbox_width[2],
-        )
-
-    maxsz = defaults.get("max_bbox_width", None)
-    if maxsz is not None and any(sz > mx for sz, mx in zip(bboxsz, maxsz)):
-        raise ValueError("bounding box is too large: max size = {maxsz}")
-
-    return bbox, center_pt

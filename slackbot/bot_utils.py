@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import string
 import requests
@@ -6,6 +8,7 @@ import json5
 from collections import OrderedDict
 from secrets import token_hex
 import slack_sdk as slack
+from typing import Optional
 from airflow.hooks.base_hook import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url
 from airflow_api import update_slack_connection, set_variable
@@ -197,3 +200,42 @@ def extract_point(msgtext: str) -> tuple[int, int, int]:
         return
 
     return coords
+
+
+def bbox_and_center(
+    defaults: dict,
+    bbox: Optional[tuple[tuple[int, int, int], tuple[int, int, int]]] = None,
+    center_pt: Optional[tuple[int, int, int]] = None,
+) -> tuple[tuple[int, int, int, int, int, int], tuple[int, int, int]]:
+    assert bbox is not None or center_pt is not None, (
+        "either bbox or center_pt needs to be filled in"
+    )
+
+    if center_pt is None:
+        bboxsz = (bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[2])
+
+        center_pt = (
+            bbox[0] + bboxsz[0] // 2,
+            bbox[1] + bboxsz[1] // 2,
+            bbox[2] + bboxsz[2] // 2,
+        )
+
+    if bbox is None:
+        assert "bbox_width" in defaults, "no bbox and default box width"
+        bbox_width = defaults["bbox_width"]
+        bboxsz = tuple(width * 2 for width in bbox_width)
+
+        bbox = (
+            center_pt[0] - bbox_width[0],
+            center_pt[1] - bbox_width[1],
+            center_pt[2] - bbox_width[2],
+            center_pt[0] + bbox_width[0],
+            center_pt[1] + bbox_width[1],
+            center_pt[2] + bbox_width[2],
+        )
+
+    maxsz = defaults.get("max_bbox_width", None)
+    if maxsz is not None and any(sz > mx for sz, mx in zip(bboxsz, maxsz)):
+        raise ValueError("bounding box is too large: max size = {maxsz}")
+
+    return bbox, center_pt
