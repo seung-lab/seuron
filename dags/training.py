@@ -42,7 +42,7 @@ def prep_parameters() -> dict:
 
     # Adding experiment directory to samwise map
     param["samwise_map"] = (
-        param.get('samwise_map', []) + 
+        param.get('samwise_map', []) +
         [f"{os.path.join(remote_dir, exp_name)}/::/workspace/experiments/{exp_name}/"]
     )
 
@@ -115,17 +115,17 @@ training_dag = DAG(
     tags=["training"],
 )
 
-#export = export_op(training_dag)
-#report_export_task = PythonOperator(
-#    task_id="report_export",
-#    provide_context=True,
-#    python_callable=report_export,
-#    priority_weight=100000,
-#    on_failure_callback=task_failure_alert,
-#    weight_rule=WeightRule.ABSOLUTE,
-#    queue="manager",
-#    dag=training_dag,
-#)
+export = export_op(training_dag)
+report_export_task = PythonOperator(
+    task_id="report_export",
+    provide_context=True,
+    python_callable=report_export,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=training_dag,
+)
 
 scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", 1, 1, "cluster")
 scale_down = scale_down_cluster_op(
@@ -134,9 +134,9 @@ scale_down = scale_down_cluster_op(
 training = training_op(training_dag)
 
 (
-    #export
-    #>> report_export_task
-    scale_up
+    export
+    >> report_export_task
+    >> scale_up
     >> training
     >> scale_down
     # >> report_training_task
