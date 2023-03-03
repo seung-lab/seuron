@@ -11,7 +11,7 @@ resources:
       properties:
           zone: us-east1-c
           subnetwork: us-east1
-          seuronImage: ranlu/seuron:main
+          seuronImage: zettaai/seuron:training_loop
           project: segmentation
           managerMachineType: e2-medium
           composeLocation: https://raw.githubusercontent.com/ZettaAI/seuron/main/deploy/docker-compose-CeleryExecutor.yml
