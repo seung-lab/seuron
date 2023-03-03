@@ -3,6 +3,7 @@ from __future__ import annotations
 from seuronbot import SeuronBot
 from airflow_api import get_variable, set_variable, run_dag
 from bot_utils import replyto, download_json
+from bot_utils import extract_bbox, extract_point, bbox_and_center
 
 
 @SeuronBot.on_message("update webknossos parameters",
@@ -35,41 +36,30 @@ def update_webknossos_params(msg) -> None:
 def make_cutout_task(msg) -> None:
     try:
         bbox = extract_bbox(msg["text"])
-    except Exception as e:
-        replyto(msg, f"Error parsing message: {e}")
-        return
+        center_pt = None  # will be filled in later (bbox_and_center)
+    except Exception as bbox_e:
+        bbox = None  # will be filled in later (bbox_and_center)
+
+        try:
+            center_pt = extract_point(msg["text"])
+        except Exception as pt_e:
+            replyto(msg, f"Errors parsing bbox: {bbox_e}, {pt_e}")
+            return
 
     param = get_variable("webknossos_param", deserialize_json=True)
+
+    try:
+        bbox, center_pt = bbox_and_center(param, bbox, center_pt)
+    except Exception as e:
+        replyto(msg, f"Errors creating bbox: {e}")
+        return
+
     param["bbox_begin"] = f"{bbox[0]} {bbox[1]} {bbox[2]}"
     param["bbox_end"] = f"{bbox[3]} {bbox[4]} {bbox[5]}"
     set_variable("webknossos_param", param, serialize_json=True)
 
     replyto(msg, "Running cutout task")
     run_dag("wkt_cutouts")
-
-
-def extract_bbox(msgtext: str) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-    """Extracts a bounding box of coordinates from the message text."""
-    regexp = re.compile(
-        ".* "
-        "\(?\[?"  # noqa
-        "([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+)"
-        "\)?\]?"  # noqa
-        "[ \n]*"
-    )
-    rematch = regexp.match(msgtext)
-    if rematch:
-        coords = tuple(map(int, rematch.groups()))
-    else:
-        raise ValueError("unable to match text")
-        return
-
-    return (coords[:3], coords[-3:])
 
 
 @SeuronBot.on_message("update cutout source",
