@@ -7,6 +7,7 @@ def worker_op(**kwargs):
         mount_point=kwargs.get("mount_point", None),
         task_id=kwargs["task_id"],
         command=kwargs["command"],
+        environment=kwargs.get("environment", None),
         xcom_all=kwargs.get('xcom_all', False),
         force_pull=kwargs.get("force_pull", False),
         default_args=default_args,
