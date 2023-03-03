@@ -25,7 +25,7 @@ def update_easy_seg(msg: dict) -> None:
 
     if json_obj:
         try:
-            sanity_check(json_obj)
+            initial_sanity_check(json_obj)
         except Exception as e:
             replyto(msg, f"Error parsing parameters: {e}")
 
@@ -36,7 +36,7 @@ def update_easy_seg(msg: dict) -> None:
         replyto(msg, "No json found")
 
 
-def sanity_check(json_obj: dict) -> None:
+def initial_sanity_check(json_obj: dict) -> None:
     assert (
         "chunkflow" in json_obj
         and (

@@ -21,7 +21,7 @@ def update_easy_seg(msg: dict) -> None:
 
     if json_obj:
         try:
-            sanity_check(json_obj, full=False)
+            initial_sanity_check(json_obj, full=False)
         except Exception as e:
             replyto(msg, f"Error parsing parameters: {e}")
 
@@ -32,8 +32,40 @@ def update_easy_seg(msg: dict) -> None:
         replyto(msg, "No json found")
 
 
-def sanity_check(json_obj: dict, full: bool = False) -> None:
-    pass
+def initial_sanity_check(json_obj: dict, full: bool = False) -> None:
+
+    required_keys = [
+        "data", "sampler", "model", "augment", "chkpt_num", "max_iter", "remote_dir",
+    ]
+
+    for k in required_keys:
+        assert k in json_obj, f"{k} is a required parameter"
+
+    assert_type(json_obj, "fov", str)
+    assert_type(json_obj, "outputsz", str)
+    assert_type(json_obj, "gpu_ids", list)
+    assert_type(json_obj, "width", list)
+
+    flag_keys = [
+        "no_eval", "inverse", "class_balancing", "amsgrad", "export_onnx"
+    ]
+    for k in flag_keys :
+        assert_type(json_obj, k, type(None))
+
+    if full:
+        assert "exp_name" in json_obj, "empty experiment name"
+        assert "annotation_ids" in json_obj, "no annotation ids"
+        assert_type(json_obj, "exp_name", str)
+        assert_type(json_obj, "annotation_ids", list)
+        assert_type(json_obj, "pretrain", str)
+
+
+def assert_type(json_obj: dict, key: str, argtype: type):
+    if key in json_obj:
+        assert isinstance(json_obj[key], argtype), (
+            f"flag argument {key} needs to be of type {argtype}"
+            f" (not {type(json_obj[key])})"
+        )
 
 
 @SeuronBot.on_message("run training",
@@ -72,7 +104,7 @@ def run_training(msg: dict) -> None:
     wkparams["annotation_ids"] = " ".join(annotation_ids)
 
     try:
-        sanity_check(params, full=True)
+        initial_sanity_check(params, full=True)
     except Exception as e:
         replyto(msg, f"Sanity check error: {e}")
         return
