@@ -4,6 +4,7 @@ from seuronbot import SeuronBot
 from airflow_api import get_variable, set_variable, run_dag
 from bot_utils import replyto, download_json
 from bot_utils import extract_bbox, extract_point, bbox_and_center
+from bot_utils import generate_link
 
 
 @SeuronBot.on_message("update webknossos parameters",
@@ -127,3 +128,24 @@ def extract_annotation_ids(msgtext: str) -> list[str]:
         i = words.index("annotations")
 
     return [word.replace(",", "") for word in words[i + 1:]]
+
+
+@SeuronBot.on_message("show cutout link",
+                      description=(
+                          "Returns a link to the volumes used for webknossos cutouts",
+                      ))
+def show_link(msg) -> None:
+    param = get_variable("webknossos_param", deserialize_json=True)
+
+    layer_paths = dict()
+    if "src_image_path" in param:
+        layer_paths["img"] = param["src_image_path"]
+
+    if "src_path" in param:
+        layer_paths["seg"] = param["src_path"]
+
+    if len(param) == 0:
+        replyto(msg, "No layers found in parameters")
+        return
+
+    replyto(msg, generate_link(layer_paths, False))
