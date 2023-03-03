@@ -88,10 +88,14 @@ def make_argstr(param: dict) -> str:
 
 def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
     param = prep_parameters()
+
+    wandb_api_key = param.pop("WANDB_API_KEY", None)
+    environment = {"WANDB_API_KEY": wandb_api_key} if wandb_api_key else None
     return worker_op(
         variables={},
         task_id="training",
         command=make_argstr(param),
+        environment=environment,
         force_pull=True,
         on_failure_callback=task_failure_alert,
         on_success_callback=task_done_alert,

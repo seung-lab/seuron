@@ -8,6 +8,7 @@ def worker_op(**kwargs):
         task_id=kwargs["task_id"],
         command=kwargs["command"],
         use_gpus=kwargs.get("use_gpus", False),
+        environment=kwargs.get("environment", None),
         xcom_all=kwargs.get('xcom_all', False),
         force_pull=kwargs.get("force_pull", False),
         default_args=default_args,
