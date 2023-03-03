@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 import random
 import string
+from typing import Optional
 
 from seuronbot import SeuronBot
 from airflow_api import run_dag
@@ -50,23 +51,25 @@ def run_training(msg: dict) -> None:
         pretrain = None
 
     try:
-        annotation_ids = extract_annotations(msg["text"], None)
-    except Exception as e:
-        replyto(msg, f"Error parsing annotations: {e}")
-        return
-
-    try:
         exp_name = extract_exp_name(msg["text"])
     except ValueError:
         exp_name = generate_exp_name()
 
+    try:
+        annotation_ids = extract_annotations(msg["text"], exp_name, pretrain)
+    except Exception as e:
+        replyto(msg, f"Error parsing annotations: {e}")
+        return
+
     params = get_variable("training_param", deserialize_json=True)
+    wkparams = get_variable("webknossos_param", deserialize_json=True)
 
     if pretrain:
         params["pretrain"] = pretrain
 
     params["exp_name"] = exp_name
     params["annotation_ids"] = annotation_ids
+    wkparams["annotation_ids"] = " ".join(annotation_ids)
 
     try:
         sanity_check(params, full=True)
@@ -75,6 +78,7 @@ def run_training(msg: dict) -> None:
         return
 
     set_variable("training_param", params, serialize_json=True)
+    set_variable("webknossos_param", wkparams, serialize_json=True)
     replyto(msg, f"Running training experiment: `{params['exp_name']}`")
     run_dag("training")
 
@@ -105,10 +109,16 @@ def extract_seed_model(msgtext: str) -> str:
     )
 
 
-def extract_annotations(msgtext: str, pretrain: str) -> list[str]:
+def extract_annotations(
+    msgtext: str, exp_name: str, pretrain: Optional[str]
+) -> list[str]:
     training_word_index = msgtext.split().index("training")
     words_after_training = msgtext.split()[training_word_index + 1:]
 
     return [
-        word for word in words_after_training if (pretrain is None or pretrain != word)
+        word for word in words_after_training
+        if (
+            (pretrain is None or pretrain not in word)
+            and exp_name not in word
+        )
     ]
