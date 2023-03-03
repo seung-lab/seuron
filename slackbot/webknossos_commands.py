@@ -80,6 +80,18 @@ def update_source(msg) -> None:
         del param["src_path"]
         set_variable("webknossos_param", param, serialize_json=True)
         replyto(msg, "Cleared cutout source")
+    if cvpath.lower() == "previous":
+        easy_seg_param = get_variable("easy_seg_param", deserialize_json=True)
+
+        seg_params = easy_seg_param[1]
+        if "SEG_PATH" in seg_params:  # abiss
+            param["src_path"] = seg_params["SEG_PATH"]
+            replyto(msg, "cutout source set to: `{seg_params['SEG_PATH']}`")
+        elif "output" in seg_params:  # synaptor
+            param["src_path"] = seg_params["output"]
+            replyto(msg, "cutout source set to: `{seg_params['output']}`")
+        else:
+            replyto(msg, "No previous segmentation found")
     else:
         param["src_path"] = cvpath
         set_variable("webknossos_param", param, serialize_json=True)
