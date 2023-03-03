@@ -86,7 +86,7 @@ def make_argstr(param: dict) -> str:
     return " ".join(map(format_arg, param.items()))
 
 
-def training_op(dag: DAG, queue="gpu") -> Operator:
+def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
     param = prep_parameters()
     return worker_op(
         variables={},
@@ -122,9 +122,9 @@ training_dag = DAG(
 #    dag=training_dag,
 #)
 
-scale_up = scale_up_cluster_op(training_dag, "training", "gpu", 1, 1, "cluster")
+scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", 1, 1, "cluster")
 scale_down = scale_down_cluster_op(
-    training_dag, "training", "gpu", 0, "cluster", trigger_rule="all_done"
+    training_dag, "training", "deepem-gpu", 0, "cluster", trigger_rule="all_done"
 )
 training = training_op(training_dag)
 
