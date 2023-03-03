@@ -23,9 +23,30 @@ def update_webknossos_params(msg) -> None:
         replyto(msg, "Running wktools sanity check. Please wait.")
         set_variable("webknossos_param", json_obj, serialize_json=True)
 
+        try:
+            specify_cutout_modes(json_obj, msg)
+        except Exception as e:
+            replyto(msg, f"Sanity check error: {e}")
+
         run_dag("wkt_sanity_check")
     else:
         replyto(msg, "Error reading file")
+
+
+def specify_cutout_modes(json_obj: dict, msg: dict) -> None:
+    center_pt_allowed = "bbox_width" in json_obj
+    max_specified = "max_bbox_width" in json_obj
+
+    output = (
+        "Modes allowed: \n"
+        f"Center point: `{center_pt_allowed}`\n"
+        "Bounding box: `True`"
+    )
+
+    if not max_specified:
+        output += "\nWARNING: No max bbox size specified!"
+
+    replyto(msg, output)
 
 
 @SeuronBot.on_message("make a cutout",
