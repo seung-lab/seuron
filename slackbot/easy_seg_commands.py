@@ -213,7 +213,7 @@ def populate_parameters(
             "voxelres": tupstr(inf_params["IMAGE_RESOLUTION"]),
             "startcoord": tupstr(bbox[:3]),
             "volshape": tupstr(
-                (bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[0])
+                (bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[2])
             ),
             "chunkshape": tupstr(seg_params["Dimensions"]["chunkshape"]),
             "blockshape": tupstr(seg_params["Dimensions"]["blockshape"]),
@@ -234,7 +234,7 @@ def populate_parameters(
             "queueurl": "SHOULD_BE_SET_BY_AIRFLOW",
             "queuename": "SHOULD_BE_SET_BY_AIRFLOW",
             "connectionstr": "None",
-            "storagedir": seg_params['AFF_PATH'].replace("inference", "scratch"),
+            "storagedir": output_path.replace("inference", "scratch"),
             "maxclustersize": 10,
             "synaptor_image": seg_params["Workflow"]["synaptor_image"],
         }
