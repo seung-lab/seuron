@@ -207,6 +207,10 @@ def populate_parameters(
             "tempoutput": output_path.replace("inference", "seg_temp"),
             "baseseg": "None",
             "image": inf_params["IMAGE_PATH"],
+            "overlap_seg": (
+                seg_params["Volumes"]["overlap_seg"]
+                if "overlap_seg" in seg_params["Volumes"] else None
+            )
         }
 
         seg_params["Dimensions"] = {
