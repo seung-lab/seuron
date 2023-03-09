@@ -235,7 +235,7 @@ def cv_has_data(path, mip=0):
     vol = CloudVolume(path, mip=mip)
     try:
         return vol.image.has_data(mip)
-    except NotImplementedError:
+    except:
         slack_message("CloudVolume does not support has_data for layer `{}`, assume data exists".format(path))
         return True
 
