@@ -69,7 +69,7 @@ def GenerateWorkers(context, hostname_manager, worker):
 
     docker_image = worker.get('workerImage', context.properties['seuronImage'])
 
-    oom_canary_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python utils/memory_monitor.py ${AIRFLOW__CELERY__BROKER_URL} worker-message-queue"
+    oom_canary_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python utils/memory_monitor.py ${AIRFLOW__CELERY__BROKER_URL} worker-message-queue >& /dev/null"
 
     if worker['type'] == 'gpu':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=worker['concurrency'])
@@ -81,11 +81,11 @@ def GenerateWorkers(context, hostname_manager, worker):
         if checkConsecutiveWorkers(concurrencies):
             cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(c['layer']), concurrency=c['concurrency']) for c in concurrencies])
     elif worker['type'] == 'igneous':
-        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + f"python custom/task_execution.py --queue igneous --concurrency {worker['concurrency']}"
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + f"python custom/task_execution.py --queue igneous --concurrency {worker['concurrency']} >& /dev/null"
     elif worker['type'] == 'custom-cpu':
-        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + f"custom/worker_cpu.sh {worker['concurrency']}"
+        cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + f"custom/worker_cpu.sh {worker['concurrency']} >& /dev/null"
     elif worker['type'] == 'custom-gpu':
-        cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + f"custom/worker_gpu.sh {worker['concurrency']}"
+        cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + f"custom/worker_gpu.sh {worker['concurrency']} >& /dev/null"
     elif worker['type'] in SYNAPTOR_TYPES:
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     else:
