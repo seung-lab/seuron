@@ -46,6 +46,11 @@ def initial_sanity_check(json_obj: dict) -> None:
     ), "No top-level structure ('chunkflow' and ['abiss','synaptor'])"
 
     assert "bbox_width" in json_obj, "No bbox width in json"
+    if "index_resolution" in json_obj or "data_resolution" in json_obj:
+        assert "index_resolution" in json_obj and "data_resolution" in json_obj
+        assert isinstance(json_obj["index_resolution"], list)
+        assert isinstance(json_obj["data_resolution"], list)
+
 
     sanity_check_chunkflow(json_obj["chunkflow"])
 
@@ -152,13 +157,21 @@ def run_easy_seg(msg: dict) -> None:
         replyto(msg, f"Errors creating bbox: {e}")
         return
 
-    replyto(
-        msg,
+    response = (
         f"Running easy seg with\n"
         f"model: {model}\n"
         f"bbox: {bbox}\n"
         f"center: {center_pt}"
     )
+
+    if "index_resolution" in defaults and "data_resolution" in defaults:
+        response += (
+            "\n"
+            "index_resolution: {defaults['index_resolution']}\n"
+            "data_resolution: {defaults['data_resolution']}"
+        )
+
+    replyto(msg, response)
 
     inf_params, seg_params = populate_parameters(model, bbox, defaults)
     clear_queues()  # empties the seuronbot_payload batch queue

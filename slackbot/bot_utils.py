@@ -312,66 +312,25 @@ def bbox_and_center(
     if maxsz is not None and any(sz > mx for sz, mx in zip(bboxsz, maxsz)):
         raise ValueError("bounding box is too large: max size = {maxsz}")
 
+    # resampling coordinates to data resolution
+    if "index_resolution" in defaults and "data_resolution" in defaults:
+        assert isinstance(defaults["index_resolution"], list)
+        assert isinstance(defaults["data_resolution"], list)
+
+        center_pt = tuple(
+            int(c * ir / dr)
+            for c, ir, dr in zip(
+                center_pt, defaults["index_resolution"], defaults["data_resolution"]
+            )
+        )
+
+        bbox = tuple(
+            int(b * ir / dr)
+            for b, ir, dr in zip(
+                bbox,
+                defaults["index_resolution"] + defaults["index_resolution"],
+                defaults["data_resolution"] + defaults["data_resolution"],
+            )
+        )
+
     return bbox, center_pt
-
-
-def generate_ng_payload(param: dict) -> str:
-    assert len(param) > 0, "empty layer paths"
-
-    layers = OrderedDict()
-    param = param.copy()  # for in-place modifications later
-    # default to first resolution we can find - update if we find an image
-    ng_resolution = dataset_resolution(list(param.values())[0])
-    img_path = param.pop("img", None)
-    if img_path:
-        layers["img"] = {
-            "source": "precomputed://" + img_path,
-            "type": "image"
-        }
-        ng_resolution = dataset_resolution(img_path)
-
-    for key in param:
-        if key == "NG_HOST":
-            continue
-
-        layers[key] = {
-            "source": "precomputed://" + param[key],
-            "type": "segmentation"
-        }
-
-    navigation = {
-        "pose": {
-            "position": {
-                "voxelSize": ng_resolution,
-                # "voxelCoordinates": center
-            }
-        },
-        "zoomFactor": 4
-    }
-
-    payload = OrderedDict(
-        [
-            ("layers", layers),
-            ("navigation", navigation),
-            ("showSlices", False),
-            ("layout", "xy-3d")
-        ]
-    )
-    return payload
-
-
-def generate_link(param, broadcast):
-    ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
-    payload = generate_ng_payload(param)
-
-    url = "<https://{host}/#!{payload}|*neuroglancer link*>".format(
-        host=ng_host,
-        payload=urllib.parse.quote(json.dumps(payload)))
-
-    return url
-
-
-def dataset_resolution(path, mip=0):
-    from cloudvolume import CloudVolume
-    vol = CloudVolume(path, mip=mip)
-    return vol.resolution.tolist()
