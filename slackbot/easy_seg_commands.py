@@ -251,7 +251,7 @@ def populate_parameters(
 
 
 def extract_model(msgtext: str) -> str:
-    regexp = re.compile("<?(gs://.*[A-z])>?\[?.*\]?")
+    regexp = re.compile("<(gs://.*onnx)>\[?.*\]?")
 
     models = [regexp.match(word).groups()[0] for word in msgtext.split() if regexp.match(word)]
 
