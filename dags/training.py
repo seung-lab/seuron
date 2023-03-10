@@ -49,15 +49,6 @@ def prep_parameters() -> dict:
     param["train_ids"] = annotation_ids
     param["val_ids"] = param.get("validation_ids", annotation_ids[-1:])
 
-    # Replace the remote pretraining chkpt location with a samwise directory
-    if "pretrain" in param:
-        pretrain_dir = "/workspace/pretrain"
-        remote_dir = os.path.split(param["pretrain"])
-
-        param["samwise_map"] = (
-            param.get("samwise_map", []) + [f"{remote_dir}::{pretrain_dir}"]
-        )
-
     # Default samwise period
     if "samwise_period" not in param:
         param["samwise_period"] = 1800
