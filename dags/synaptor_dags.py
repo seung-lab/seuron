@@ -3,11 +3,16 @@ from datetime import datetime
 
 from airflow import DAG
 from airflow.models import Variable
+from airflow.utils.weight_rule import WeightRule
+from airflow.operators.python import PythonOperator
 
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from param_default import synaptor_param_default, default_synaptor_image
+from slack_message import task_failure_alert, slack_message
 from synaptor_ops import manager_op, drain_op
 from synaptor_ops import synaptor_op, wait_op, generate_op
+
+from nglinks import generate_link
 
 
 # Processing parameters
@@ -27,6 +32,17 @@ default_args = {
     "catchup": False,
     "retries": 0,
 }
+
+
+def generate_ngl_link() -> None:
+    """Generates a neuroglancer link to view the results."""
+    layers = {"seg": param["Volumes"]["output"]}
+
+    if "image" in param["Volumes"]:
+        layers["img"] = param["Volumes"]["image"]
+
+    slack_message(generate_link(layers), broadcast=True)
+
 
 # =========================================
 # Sanity check DAG
@@ -85,10 +101,19 @@ wait_merge_ccs = wait_op(fileseg_dag, "merge_ccs")
 generate_remap = generate_op(fileseg_dag, "remap", image=SYNAPTOR_IMAGE)
 wait_remap = wait_op(fileseg_dag, "remap")
 
+ngl_link = PythonOperator(
+    task_id="ngl_link",
+    python_callable=generate_ngl_link,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=fileseg_dag,
+)
 
 # DEPENDENCIES
 # Drain old tasks before doing anything
-collect_metrics_op(fileseg_dag) >> drain >> sanity_check >> init_cloudvols  # >> generate_ngl_link
+collect_metrics_op(fileseg_dag) >> drain >> sanity_check >> init_cloudvols
 
 # Worker dag
 (init_cloudvols >> scale_up_cluster >> workers >> scale_down_cluster)
@@ -103,6 +128,7 @@ collect_metrics_op(fileseg_dag) >> drain >> sanity_check >> init_cloudvols  # >>
     >> wait_merge_ccs
     >> generate_remap
     >> wait_remap
+    >> ngl_link
     >> generate_self_destruct
     >> wait_self_destruct
 )
@@ -165,6 +191,16 @@ wait_merge_seginfo = wait_op(dbseg_dag, "merge_seginfo")
 generate_remap = generate_op(dbseg_dag, "remap", image=SYNAPTOR_IMAGE)
 wait_remap = wait_op(dbseg_dag, "remap")
 
+ngl_link = PythonOperator(
+    task_id="ngl_link",
+    python_callable=generate_ngl_link,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=dbseg_dag,
+)
+
 
 # DEPENDENCIES
 # Drain old tasks before doing anything
@@ -189,6 +225,7 @@ collect_metrics_op(dbseg_dag) >> drain >> sanity_check >> init_cloudvols >> init
     >> wait_merge_seginfo
     >> generate_remap
     >> wait_remap
+    >> ngl_link
     >> generate_self_destruct
     >> wait_self_destruct
 )
@@ -301,6 +338,16 @@ wait_merge_dup_maps = wait_op(assign_dag, "merge_dup_maps")
 generate_remap = generate_op(assign_dag, "remap", image=SYNAPTOR_IMAGE)
 wait_remap = wait_op(assign_dag, "remap")
 
+ngl_link = PythonOperator(
+    task_id="ngl_link",
+    python_callable=generate_ngl_link,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=assign_dag,
+)
+
 
 # DEPENDENCIES
 # Drain old tasks before doing anything
@@ -361,6 +408,7 @@ collect_metrics_op(assign_dag) >> drain >> sanity_check >> init_cloudvols >> ini
     >> wait_merge_dup_maps
     >> generate_remap
     >> wait_remap
+    >> ngl_link
     >> generate_self_destruct_cpu1
     >> wait_self_destruct_cpu1
 )

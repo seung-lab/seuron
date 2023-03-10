@@ -21,12 +21,6 @@ MOUNT_POINT = "/root/.cloudvolume/secrets/"
 TASK_QUEUE_NAME = "synaptor"
 
 
-# Python callables (for PythonOperators)
-def generate_ngl_link_op() -> None:
-    """Generates a neuroglancer link to view the results."""
-    pass
-
-
 # Op functions
 def drain_op(
     dag: DAG,
