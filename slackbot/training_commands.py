@@ -141,9 +141,7 @@ def extract_exp_name(msgtext: str) -> str:
 
 
 def extract_seed_model(msgtext: str) -> str:
-    return regex_match(
-        msgtext, re.compile("<?(gs://.*[A-z].chkpt)>?\[?.*\]?"), "seed model"  # noqa
-    )
+    return regex_match(msgtext, re.compile("<(gs://.*.chkpt)>"), "seed model")
 
 
 def extract_annotations(
