@@ -53,6 +53,35 @@ def initial_sanity_check(json_obj: dict, full: bool = False) -> None:
     for k in flag_keys :
         assert_type(json_obj, k, type(None))
 
+    if "zettaset_lookup" in json_obj:
+        matches = {
+            "affinity": "aff",
+            "synapse": ["syn", "psd"],
+            "boundary": "bdr",
+            "mitochondria": "mit",
+            "myelin": "mye",
+            "fold": "fld",
+            "blv": "blood vessel",
+            "glia": "glia",
+        }
+
+        for k, v in json_obj["zettaset_lookup"].items():
+            matching_target = matches[k]
+
+            if isinstance(matching_target, str):
+                assert matching_target in json_obj, (
+                    "target matching lookup {k} not found"
+                )
+            elif isinstance(matching_target, list):
+                assert any(t in json_obj for t in matching_target), (
+                    "target matching lookup {k} not found"
+                )
+
+            else:
+                raise Exception(
+                    f"unknown match type: {matching_target} - {type(matching_target)}"
+                )
+
     if full:
         assert "exp_name" in json_obj, "empty experiment name"
         assert "annotation_ids" in json_obj, "no annotation ids"
