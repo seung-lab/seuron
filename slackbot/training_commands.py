@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 import random
 import string
+from datetime import datetime
 from typing import Optional
 
 from seuronbot import SeuronBot
@@ -116,7 +117,11 @@ def run_training(msg: dict) -> None:
 
 
 def generate_exp_name():
-    return "".join(random.sample(string.ascii_letters, k=10))
+    now = datetime.utcnow()
+    return (
+        f"{now.year:04d}{now.month:02d}{now.day:02d}"
+        f"-{now.hour:02d}{now.minute:02d}{now.second:02d}"
+    )
 
 
 def regex_match(msgtext: str, regexp: re.Pattern, fieldname: str) -> str:
