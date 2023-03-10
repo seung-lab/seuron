@@ -239,6 +239,25 @@ def bbox_and_center(
     if maxsz is not None and any(sz > mx for sz, mx in zip(bboxsz, maxsz)):
         raise ValueError("bounding box is too large: max size = {maxsz}")
 
+    # resampling coordinates to data resolution
+    if "index_resolution" in defaults and "data_resolution" in defaults:
+        assert isinstance(defaults["index_resolution"], list)
+        assert isinstance(defaults["data_resolution"], list)
+
+        center_pt = tuple(
+            int(c * ir / dr)
+            for c, ir, dr in zip(
+                center_pt, defaults["index_resolution"], defaults["data_resolution"]
+            )
+        )
+
+        bbox = tuple(
+            int(b * ir / dr)
+            for b, ir, dr in zip(
+                bbox,
+                defaults["index_resolution"] + defaults["index_resolution"],
+                defaults["data_resolution"] + defaults["data_resolution"],
+            )
+        )
+
     return bbox, center_pt
-
-
