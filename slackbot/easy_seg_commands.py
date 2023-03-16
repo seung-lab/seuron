@@ -167,8 +167,8 @@ def run_easy_seg(msg: dict) -> None:
     if "index_resolution" in defaults and "data_resolution" in defaults:
         response += (
             "\n"
-            "index_resolution: {defaults['index_resolution']}\n"
-            "data_resolution: {defaults['data_resolution']}"
+            f"index_resolution: {defaults['index_resolution']}\n"
+            f"data_resolution: {defaults['data_resolution']}"
         )
 
     replyto(msg, response)

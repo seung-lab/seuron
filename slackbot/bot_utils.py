@@ -207,6 +207,7 @@ def bbox_and_center(
     defaults: dict,
     bbox: Optional[tuple[tuple[int, int, int], tuple[int, int, int]]] = None,
     center_pt: Optional[tuple[int, int, int]] = None,
+    resample: bool = True,
 ) -> tuple[tuple[int, int, int, int, int, int], tuple[int, int, int]]:
     assert bbox is not None or center_pt is not None, (
         "either bbox or center_pt needs to be filled in"
@@ -240,7 +241,7 @@ def bbox_and_center(
         raise ValueError("bounding box is too large: max size = {maxsz}")
 
     # resampling coordinates to data resolution
-    if "index_resolution" in defaults and "data_resolution" in defaults:
+    if resample and "index_resolution" in defaults and "data_resolution" in defaults:
         assert isinstance(defaults["index_resolution"], list)
         assert isinstance(defaults["data_resolution"], list)
 
