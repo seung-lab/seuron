@@ -71,7 +71,8 @@ def make_cutout_task(msg) -> None:
     param = get_variable("webknossos_param", deserialize_json=True)
 
     try:
-        bbox, center_pt = bbox_and_center(param, bbox, center_pt)
+        # wktools handles the resampling internally -> resample=False
+        bbox, center_pt = bbox_and_center(param, bbox, center_pt, resample=False)
     except Exception as e:
         replyto(msg, f"Errors creating bbox: {e}")
         return

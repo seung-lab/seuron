@@ -94,10 +94,28 @@ def make_command(scriptname: str, **args):
     param = PARAM.copy()
     param.update(args)
 
-    # extra "s ensure that args with spaces are parsed correctly
-    arg_str = " ".join(f"--{k} \"{v}\"" for k, v in param.items())
+    return f"{scriptname} {make_argstr(param)}"
 
-    return f"{scriptname} {arg_str}"
+
+def make_argstr(param: dict) -> str:
+
+    def format_arg(item) -> str:
+        k, v = item
+        if v is None:
+            return f"--{k}"
+        elif isinstance(v, list):
+            return f"--{k} " + " ".join(f"{elem}" for elem in v)
+        elif isinstance(v, dict):
+            return (
+                f"--{k}"
+                + " '{"
+                + ", ".join(f"\"{vk}\":\"{vv}\"" for vk, vv in v.items())
+                + "}'"
+            )
+        else:
+            return f"--{k} {v}"
+
+    return " ".join(map(format_arg, param.items()))
 
 
 default_args = dict(
