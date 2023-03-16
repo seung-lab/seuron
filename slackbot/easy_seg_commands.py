@@ -177,8 +177,6 @@ def run_easy_seg(msg: dict) -> None:
     clear_queues()  # empties the seuronbot_payload batch queue
     put_message(broker_url, "seuronbot_payload", [inf_params, seg_params])
 
-    warm_up_clusters(defaults, msg)
-
     # sanity checking inference params (handle_batch skips the first sanity check)
     supply_default_param(inf_params)
     replyto(msg, "Running chunkflow setup_env")
