@@ -7,7 +7,7 @@ from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
 from param_default import default_seg_workspace, check_worker_image_labels, update_mount_secrets
-from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data
+from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data, mount_secrets
 import os
 
 from chunkiterator import ChunkIterator
@@ -54,26 +54,10 @@ def task_done_alert(context):
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
+@mount_secrets
 def check_cv_data():
     from airflow import configuration as conf
     param = Variable.get("param", deserialize_json=True)
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
-    if not os.path.exists(cv_secrets_path):
-        os.makedirs(cv_secrets_path)
-
-    mount_secrets = param.get("MOUNT_SECRETS", [])
-
-    for k in mount_secrets:
-        try:
-            v = Variable.get(k)
-        except KeyError:
-            webui_ip = Variable.get("webui_ip")
-            slack_message(":exclamation:*{} does not exist, specify it from <https://{}/airflow/admin/variable/|the web interface>*".format(k, webui_ip))
-            raise
-
-        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
-            value_file.write(v)
-
 
     statsd_host = conf.get('metrics', 'statsd_host')
     statsd_port = conf.get('metrics', 'statsd_port')
@@ -241,8 +225,6 @@ def check_cv_data():
         slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
         raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
 
-    for k in mount_secrets:
-        os.remove(os.path.join(cv_secrets_path, k))
 
 def check_worker_image_op(dag):
     workspace_path = param.get("WORKSPACE_PATH", default_seg_workspace)
