@@ -7,7 +7,7 @@ from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
 from param_default import default_seg_workspace, check_worker_image_labels
-from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scale_with_data
+from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data
 import os
 
 from chunkiterator import ChunkIterator
@@ -244,18 +244,6 @@ def check_cv_data():
     for k in mount_secrets:
         os.remove(os.path.join(cv_secrets_path, k))
 
-def check_path_exists_op(dag, tag, path):
-    return PythonOperator(
-        task_id='check_path_{}'.format(tag.replace("PREFIX", "PATH").lower()),
-        python_callable=check_cloud_path_empty,
-        op_args = (path,),
-        on_failure_callback=cv_check_alert,
-        weight_rule=WeightRule.ABSOLUTE,
-        queue="manager",
-        dag=dag
-    )
-
-
 def check_worker_image_op(dag):
     workspace_path = param.get("WORKSPACE_PATH", default_seg_workspace)
     cmdline = f'/bin/bash -c "ls {os.path.join(workspace_path, "scripts/init.sh")}"'
@@ -413,14 +401,21 @@ for p in ["SCRATCH", "WS", "SEG"]:
     else:
         paths[path] = param["{}_PATH".format(p)]
 
-path_checks = [check_path_exists_op(dag, "SCRATCH_PATH", paths["SCRATCH_PATH"])]
+paths_to_check = [paths["SCRATCH_PATH"],]
 image_check = check_worker_image_op(dag)
 
 for p in [("WS","WS"), ("AGG","SEG")]:
-    if param.get("SKIP_"+p[0], False):
-        path_checks.append(placeholder_op(dag, p[1]+"_PATH"))
-    else:
-        path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", paths[p[1]+"_PATH"]))
+    if not param.get("SKIP_"+p[0], False):
+        paths_to_check.append(paths[p[1]+"_PATH"])
+
+path_checks = PythonOperator(
+    task_id='check_paths',
+    python_callable=check_cloud_paths_empty,
+    op_args = (paths_to_check,),
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=dag
+)
 
 setup_redis_db = setup_redis_op(dag, "param", "ABISS")
 

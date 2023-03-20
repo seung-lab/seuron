@@ -280,21 +280,22 @@ def mip_for_mesh_and_skeleton(path):
 
     return mip
 
-def check_cloud_path_empty(path):
+def check_cloud_paths_empty(paths):
     import traceback
     from cloudfiles import CloudFiles
     from slack_message import slack_message
     try:
-        cf = CloudFiles(path)
-        obj = next(cf.list(), None)
+        for path in paths:
+            cf = CloudFiles(path)
+            obj = next(cf.list(), None)
+        if obj is not None:
+            slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
+            raise RuntimeError('Path already exist')
     except:
         slack_message(""":exclamation:*Error*: Check cloud path failed:
 ```{}``` """.format(traceback.format_exc()))
         raise
 
-    if obj is not None:
-        slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
-        raise RuntimeError('Path already exist')
 
 @mount_secrets
 def commit_info(path, info, provenance):
