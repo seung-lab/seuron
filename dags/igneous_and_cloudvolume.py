@@ -92,6 +92,11 @@ def mount_secrets(func):
         from airflow.models import Variable
         from slack_message import slack_message
         cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+        secrets_lock = os.path.join(cv_secrets_path, ".secrets_mounted")
+        if os.path.exists(secrets_lock):
+            slack_message(f"secrets already mounted, skip")
+            return func(*args, **kwargs)
+
         if not os.path.exists(cv_secrets_path):
             os.makedirs(cv_secrets_path)
 
@@ -103,6 +108,7 @@ def mount_secrets(func):
             with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
                 value_file.write(v)
             slack_message(f"mount secret `{k}` to `{cv_secrets_path}`")
+        open(secrets_lock, 'a').close()
         try:
             return func(*args, **kwargs)
         except Exception as e:
@@ -110,6 +116,7 @@ def mount_secrets(func):
         finally:
             for k in mount_secrets:
                 os.remove(os.path.join(cv_secrets_path, k))
+            os.remove(secrets_lock)
 
     return inner
 
