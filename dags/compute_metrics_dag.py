@@ -27,7 +27,13 @@ with DAG("compute_metrics",
         from time import sleep
         from airflow.models.dagrun import DagRun
         from airflow.utils.state import DagRunState
+        from airflow.models import Variable
         from slack_message import slack_message
+
+        if Variable.get("vendor") != "Google":
+            slack_message("Seuron only support compute metric collection for GCE")
+            return
+
         from google_api_helper import collect_resource_metrics
         conf = dag_run.conf
         target_dag_id = conf["dag_id"]
