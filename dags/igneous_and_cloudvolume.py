@@ -237,11 +237,14 @@ def kombu_tasks(cluster_name, init_workers):
     return decorator
 
 
+@mount_secrets
 def dataset_resolution(path, mip=0):
     from cloudvolume import CloudVolume
     vol = CloudVolume(path, mip=mip)
     return vol.resolution.tolist()
 
+
+@mount_secrets
 def cv_has_data(path, mip=0):
     from cloudvolume import CloudVolume
     from slack_message import slack_message
@@ -253,6 +256,7 @@ def cv_has_data(path, mip=0):
         return True
 
 
+@mount_secrets
 def cv_scale_with_data(path):
     from cloudvolume import CloudVolume
     from slack_message import slack_message
@@ -280,6 +284,7 @@ def mip_for_mesh_and_skeleton(path):
 
     return mip
 
+@mount_secrets
 def check_cloud_paths_empty(paths):
     import traceback
     from cloudfiles import CloudFiles
@@ -377,12 +382,14 @@ def create_info(stage, param, top_mip):
         slack_message(""":exclamation: Write the map from chunked segments to real segments to `{}`.""".format(param["CHUNKMAP_OUTPUT"]))
 
 
+@mount_secrets
 def upload_json(path, filename, content):
     from cloudfiles import CloudFiles
     cf = CloudFiles(path)
     cf.put_json(filename, content)
 
 
+@mount_secrets
 def get_atomic_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
     def filename_sequence():
@@ -398,6 +405,7 @@ def get_atomic_files_job(v, param, prefix):
     return b"".join(x["content"] for x in data)
 
 
+@mount_secrets
 def get_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
     cf = CloudFiles(param["SCRATCH_PATH"])
@@ -405,6 +413,7 @@ def get_files_job(v, param, prefix):
     return b"".join(x["content"] for x in data)
 
 
+@mount_secrets
 def put_file_job(content, param, prefix):
     from cloudfiles import CloudFiles
 #    try:
