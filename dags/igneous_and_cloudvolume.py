@@ -248,7 +248,7 @@ def cv_scale_with_data(path):
         try:
             if vol.image.has_data(m):
                 return m, vol.scales[m]['resolution']
-        except NotImplementedError:
+        except:
             slack_message("CloudVolume does not support has_data for layer `{}`. You need to explicitly specify the input resolution".format(path))
 
 
