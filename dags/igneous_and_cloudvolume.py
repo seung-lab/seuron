@@ -150,12 +150,17 @@ def kombu_tasks(cluster_name, init_workers):
             import time
             import json
             from airflow import configuration
+            from airflow.models import Variable
             from airflow.hooks.base_hook import BaseHook
             from kombu import Connection
-            from google_api_helper import ramp_up_cluster, ramp_down_cluster
             from dag_utils import estimate_worker_instances
             from slack_message import slack_message
             import traceback
+
+            if Variable.get("vendor") == "Google":
+                import google_api_helper as cluster_api
+            else:
+                cluster_api = None
 
             cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 
@@ -203,16 +208,17 @@ def kombu_tasks(cluster_name, init_workers):
                             submit_message(queue, payload)
                         queue.close()
 
-                    target_size = estimate_worker_instances(len(tasks), cluster_info[cluster_name])
-                    ramp_up_cluster(cluster_name, min(target_size, init_workers) , target_size)
+                    if cluster_api:
+                        target_size = estimate_worker_instances(len(tasks), cluster_info[cluster_name])
+                        cluster_api.ramp_up_cluster(cluster_name, min(target_size, init_workers) , target_size)
                     check_queue(queue_name, agg)
                     if agg:
                         agg.finalize()
 
                 slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
                 elapsed_time = time.monotonic() - start_time
-                if elapsed_time > 600:
-                    ramp_down_cluster(cluster_name, 0)
+                if elapsed_time > 600 and cluster_api:
+                    cluster_api.ramp_down_cluster(cluster_name, 0)
 
             except Exception as e:
                 slack_message("Failed to submit tasks using {}".format(create_tasks.__name__))

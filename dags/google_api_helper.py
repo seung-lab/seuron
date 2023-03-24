@@ -24,7 +24,8 @@ def instance_group_info(project_id, instance_group):
     request = service.instanceGroups().get(project=project_id, zone=instance_group['zone'], instanceGroup=instance_group['name'])
     return request.execute()
 
-def list_managed_instances(project_id, instance_group):
+def list_managed_instances(instance_group):
+    project_id = get_project_id()
     service = discovery.build("compute", "v1")
     page_token = None
     instances = []
@@ -40,7 +41,8 @@ def list_managed_instances(project_id, instance_group):
 
     return instances
 
-def delete_instances(project_id, ig, instances):
+def delete_instances(ig, instances):
+    project_id = get_project_id()
     request_body = {
         "instances": instances,
         "skipInstancesOnValidationError": True,
@@ -95,7 +97,8 @@ def reset_cluster(key, initial_size):
     slack_message(":information_source:{} instances in cluster {} restarted".format(total_size, key))
 
 
-def resize_instance_group(project_id, instance_group, size):
+def resize_instance_group(instance_group, size):
+    project_id = get_project_id()
 
     total_size = get_cluster_target_size(project_id, instance_group)
 
@@ -174,7 +177,7 @@ def increase_instance_group_size(key, size):
         slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(project_id, cluster_info[key], size)
+        real_size = resize_instance_group(cluster_info[key], size)
         slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
 
@@ -197,9 +200,25 @@ def reduce_instance_group_size(key, size):
         slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(project_id, cluster_info[key], size)
+        real_size = resize_instance_group(cluster_info[key], size)
         slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stablize".format(key, real_size))
         sleep(60)
+
+
+def cluster_status(name, cluster):
+    project_id = get_project_id()
+    current_size = get_cluster_size(project_id, cluster)
+    requested_size = get_cluster_target_size(project_id, cluster)
+    stable = True
+    if requested_size > 0:
+        slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
+
+    if (requested_size - current_size) > 0.1 * requested_size:
+        slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
+        stable = False
+
+    return stable, requested_size
+
 
 def collect_resource_metrics(start_time, end_time):
     import pendulum

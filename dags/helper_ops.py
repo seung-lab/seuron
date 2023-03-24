@@ -6,7 +6,12 @@ from airflow.models import Variable
 from time import sleep
 from slack_message import slack_message
 from param_default import default_args
-from google_api_helper import ramp_up_cluster, ramp_down_cluster, reset_cluster, collect_resource_metrics
+
+if Variable.get("vendor") == "Google":
+    import google_api_helper as cluster_api
+else:
+    cluster_api = None
+
 
 def slack_message_op(dag, tid, msg):
     return PythonOperator(
@@ -132,45 +137,54 @@ def wait_op(dag, process):
 
 
 def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue):
-    return PythonOperator(
-        task_id='resize_{}_{}'.format(stage, total_size),
-        python_callable=ramp_up_cluster,
-        op_args = [key, initial_size, total_size],
-        default_args=default_args,
-        weight_rule=WeightRule.ABSOLUTE,
-        priority_weight=1000,
-        trigger_rule="one_success",
-        queue=queue,
-        dag=dag
-    )
+    if cluster_api:
+        return PythonOperator(
+            task_id=f'resize_{stage}_{total_size}',
+            python_callable=cluster_api.ramp_up_cluster,
+            op_args=[key, initial_size, total_size],
+            default_args=default_args,
+            weight_rule=WeightRule.ABSOLUTE,
+            priority_weight=1000,
+            trigger_rule="one_success",
+            queue=queue,
+            dag=dag
+        )
+    else:
+        return placeholder_op(dag, f'resize_{stage}_{total_size}')
 
 
 def scale_down_cluster_op(dag, stage, key, size, queue):
-    return PythonOperator(
-        task_id='resize_{}_{}'.format(stage, size),
-        python_callable=ramp_down_cluster,
-        op_args = [key, size],
-        default_args=default_args,
-        weight_rule=WeightRule.ABSOLUTE,
-        priority_weight=1000,
-        trigger_rule="all_done",
-        queue=queue,
-        dag=dag
-    )
+    if cluster_api:
+        return PythonOperator(
+            task_id=f'resize_{stage}_{size}',
+            python_callable=cluster_api.ramp_down_cluster,
+            op_args=[key, size],
+            default_args=default_args,
+            weight_rule=WeightRule.ABSOLUTE,
+            priority_weight=1000,
+            trigger_rule="all_done",
+            queue=queue,
+            dag=dag
+        )
+    else:
+        return placeholder_op(dag, f'resize_{stage}_{size}')
 
 
 def reset_cluster_op(dag, stage, key, initial_size, queue):
-    return PythonOperator(
-        task_id='reset_{}_{}'.format(stage, key),
-        python_callable=reset_cluster,
-        op_args = [key, initial_size],
-        default_args=default_args,
-        weight_rule=WeightRule.ABSOLUTE,
-        priority_weight=1000,
-        trigger_rule="all_success",
-        queue=queue,
-        dag=dag
-    )
+    if cluster_api:
+        return PythonOperator(
+            task_id=f'reset_{stage}_{key}',
+            python_callable=cluster_api.reset_cluster,
+            op_args=[key, initial_size],
+            default_args=default_args,
+            weight_rule=WeightRule.ABSOLUTE,
+            priority_weight=1000,
+            trigger_rule="all_success",
+            queue=queue,
+            dag=dag
+        )
+    else:
+        return placeholder_op(dag, f'reset_{stage}_{key}')
 
 
 def collect_metrics_op(dag):
