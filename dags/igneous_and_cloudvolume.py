@@ -100,8 +100,7 @@ def mount_secrets(func):
         if not os.path.exists(cv_secrets_path):
             os.makedirs(cv_secrets_path)
 
-        inner_param = Variable.get("param", deserialize_json=True)
-        mount_secrets = inner_param.get("MOUNT_SECRETS", [])
+        mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default_var=[])
 
         for k in mount_secrets:
             v = Variable.get(k)

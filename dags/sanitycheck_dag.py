@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
-from param_default import default_seg_workspace, check_worker_image_labels
+from param_default import default_seg_workspace, check_worker_image_labels, update_mount_secrets
 from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data
 import os
 
@@ -427,6 +427,13 @@ image_parameters = PythonOperator(
     queue="manager",
     dag=dag)
 
+update_mount_secrets_op = PythonOperator(
+    task_id="update_mount_secrets",
+    python_callable=update_mount_secrets,
+    op_args=("param",),
+    on_failure_callback=task_failure_alert,
+    queue="manager",
+    dag=dag)
 
 affinity_check = PythonOperator(
     task_id="check_cloudvolume_data",
@@ -443,4 +450,4 @@ summary = PythonOperator(
     queue="manager",
     dag=dag)
 
-setup_redis_db >> image_parameters >> image_check >> path_checks >> affinity_check >> summary
+[setup_redis_db, update_mount_secrets_op] >> image_parameters >> image_check >> path_checks >> affinity_check >> summary

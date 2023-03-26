@@ -4,7 +4,7 @@ from airflow.hooks.base_hook import BaseHook
 from worker_op import worker_op
 from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
-from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels
+from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels, update_mount_secrets
 from datetime import datetime
 from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
@@ -509,6 +509,14 @@ generate_ng_link_task = PythonOperator(
 
 mark_done_task = mark_done_op(dag_worker, "chunkflow_done")
 
+update_mount_secrets_op = PythonOperator(
+    task_id="update_mount_secrets",
+    python_callable=update_mount_secrets,
+    op_args=("param",),
+    on_failure_callback=task_failure_alert,
+    queue="manager",
+    dag=dag_generator)
+
 setup_redis_task = setup_redis_op(dag_generator, "inference_param", "CHUNKFLOW")
 
 set_env_task = setup_env_op(dag_generator, param, "manager")
@@ -522,6 +530,6 @@ for i in range(min(param.get("TASK_NUM", 1), total_workers)):
 
 collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down_cluster_task
 
-setup_redis_task >> sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
+[setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
 
 scale_up_cluster_task >> wait_for_chunkflow_task >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
