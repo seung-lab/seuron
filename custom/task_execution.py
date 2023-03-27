@@ -41,12 +41,11 @@ def command(queue, timeout, concurrency):
 
     statsd = StatsClient(host=statsd_host, port=statsd_port)
 
-    param = Variable.get("param", deserialize_json=True)
     cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
         os.makedirs(cv_secrets_path)
 
-    mount_secrets = param.get("MOUNT_SECRETS", [])
+    mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default_var=[])
 
     for k in mount_secrets:
         v = Variable.get(k)

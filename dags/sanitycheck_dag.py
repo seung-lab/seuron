@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
 from airflow.models import Variable
-from param_default import default_seg_workspace, check_worker_image_labels
-from igneous_and_cloudvolume import check_cloud_path_empty, cv_has_data, cv_scale_with_data
+from param_default import default_seg_workspace, check_worker_image_labels, update_mount_secrets
+from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data, mount_secrets
 import os
 
 from chunkiterator import ChunkIterator
@@ -54,26 +54,10 @@ def task_done_alert(context):
     slack_msg = slack_message_op(dag, "slack_message", msg)
     return slack_msg.execute(context=context)
 
+@mount_secrets
 def check_cv_data():
     from airflow import configuration as conf
     param = Variable.get("param", deserialize_json=True)
-    cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
-    if not os.path.exists(cv_secrets_path):
-        os.makedirs(cv_secrets_path)
-
-    mount_secrets = param.get("MOUNT_SECRETS", [])
-
-    for k in mount_secrets:
-        try:
-            v = Variable.get(k)
-        except KeyError:
-            webui_ip = Variable.get("webui_ip")
-            slack_message(":exclamation:*{} does not exist, specify it from <https://{}/airflow/admin/variable/|the web interface>*".format(k, webui_ip))
-            raise
-
-        with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
-            value_file.write(v)
-
 
     statsd_host = conf.get('metrics', 'statsd_host')
     statsd_port = conf.get('metrics', 'statsd_port')
@@ -241,20 +225,6 @@ def check_cv_data():
         slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
         raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
 
-    for k in mount_secrets:
-        os.remove(os.path.join(cv_secrets_path, k))
-
-def check_path_exists_op(dag, tag, path):
-    return PythonOperator(
-        task_id='check_path_{}'.format(tag.replace("PREFIX", "PATH").lower()),
-        python_callable=check_cloud_path_empty,
-        op_args = (path,),
-        on_failure_callback=cv_check_alert,
-        weight_rule=WeightRule.ABSOLUTE,
-        queue="manager",
-        dag=dag
-    )
-
 
 def check_worker_image_op(dag):
     workspace_path = param.get("WORKSPACE_PATH", default_seg_workspace)
@@ -413,14 +383,21 @@ for p in ["SCRATCH", "WS", "SEG"]:
     else:
         paths[path] = param["{}_PATH".format(p)]
 
-path_checks = [check_path_exists_op(dag, "SCRATCH_PATH", paths["SCRATCH_PATH"])]
+paths_to_check = [paths["SCRATCH_PATH"],]
 image_check = check_worker_image_op(dag)
 
 for p in [("WS","WS"), ("AGG","SEG")]:
-    if param.get("SKIP_"+p[0], False):
-        path_checks.append(placeholder_op(dag, p[1]+"_PATH"))
-    else:
-        path_checks.append(check_path_exists_op(dag, p[1]+"_PATH", paths[p[1]+"_PATH"]))
+    if not param.get("SKIP_"+p[0], False):
+        paths_to_check.append(paths[p[1]+"_PATH"])
+
+path_checks = PythonOperator(
+    task_id='check_paths',
+    python_callable=check_cloud_paths_empty,
+    op_args = (paths_to_check,),
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=dag
+)
 
 setup_redis_db = setup_redis_op(dag, "param", "ABISS")
 
@@ -432,6 +409,13 @@ image_parameters = PythonOperator(
     queue="manager",
     dag=dag)
 
+update_mount_secrets_op = PythonOperator(
+    task_id="update_mount_secrets",
+    python_callable=update_mount_secrets,
+    op_args=("param",),
+    on_failure_callback=task_failure_alert,
+    queue="manager",
+    dag=dag)
 
 affinity_check = PythonOperator(
     task_id="check_cloudvolume_data",
@@ -448,4 +432,4 @@ summary = PythonOperator(
     queue="manager",
     dag=dag)
 
-setup_redis_db >> image_parameters >> image_check >> path_checks >> affinity_check >> summary
+[setup_redis_db, update_mount_secrets_op] >> image_parameters >> image_check >> path_checks >> affinity_check >> summary

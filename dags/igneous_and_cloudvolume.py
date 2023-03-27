@@ -92,17 +92,22 @@ def mount_secrets(func):
         from airflow.models import Variable
         from slack_message import slack_message
         cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+        secrets_lock = os.path.join(cv_secrets_path, ".secrets_mounted")
+        if os.path.exists(secrets_lock):
+            slack_message(f"secrets already mounted, skip")
+            return func(*args, **kwargs)
+
         if not os.path.exists(cv_secrets_path):
             os.makedirs(cv_secrets_path)
 
-        inner_param = Variable.get("param", deserialize_json=True)
-        mount_secrets = inner_param.get("MOUNT_SECRETS", [])
+        mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default_var=[])
 
         for k in mount_secrets:
             v = Variable.get(k)
             with open(os.path.join(cv_secrets_path, k), 'w') as value_file:
                 value_file.write(v)
             slack_message(f"mount secret `{k}` to `{cv_secrets_path}`")
+        open(secrets_lock, 'a').close()
         try:
             return func(*args, **kwargs)
         except Exception as e:
@@ -110,6 +115,7 @@ def mount_secrets(func):
         finally:
             for k in mount_secrets:
                 os.remove(os.path.join(cv_secrets_path, k))
+            os.remove(secrets_lock)
 
     return inner
 
@@ -230,11 +236,14 @@ def kombu_tasks(cluster_name, init_workers):
     return decorator
 
 
+@mount_secrets
 def dataset_resolution(path, mip=0):
     from cloudvolume import CloudVolume
     vol = CloudVolume(path, mip=mip)
     return vol.resolution.tolist()
 
+
+@mount_secrets
 def cv_has_data(path, mip=0):
     from cloudvolume import CloudVolume
     from slack_message import slack_message
@@ -246,6 +255,7 @@ def cv_has_data(path, mip=0):
         return True
 
 
+@mount_secrets
 def cv_scale_with_data(path):
     from cloudvolume import CloudVolume
     from slack_message import slack_message
@@ -273,21 +283,23 @@ def mip_for_mesh_and_skeleton(path):
 
     return mip
 
-def check_cloud_path_empty(path):
+@mount_secrets
+def check_cloud_paths_empty(paths):
     import traceback
     from cloudfiles import CloudFiles
     from slack_message import slack_message
     try:
-        cf = CloudFiles(path)
-        obj = next(cf.list(), None)
+        for path in paths:
+            cf = CloudFiles(path)
+            obj = next(cf.list(), None)
+        if obj is not None:
+            slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
+            raise RuntimeError('Path already exist')
     except:
         slack_message(""":exclamation:*Error*: Check cloud path failed:
 ```{}``` """.format(traceback.format_exc()))
         raise
 
-    if obj is not None:
-        slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
-        raise RuntimeError('Path already exist')
 
 @mount_secrets
 def commit_info(path, info, provenance):
@@ -369,12 +381,14 @@ def create_info(stage, param, top_mip):
         slack_message(""":exclamation: Write the map from chunked segments to real segments to `{}`.""".format(param["CHUNKMAP_OUTPUT"]))
 
 
+@mount_secrets
 def upload_json(path, filename, content):
     from cloudfiles import CloudFiles
     cf = CloudFiles(path)
     cf.put_json(filename, content)
 
 
+@mount_secrets
 def get_atomic_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
     def filename_sequence():
@@ -390,6 +404,7 @@ def get_atomic_files_job(v, param, prefix):
     return b"".join(x["content"] for x in data)
 
 
+@mount_secrets
 def get_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
     cf = CloudFiles(param["SCRATCH_PATH"])
@@ -397,6 +412,7 @@ def get_files_job(v, param, prefix):
     return b"".join(x["content"] for x in data)
 
 
+@mount_secrets
 def put_file_job(content, param, prefix):
     from cloudfiles import CloudFiles
 #    try:

@@ -19,6 +19,13 @@ def check_worker_image_labels(variable):
     Variable.set(variable, param, serialize_json=True)
 
 
+def update_mount_secrets(variable):
+    from airflow.models import Variable
+    param = Variable.get(variable, deserialize_json=True)
+    mount_secrets = param.get("MOUNT_SECRETS", [])
+    Variable.set("mount_secrets", mount_secrets, serialize_json=True)
+
+
 param_default = {
     "NAME":"minnie_367_0",
 
