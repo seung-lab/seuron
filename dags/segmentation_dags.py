@@ -249,17 +249,17 @@ def compare_segmentation(param):
         "ng_payload": payload,
         "seg_pairs": seg_pairs
     }
-    gs_log_path = conf.get('logging', 'remote_base_log_folder')
-    bucket_name = gs_log_path[5:].split('/')[0]
+    if conf.get('logging', 'remote_logging') == "True":
+        gs_log_path = conf.get('logging', 'remote_base_log_folder')
+        bucket_name = gs_log_path[5:].split('/')[0]
 
-    upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
+        upload_json("gs://"+os.path.join(bucket_name,"diff"), "{}.json".format(param["NAME"]), output)
 
 
 def evaluate_results(param):
+    from airflow import configuration as conf
     if "GT_PATH" not in param:
         return
-
-    diff_server = param.get("DIFF_SERVER", "https://diff-dot-neuromancer-seung-import.appspot.com")
 
     scores = Variable.get("seg_eval", deserialize_json=True)
 
@@ -268,15 +268,17 @@ rand split: *{rand_split}*
 rand merge: *{rand_merge}*
 voi split : *{voi_split}*
 voi merge : *{voi_merge}*
-seg diff: {url}
 '''.format(
     gt_path=param["GT_PATH"],
     rand_split=round(abs(scores['rand_split']),3),
     rand_merge=round(abs(scores['rand_merge']),3),
     voi_split=round(abs(scores['voi_split']),3),
     voi_merge=round(abs(scores['voi_merge']),3),
-    url="{}/{}".format(diff_server, param["NAME"])
     )
+    if conf.get('logging', 'remote_logging') == "True":
+        diff_server = param.get("DIFF_SERVER", "https://diff-dot-neuromancer-seung-import.appspot.com")
+        msg += f'seg diff: {diff_server}/{param["NAME"]}'
+
     slack_message(msg, broadcast=True)
 
 
