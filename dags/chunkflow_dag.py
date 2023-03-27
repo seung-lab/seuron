@@ -418,9 +418,9 @@ def process_output(**kwargs):
 
     Variable.set("inference_param", param, serialize_json=True)
 
-    gs_log_path = conf.get('logging', 'remote_base_log_folder')
-
-    upload_json(os.path.join(gs_log_path,"param"), "{}.json".format(param["NAME"]), param)
+    if conf.get('logging', 'remote_logging') == "True":
+        remote_log_path = conf.get('logging', 'remote_base_log_folder')
+        upload_json(os.path.join(remote_log_path, "param"), "{}.json".format(param["NAME"]), param)
 
     slack_message('chunkflow setup-env output: ```{}```'.format("\n".join(output)))
 
