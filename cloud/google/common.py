@@ -81,6 +81,8 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__CELERY__BROKER_URL': f'amqp://{hostname_manager}',
         'AIRFLOW__CELERY__CELERY_RESULT_BACKEND': f'db+{sqlalchemy_conn}',
         'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['airflow']['secretKey'],
+        'AIRFLOW__LOGGING__REMOTE_LOGGING': 'True',
+        'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID': 'GCSConn',
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
         'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{context.properties["airflow"]["remoteLogFolder"]}/{context.env["deployment"]}',
         'AIRFLOW__METRICS__STATSD_ON': 'True',
