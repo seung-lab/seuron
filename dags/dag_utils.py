@@ -25,12 +25,15 @@ def estimate_worker_instances(tasks, cluster_info):
     import math
     workers = 0
     remaining_tasks = tasks
-    for c in cluster_info:
-        if c['max_size']*c['concurrency'] < remaining_tasks:
-            workers += c['max_size']
-            remaining_tasks -= c['max_size']*c['concurrency']
-        else:
-            workers += int(math.ceil(remaining_tasks / c['concurrency']))
-            break
+    try:
+        for c in cluster_info:
+            if c['max_size']*c['concurrency'] < remaining_tasks:
+                workers += c['max_size']
+                remaining_tasks -= c['max_size']*c['concurrency']
+            else:
+                workers += int(math.ceil(remaining_tasks / c['concurrency']))
+                break
+    except:
+        return 1
 
     return workers
