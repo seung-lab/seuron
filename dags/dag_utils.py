@@ -10,15 +10,27 @@ def check_manager_node(ntasks):
 
     return True
 
-def get_composite_worker_limits():
+
+def get_composite_worker_capacities():
     import json
     from airflow.hooks.base_hook import BaseHook
     cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
-    layers = []
-    for c in cluster_info["composite"]:
-        layers += [x["layer"] for x in c["workerConcurrencies"]]
+    try:
+        composite_worker_info = cluster_info["composite"]
+    except:
+        return set()
 
-    return min(layers), max(layers)
+    if not isinstance(composite_worker_info, dict):
+        return set()
+
+    layers = []
+    for c in composite_worker_info:
+        try:
+            layers += [x["layer"] for x in c["workerConcurrencies"]]
+        except:
+            pass
+
+    return set(layers)
 
 
 def estimate_worker_instances(tasks, cluster_info):

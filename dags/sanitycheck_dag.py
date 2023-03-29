@@ -244,7 +244,7 @@ def check_worker_image_op(dag):
 
 def print_summary():
     from docker_helper import health_check_info
-    from dag_utils import check_manager_node, get_composite_worker_limits
+    from dag_utils import check_manager_node, get_composite_worker_capacities
     param = Variable.get("param", deserialize_json=True)
     data_bbox = param["BBOX"]
 
@@ -254,11 +254,8 @@ def print_summary():
         chunk_size = param["CHUNK_SIZE"]
 
         v = ChunkIterator(data_bbox, chunk_size)
-        min_layer, max_layer = get_composite_worker_limits()
 
-        if param.get("HIGH_MIP", 5) < min_layer:
-            slack_message(f':u7981:*ERROR: No dedicated worker for layer {param.get("HIGH_MIP", 5)}, set `HIGH_MIP` to {min_layer} or above*')
-            raise RuntimeError("No worker for high mip")
+        composite_workers = get_composite_worker_capacities()
 
         bchunks = 0
         hchunks = 0
@@ -369,8 +366,9 @@ Fundamental chunk size: {chunk_size}
     if "GT_PATH" in param:
         msg += """:vs: Evaluate the output against ground truth `{}`\n""".format(param["GT_PATH"])
 
-    if top_mip > max_layer:
-        msg += f""":u7981:*WARNING: The default seuronbot configuration only support octrees up to {max_layer+1} layers, tasks may hang unless you manually setup workers for higher layers*"""
+    missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
+    if missing_workers:
+        msg += f"""*WARNING: No dedicated worker for layer {','.join(str(x) for x in missing_workers)}, the tasks will be done by workers configured for other layers*"""
 
     slack_message(msg, broadcast=True)
 
