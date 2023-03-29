@@ -26,8 +26,11 @@ CustomTask = namedtuple("CustomTask", ["message", "future"])
 
 
 def get_hostname():
-    data = requests.get(METADATA_URL + 'hostname', headers=METADATA_HEADERS).text
-    return data.split(".")[0]
+    try:
+        data = requests.get(METADATA_URL + 'hostname', headers=METADATA_HEADERS).text
+        return data.split(".")[0]
+    except:
+        return socket.gethostname()
 
 
 @click.command()
