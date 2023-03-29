@@ -9,6 +9,7 @@ from airflow.exceptions import AirflowException
 from airflow.plugins_manager import AirflowPlugin
 from airflow.models import Variable
 from airflow.operators.docker_operator import DockerOperator
+from airflow.providers.docker.hooks.docker import DockerHook
 from airflow.utils.file import TemporaryDirectory
 
 import threading
@@ -208,17 +209,6 @@ class DockerConfigurableOperator(DockerOperator):
     # This needs to be updated whenever we update to a new version of airflow!
     def execute(self, context):
         self.log.info('Starting docker container from image %s', self.image)
-
-        tls_config = self._DockerOperator__get_tls_config()
-
-        if self.docker_conn_id:
-            self.cli = self.get_hook().get_conn()
-        else:
-            self.cli = Client(
-                base_url=self.docker_url,
-                version=self.api_version,
-                tls=tls_config
-            )
 
         if ':' not in self.image:
             image = self.image + ':latest'
