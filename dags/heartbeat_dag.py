@@ -89,8 +89,12 @@ def delete_dead_instances():
     if cluster_api is None:
         return
 
-    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
-    target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+    try:
+        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+    except:
+        slack_message(":exclamation:Failed to load the cluster information from connection InstanceGroups", notification=True)
+        return
 
     redis_host = os.environ['REDIS_SERVER']
     timestamp = datetime.now().timestamp()

@@ -10,7 +10,7 @@ from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
-from helper_ops import slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
+from helper_ops import placeholder_op, slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
 
 from dag_utils import estimate_worker_instances
 
@@ -23,8 +23,14 @@ from collections import OrderedDict
 
 param = Variable.get("inference_param", deserialize_json=True)
 cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
-total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
-total_workers = sum(c['max_size']*c['concurrency'] for c in cluster_info['gpu'])
+
+try:
+    total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
+    total_workers = sum(c['max_size']*c['concurrency'] for c in cluster_info['gpu'])
+except:
+    total_gpus = 1
+    total_workers = 1
+
 
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
@@ -473,8 +479,12 @@ process_output_task = PythonOperator(
 )
 
 
-scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), estimate_worker_instances(param.get("TASK_NUM",1), cluster_info["gpu"]), "cluster")
-scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "cluster")
+try:
+    scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), estimate_worker_instances(param.get("TASK_NUM",1), cluster_info["gpu"]), "cluster")
+    scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "cluster")
+except:
+    scale_up_cluster_task = placeholder_op(dag_worker, "chunkflow_gpu_scale_up_dummy")
+    scale_down_cluster_task = placeholder_op(dag_worker, "chunkflow_gpu_scale_down_dummy")
 
 wait_for_chunkflow_task = PythonOperator(
     task_id="wait_for_chunkflow",

@@ -19,6 +19,8 @@ import numpy as np
 import json
 import urllib
 from collections import OrderedDict
+from dag_utils import get_composite_worker_capacities
+
 
 def generate_ng_payload(param):
     from igneous_and_cloudvolume import dataset_resolution
@@ -140,7 +142,7 @@ def confirm_dag_run(context, dag_run_obj):
         return dag_run_obj
 
 
-def process_composite_tasks(c, cm, top_mip, params):
+def process_composite_tasks(c, cm, top_mip, params, composite_workers):
     local_batch_mip = batch_mip
     if top_mip < batch_mip:
         local_batch_mip = top_mip
@@ -151,7 +153,7 @@ def process_composite_tasks(c, cm, top_mip, params):
     short_queue = "atomic"
     long_queue = "composite"
 
-    composite_queue = short_queue if c.mip_level() < high_mip else long_queue+"_"+str(c.mip_level())
+    composite_queue = short_queue if c.mip_level() < high_mip or c.mip_level() not in composite_workers else long_queue+"_"+str(c.mip_level())
 
     top_tag = str(top_mip)+"_0_0_0"
     tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
@@ -406,6 +408,9 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     top_mip = v.top_mip_level()
     batch_mip = param.get("BATCH_MIP", 3)
     high_mip = param.get("HIGH_MIP", 5)
+
+    composite_workers = get_composite_worker_capacities()
+
     if param.get("OVERLAP_MODE", False):
         overlap_mip = param.get("OVERLAP_MIP", batch_mip)
     local_batch_mip = batch_mip
@@ -608,7 +613,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
                     if c.mip_level() == local_batch_mip and k != "cs":
                         slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
                         slack_ops[k]["remap"] >> mark_done[k]
-            process_composite_tasks(c, cm, top_mip, param)
+            process_composite_tasks(c, cm, top_mip, param, composite_workers)
 
     cluster1_size = len(remap_chunks["ws"])
 
