@@ -52,11 +52,11 @@ def check_queue(queue):
 
 
 def get_num_task(cluster):
-    from dag_utils import get_composite_worker_limits
+    from dag_utils import get_composite_worker_capacities
 
     if cluster == "composite":
-        min_layer, max_layer = get_composite_worker_limits()
-        tasks = [check_queue(f"{cluster}_{layer}") for layer in range(min_layer, max_layer+1)]
+        layers = get_composite_worker_capacities()
+        tasks = [check_queue(f"{cluster}_{layer}") for layer in layers]
         num_tasks = sum(tasks)
     else:
         num_tasks = check_queue(cluster)
