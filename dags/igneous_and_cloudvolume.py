@@ -53,7 +53,7 @@ def check_queue(queue, agg=None):
         ret_queue = conn.SimpleQueue(queue+"_ret")
         err_queue = conn.SimpleQueue(queue+"_err")
         while True:
-            sleep(5)
+            sleep(15)
             ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
             if not ret.ok:
                 raise RuntimeError("Cannot connect to rabbitmq management interface")
