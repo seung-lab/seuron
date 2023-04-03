@@ -498,14 +498,14 @@ wait_for_chunkflow_task = PythonOperator(
     dag=dag_worker
 )
 
-generate_ng_link_task = PythonOperator(
-    task_id="generate_ng_link",
-    python_callable=generate_ng_link,
-    priority_weight=100000,
-    weight_rule=WeightRule.ABSOLUTE,
-    queue="manager",
-    dag=dag_worker
-)
+#generate_ng_link_task = PythonOperator(
+#    task_id="generate_ng_link",
+#    python_callable=generate_ng_link,
+#    priority_weight=100000,
+#    weight_rule=WeightRule.ABSOLUTE,
+#    queue="manager",
+#    dag=dag_worker
+#)
 
 mark_done_task = mark_done_op(dag_worker, "chunkflow_done")
 
@@ -524,4 +524,10 @@ collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down
 
 setup_redis_task >> sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
 
-scale_up_cluster_task >> wait_for_chunkflow_task >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
+(
+    scale_up_cluster_task
+    >> wait_for_chunkflow_task
+    >> mark_done_task
+    #>> generate_ng_link_task
+    >> scale_down_cluster_task
+)
