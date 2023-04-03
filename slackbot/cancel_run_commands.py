@@ -44,11 +44,11 @@ def cancel_run(msg):
 
     replyto(msg, "Marking all DAG states to success...")
     mark_dags_success()
-    time.sleep(10)
+    time.sleep(60)
 
     #try again because some tasks might already been scheduled
     mark_dags_success()
-    time.sleep(10)
+    time.sleep(60)
 
     replyto(msg, "Draining tasks from the queues...")
     drain_messages(broker_url, "igneous")

@@ -45,6 +45,8 @@ def check_queue(queue, agg=None):
     from time import sleep
     from slack_message import slack_message
     from kombu import Connection
+    import traceback
+
     broker = configuration.get('celery', 'BROKER_URL')
     totalTries = 5
     nTries = totalTries
@@ -54,11 +56,15 @@ def check_queue(queue, agg=None):
         err_queue = conn.SimpleQueue(queue+"_err")
         while True:
             sleep(5)
-            ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
-            if not ret.ok:
-                raise RuntimeError("Cannot connect to rabbitmq management interface")
-            queue_status = ret.json()
-            nTasks = queue_status["messages"]
+            try:
+                ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
+                queue_status = ret.json()
+                nTasks = queue_status["messages"]
+            except Exception as e:
+                slack_message(f"Cannot read the number of tasks in {queue} queue, {traceback.format_exc()}")
+                sleep(30)
+                continue
+
             print("Tasks left: {}".format(nTasks))
 
             count += 1

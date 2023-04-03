@@ -37,21 +37,8 @@ def put_message(broker_url, queue, msg):
 # Can't use the variable name "conn" as an argument bc it's reserved by airflow
 def drain_messages(broker_url, queue):
     with Connection(broker_url) as conn:
+        channel = conn.channel()
+        ret = channel.queue_delete(queue)
+        print(f"deleted {ret} messages")
         simple_queue = conn.SimpleQueue(queue)
-        while True:
-            try:
-                message = simple_queue.get_nowait()
-            except SimpleQueue.Empty:
-                status = check_queue(queue)
-                if "messages" not in status:
-                    sleep(30)
-                    continue
-                elif status["messages"] > 0:
-                    print(f'still {status["messages"]} messages left in {queue}, sleep for 30s')
-                    sleep(30)
-                    continue
-                else:
-                    break
-            #print(f'message: {message.payload}')
-            message.ack()
-        simple_queue.close()
+        print(f"remaining {simple_queue.qsize()} messages")
