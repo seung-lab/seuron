@@ -1,34 +1,67 @@
 """Neuroglancer link functions."""
 import json
 import urllib
-from typing import Optional
+from typing import Optional, Union
 from collections import OrderedDict
+from dataclasses import dataclass
+from enum import Enum
+
+
+class LayerType(Enum):
+    Image = "image"
+    Segmentation = "segmentation"
+
+
+@dataclass
+class Layer:
+    cloudpath: str
+    type: LayerType
+
+
+class ImageLayer(Layer):
+
+    def __init__(self, cloudpath: str):
+        self.cloudpath = cloudpath
+        self.type = LayerType.Image
+
+
+class SegLayer(Layer):
+
+    def __init__(self, cloudpath: str):
+        self.cloudpath = cloudpath
+        self.type = LayerType.Segmentation
 
 
 def generate_ng_payload(
-    param: dict, center: Optional[tuple[int, int, int]] = None
+    layers: dict[str, Layer], center: Optional[tuple[int, int, int]] = None
 ) -> str:
     """Makes neuroglancer link payloads from mappings between layer names and paths.
 
-    Makes the viewer resolution equal to the "img" layer if it exists in param.
+    Makes the viewer resolution equal to the "img" layer if it exists in layers.
     Otherwise, it takes the first it can find.
     """
-    assert len(param) > 0, "empty layer paths"
+    assert len(layers) > 0, "empty layer paths"
 
-    layers = OrderedDict()
-    param = param.copy()  # for in-place modifications later
+    ngl_layers = OrderedDict()
+    layers = layers.copy()  # for in-place modifications later
+
     # default to first resolution we can find - update if we find an image
-    ng_resolution = dataset_resolution(list(param.values())[0])
-    img_path = param.pop("img", None)
-    if img_path:
-        layers["img"] = {"source": "precomputed://" + img_path, "type": "image"}
-        ng_resolution = dataset_resolution(img_path)
+    ng_resolution = dataset_resolution(list(layers.values())[0])
 
-    for key in param:
-        if key == "NG_HOST":
-            continue
+    # Trying to find an image layer
+    base_img = layers.pop("img", None)
+    if base_img:
+        ngl_layers["img"] = {
+            "source": fullpath(base_img),
+            "type": base_img.type.value,
+        }
+        ng_resolution = dataset_resolution(base_img)
 
-        layers[key] = {"source": "precomputed://" + param[key], "type": "segmentation"}
+    for key, layer in layers.items():
+        ngl_layers[key] = {
+            "source": fullpath(layer),
+            "type": layer.type.value,
+        }
 
     navigation = {"pose": {"position": {"voxelSize": ng_resolution}}, "zoomFactor": 4}
 
@@ -37,7 +70,7 @@ def generate_ng_payload(
 
     payload = OrderedDict(
         [
-            ("layers", layers),
+            ("layers", ngl_layers),
             ("navigation", navigation),
             ("showSlices", False),
             ("layout", "xy-3d")
@@ -46,18 +79,32 @@ def generate_ng_payload(
     return payload
 
 
-def generate_link(param):
-    ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
-    payload = generate_ng_payload(param)
+def generate_link(
+    layers: dict[str, Layer],
+    host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com",
+) -> str:
+    from cloudfiles import CloudFiles
+    payload = generate_ng_payload(layers)
 
     url = "<https://{host}/#!{payload}|*neuroglancer link*>".format(
-        host=ng_host,
+        host=host,
         payload=urllib.parse.quote(json.dumps(payload)))
 
     return url
 
 
-def dataset_resolution(path, mip=0):
+def fullpath(layer: Layer):
+    return (
+        layer.cloudpath
+        if layer.cloudpath.startswith("precomputed://")
+        else f"precomputed://{layer.cloudpath}"
+    )
+
+
+def dataset_resolution(layer_or_path: Union[str, Layer], mip=0) -> tuple:
     from cloudvolume import CloudVolume
+    path = (
+        layer_or_path.cloudpath if isinstance(layer_or_path, Layer) else layer_or_path
+    )
     vol = CloudVolume(path, mip=mip)
     return vol.resolution.tolist()

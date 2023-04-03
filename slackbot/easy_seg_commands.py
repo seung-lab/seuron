@@ -18,7 +18,7 @@ from warm_up_commands import warm_up
 
 @SeuronBot.on_message("update easy seg parameters",
                       description="Update the default parameters for easy-seg",
-                      exclusive=True,
+                      exclusive=False,
                       file_inputs=True)
 def update_easy_seg(msg: dict) -> None:
     json_obj = download_json(msg)
@@ -50,7 +50,6 @@ def initial_sanity_check(json_obj: dict) -> None:
         assert "index_resolution" in json_obj and "data_resolution" in json_obj
         assert isinstance(json_obj["index_resolution"], list)
         assert isinstance(json_obj["data_resolution"], list)
-
 
     sanity_check_chunkflow(json_obj["chunkflow"])
 
@@ -189,6 +188,17 @@ def run_easy_seg(msg: dict) -> None:
         return
 
     handle_batch("inf_run", msg)
+    run_dag("easy_seg_link")
+
+
+@SeuronBot.on_message("show easy seg link",
+                      description=(
+                          "Show an easy seg link that combines the most"
+                          " recent output with the training labels"
+                      ),
+                      exclusive=False)
+def easy_seg_link(msg: dict) -> None:
+    run_dag("easy_seg_link")
 
 
 def populate_parameters(

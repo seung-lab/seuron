@@ -12,7 +12,7 @@ from slack_message import task_failure_alert, slack_message
 from synaptor_ops import manager_op, drain_op
 from synaptor_ops import synaptor_op, wait_op, generate_op
 
-from nglinks import generate_link
+from nglinks import generate_link, ImageLayer, SegLayer
 
 
 # Processing parameters
@@ -36,10 +36,13 @@ default_args = {
 
 def generate_ngl_link() -> None:
     """Generates a neuroglancer link to view the results."""
-    layers = {"seg": param["Volumes"]["output"]}
+    layers = {
+        "network output": ImageLayer(param["Volumes"]["descriptor"]),
+        "seg": SegLayer(param["Volumes"]["output"]),
+    }
 
     if "image" in param["Volumes"]:
-        layers["img"] = param["Volumes"]["image"]
+        layers["img"] = ImageLayer(param["Volumes"]["image"])
 
     slack_message(generate_link(layers), broadcast=True)
 

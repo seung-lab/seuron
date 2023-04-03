@@ -1,8 +1,10 @@
 """Webknossos interface."""
 from __future__ import annotations
 
+import re
 import json
 from datetime import datetime
+from collections import OrderedDict
 
 from airflow import DAG
 from airflow.utils.weight_rule import WeightRule
@@ -12,6 +14,8 @@ from airflow.models import Variable, BaseOperator as Operator
 from worker_op import worker_op
 
 from slack_message import slack_message, task_failure_alert, task_done_alert
+
+from nglinks import Layer, ImageLayer, SegLayer, generate_link
 
 
 PARAM = Variable.get("webknossos_param", {}, deserialize_json=True)
@@ -82,6 +86,64 @@ def report_export(**kwargs):
             output_to_send += f"`{line}`\n"
 
     slack_message(output_to_send)
+
+
+def list_layers(dag: DAG) -> Operator:
+    command = make_command("listlayers")
+
+    return manager_op(dag, "list_layers", command)
+
+
+def easy_seg_nglink(**kwargs):
+    from cloudvolume import CloudVolume
+
+    [inf_params, seg_params] = Variable.get(
+        "easy_seg_param", [None, None], deserialize_json=True
+    )
+
+    if seg_params is None:
+        slack_message("No easy seg has been run yet")
+        return
+
+    layers = OrderedDict()
+    layers["img"] = ImageLayer(inf_params["IMAGE_PATH"])
+
+    if "SEG_PATH" in seg_params:  # abiss
+        layers["network output"] = ImageLayer(seg_params["AFF_PATH"])
+        layers["seg"] = SegLayer(seg_params["SEG_PATH"])
+    elif "Volumes" in seg_params:  # synaptor
+        layers["network output"] = ImageLayer(seg_params["Volumes"]["descriptor"])
+        layers["seg"] = SegLayer(seg_params["Volumes"]["output"])
+    else:
+        slack_message("No output recognized in parameters")
+        return
+
+    try:
+        CloudVolume(layers["seg"].cloudpath)
+    except:
+        # easy seg failed
+        slack_message(f"failed to find layer: {layers['seg']}")
+        return
+
+    #ti = kwargs["ti"]
+    #output = ti.xcom_pull(task_ids="list_layers")
+    #try:
+    #    layers = collect_label_layers(layers, output)
+    #except Exception as e:
+    #    slack_message(f"Exception parsing link output: {e}")
+    #    return
+
+    slack_message(generate_link(layers), broadcast=True)
+
+
+def collect_label_layers(layers: dict[str, Layer], output: str):
+    layer_link_regexp = re.compile(".*LAYER: (.*)::(.*)")
+    for line in output:
+        if "LAYER: " in line:
+            name, cloudpath = layer_link_regexp.match(line).groups()
+            layers[name] = SegLayer(cloudpath)
+
+    return layers
 
 
 # Helper fns
@@ -185,3 +247,25 @@ report_export_task = PythonOperator(
 )
 
 export >> report_export_task
+
+
+# Giving the user an easy seg link combining output with labels
+easy_seg_link_dag = DAG(
+    "easy_seg_link",
+    default_args=default_args,
+    schedule_interval=None,
+    tags=["webknossos", "easy-seg"],
+)
+
+list_layers_task = list_layers(easy_seg_link_dag)
+link_task = PythonOperator(
+    task_id="generate_link",
+    provide_context=True,
+    python_callable=easy_seg_nglink,
+    priority_weight=100000,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=easy_seg_link_dag,
+)
+
+list_layers_task >> link_task

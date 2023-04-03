@@ -4,7 +4,7 @@ from seuronbot import SeuronBot
 from airflow_api import get_variable, set_variable, run_dag
 from bot_utils import replyto, download_json
 from bot_utils import extract_bbox, extract_point, bbox_and_center
-from nglinks import generate_link
+from nglinks import generate_link, ImageLayer, SegLayer
 
 
 @SeuronBot.on_message("update webknossos parameters",
@@ -12,9 +12,8 @@ from nglinks import generate_link
                           "Updates parameters for webknossos cutouts and export."
                           " Performs a light sanity check."
                       ),
-                      exclusive=True,  # allows metadata update for callbacks
-                      file_inputs=True,
-                      cancelable=False)
+                      exclusive=False,
+                      file_inputs=True)
 def update_webknossos_params(msg) -> None:
     """Parses the provided parameters to check for simple errors."""
     json_obj = download_json(msg)
@@ -53,7 +52,7 @@ def specify_cutout_modes(json_obj: dict, msg: dict) -> None:
                       description=(
                           "Creates a new webknossos task from a CloudVolume cutout."
                       ),
-                      exclusive=True,  # allows metadata update for callbacks
+                      exclusive=True,
                       extra_parameters=True)
 def make_cutout_task(msg) -> None:
     try:
@@ -167,16 +166,18 @@ def extract_annotation_ids(msgtext: str) -> list[str]:
 @SeuronBot.on_message("show cutout link",
                       description=(
                           "Returns a link to the volumes used for webknossos cutouts",
-                      ))
+                      ),
+                      exclusive=False,
+                      cancelable=False)
 def show_link(msg) -> None:
     param = get_variable("webknossos_param", deserialize_json=True)
 
     layer_paths = dict()
     if "src_image_path" in param:
-        layer_paths["img"] = param["src_image_path"]
+        layer_paths["img"] = ImageLayer(param["src_image_path"])
 
     if "src_path" in param:
-        layer_paths["seg"] = param["src_path"]
+        layer_paths["seg"] = SegLayer(param["src_path"])
 
     if len(param) == 0:
         replyto(msg, "No layers found in parameters")
