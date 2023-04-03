@@ -15,9 +15,9 @@ from airflow_api import get_variable, set_variable
 
 @SeuronBot.on_message("update training parameters",
                       description="Update the default parameters for training",
-                      exclusive=True,
+                      exclusive=False,
                       file_inputs=True)
-def update_easy_seg(msg: dict) -> None:
+def update_training_parameters(msg: dict) -> None:
     json_obj = download_json(msg)
 
     if json_obj:
@@ -66,6 +66,9 @@ def initial_sanity_check(json_obj: dict, full: bool = False) -> None:
         }
 
         for k, v in json_obj["zettaset_lookup"].items():
+            if k not in matches:
+                continue
+
             matching_target = matches[k]
 
             if isinstance(matching_target, str):
