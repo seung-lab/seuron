@@ -245,7 +245,7 @@ def handle_batch(task, msg):
         elif current_task == "inf_run":
             state = run_dag("chunkflow_worker", wait_for_completion=True).state
         elif current_task == "syn_run":
-            state = run_dag("synaptor_file_seg", wait_for_completion=True).state
+            state = run_dag("synaptor", wait_for_completion=True).state
 
         if state != "success":
             replyto(msg, f"*Bach job failed, abort!* ({state})")

@@ -12,7 +12,8 @@ from worker_op import worker_op
 from igneous_and_cloudvolume import check_queue
 from param_default import default_synaptor_image
 
-from slack_message import task_failure_alert, task_done_alert
+from slack_message import task_failure_alert, task_done_alert, slack_message
+from nglinks import generate_link, ImageLayer, SegLayer
 from kombu_helper import drain_messages
 
 
@@ -22,6 +23,37 @@ TASK_QUEUE_NAME = "synaptor"
 
 
 # Op functions
+def generate_ngl_link(
+    net_output_path: str, seg_path: str, img_path: Optional[str] = None
+) -> None:
+    """Generates a neuroglancer link to view the results."""
+    layers = {
+        "network output": ImageLayer(net_output_path),
+        "seg": SegLayer(seg_path),
+    }
+
+    if img_path:
+        layers["img"] = ImageLayer(img_path)
+
+    slack_message(generate_link(layers), broadcast=True)
+
+
+def nglink_op(
+    dag: DAG, net_output_path: str, seg_path: str, img_path: Optional[str] = None
+) -> Operator:
+    return PythonOperator(
+        task_id="nglink",
+        python_callable=generate_ngl_link,
+        op_args=(net_output_path, seg_path),
+        op_kwargs=dict(img_path=img_path),
+        priority_weight=100000,
+        on_failure_callback=task_failure_alert,
+        weight_rule=WeightRule.ABSOLUTE,
+        queue="manager",
+        dag=dag,
+    )
+
+
 def drain_op(
     dag: DAG,
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,

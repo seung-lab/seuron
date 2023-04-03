@@ -16,7 +16,7 @@ from sqlalchemy.orm import exc
 
 from bot_info import workerid, slack_notification_channel
 
-seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', "postprocess", 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor_file_seg", "synaptor_db_seg", "synaptor_assignment", "wkt_cutouts", "wkt_export", "training"]
+seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', "postprocess", 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor", "wkt_cutouts", "wkt_export", "training"]
 
 
 def run_in_executor(f, /, *args, **kwargs):
