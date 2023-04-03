@@ -17,6 +17,7 @@ from webknossos import export_op, report_export
 
 PARAM = Variable.get("training_param", {}, deserialize_json=True)
 DEEPEM_IMAGE = PARAM.get("deepem_image", "zettaai/deepem")
+SKIP_EXPORT = PARAM.pop("skip_export", False)
 
 
 default_args = dict(
@@ -133,17 +134,18 @@ training_dag = DAG(
     tags=["training"],
 )
 
-export = export_op(training_dag)
-report_export_task = PythonOperator(
-    task_id="report_export",
-    provide_context=True,
-    python_callable=report_export,
-    priority_weight=100000,
-    on_failure_callback=task_failure_alert,
-    weight_rule=WeightRule.ABSOLUTE,
-    queue="manager",
-    dag=training_dag,
-)
+if not SKIP_EXPORT:
+    export = export_op(training_dag)
+    report_export_task = PythonOperator(
+        task_id="report_export",
+        provide_context=True,
+        python_callable=report_export,
+        priority_weight=100000,
+        on_failure_callback=task_failure_alert,
+        weight_rule=WeightRule.ABSOLUTE,
+        queue="manager",
+        dag=training_dag,
+    )
 
 scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", 1, 1, "cluster")
 scale_down = scale_down_cluster_op(
@@ -161,10 +163,14 @@ report_training = PythonOperator(
 )
 
 (
-    export
-    >> report_export_task
-    >> scale_up
+    scale_up
     >> training
     >> report_training
     >> scale_down
 )
+if not SKIP_EXPORT:
+    (
+        export
+        >> report_export_task
+        >> scale_up
+    )
