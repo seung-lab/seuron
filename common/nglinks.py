@@ -90,7 +90,7 @@ def generate_link(
 
 def wrap_payload(
     payload: Union[OrderedDict, str],
-    host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com"
+    host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com",
     link_text: str = "neuroglancer link"
 ) -> str:
     if isinstance(payload, OrderedDict):
