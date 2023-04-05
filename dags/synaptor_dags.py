@@ -177,7 +177,7 @@ def cluster_key_from_tag(cluster_tag: str) -> str:
     elif "cpu" in cluster_tag:
         return "synaptor-cpu"
     elif "gpu" in cluster_tag:
-        return "synaptor_gpu"
+        return "synaptor-gpu"
     else:
         raise ValueError(f"unrecognized cluster tag: {cluster_tag}")
 
