@@ -11,9 +11,8 @@ from airflow.models import Variable, BaseOperator as Operator
 from worker_op import worker_op
 from igneous_and_cloudvolume import check_queue
 from param_default import default_synaptor_image
-
 from slack_message import task_failure_alert, task_done_alert, slack_message
-from nglinks import generate_link, ImageLayer, SegLayer
+from nglinks import ImageLayer, SegLayer, generate_ng_payload, wrap_payload
 from kombu_helper import drain_messages
 
 
@@ -24,7 +23,12 @@ TASK_QUEUE_NAME = "synaptor"
 
 # Op functions
 def generate_ngl_link(
-    net_output_path: str, seg_path: str, img_path: Optional[str] = None
+    net_output_path: str,
+    seg_path: str,
+    workflowtype: str,
+    storagedir: str,
+    img_path: Optional[str] = None,
+    voxelres: Optional[tuple[int, int, int]] = None,
 ) -> None:
     """Generates a neuroglancer link to view the results."""
     layers = {
@@ -35,17 +39,119 @@ def generate_ngl_link(
     if img_path:
         layers["img"] = ImageLayer(img_path)
 
-    slack_message(generate_link(layers), broadcast=True)
+    payload = generate_ng_payload(layers)
+
+    if "Assignment" in workflowtype:
+        presyn_pts, postsyn_pts = read_pts(storagedir)
+        payload = add_annotation_layer(payload, presyn_pts, postsyn_pts, voxelres)
+
+    basename = dump_payload(payload, storagedir)
+
+    slack_message(wrap_payload(os.path.join(storagedir, basename)), broadcast=True)
+
+
+def dump_payload(payload: dict, storagedir: str) -> str:
+    from cloudfiles import CloudFiles
+    basename = "ng.json"
+
+    cf = CloudFiles(storagedir)
+    cf.put_json(basename, payload)
+
+    return basename
+
+
+def read_pts(storagedir: str) -> tuple[list, list]:
+    from cloudfiles import CloudFiles
+
+    cf = CloudFiles(storagedir)
+    maybe_content = cf.get("final_edgelist.df")
+
+    if maybe_content:
+        content = maybe_content.decode("utf-8")
+    else:
+        raise ValueError("no edge list found")
+
+    lines = content.split("\n")
+    header, rows = lines[0], lines[1:]
+
+    # indices for the columns we want
+    colnames = header.split(",")
+    pre_x_i = colnames.index("presyn_x")
+    pre_y_i = colnames.index("presyn_y")
+    pre_z_i = colnames.index("presyn_z")
+    post_x_i = colnames.index("postsyn_x")
+    post_y_i = colnames.index("postsyn_y")
+    post_z_i = colnames.index("postsyn_z")
+
+    # extracting points
+    presyn_pts = list()
+    postsyn_pts = list()
+    for row in rows:
+        if "," not in row:
+            continue
+
+        fields = row.split(",")
+        presyn_pt = fields[pre_x_i], fields[pre_y_i], fields[pre_z_i]
+        postsyn_pt = fields[post_x_i], fields[post_y_i], fields[post_z_i]
+
+        presyn_pts.append(list(map(int, presyn_pt)))
+        postsyn_pts.append(list(map(int, postsyn_pt)))
+
+    return presyn_pts, postsyn_pts
+
+
+def add_annotation_layer(
+    payload: dict, presyn_pts: list, postsyn_pts: list, voxel_res: tuple
+) -> dict:
+    viewer_res = payload["navigation"]["pose"]["position"]["voxelSize"]
+    factors = [vox_res / view_res for view_res, vox_res in zip(viewer_res, voxel_res)]
+
+    annotations = [
+        {
+            "pointA": [coord * factor for coord, factor in zip(presyn_pt, factors)],
+            "pointB": [coord * factor for coord, factor in zip(postsyn_pt, factors)],
+            "type": "line",
+            "id": str(index),
+        }
+        for (index, (presyn_pt, postsyn_pt)) in enumerate(zip(presyn_pts, postsyn_pts))
+    ]
+
+    annotation_layer = {
+        "type": "annotation",
+        "tool": "annotateLine",
+        "tab": "annotations",
+        "source": {
+            "url": "local://annotations",
+            "transform" : {
+                "outputDimensions": {
+                    "x": [f"{viewer_res[0]}e-9", "m"],
+                    "y": [f"{viewer_res[1]}e-9", "m"],
+                    "z": [f"{viewer_res[2]}e-9", "m"],
+                }
+            }
+        },
+        "annotations": annotations,
+    }
+
+    payload["layers"]["synapses"] = annotation_layer
+
+    return payload
 
 
 def nglink_op(
-    dag: DAG, net_output_path: str, seg_path: str, img_path: Optional[str] = None
+    dag: DAG,
+    net_output_path: str,
+    seg_path: str,
+    workflowtype: str,
+    storagedir: str,
+    img_path: str,
+    voxelres: tuple[int, int, int],
 ) -> Operator:
     return PythonOperator(
         task_id="nglink",
         python_callable=generate_ngl_link,
-        op_args=(net_output_path, seg_path),
-        op_kwargs=dict(img_path=img_path),
+        op_args=(net_output_path, seg_path, workflowtype, storagedir),
+        op_kwargs=dict(img_path=img_path, voxelres=voxelres),
         priority_weight=100000,
         on_failure_callback=task_failure_alert,
         weight_rule=WeightRule.ABSOLUTE,

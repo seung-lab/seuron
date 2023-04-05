@@ -83,14 +83,20 @@ def generate_link(
     layers: dict[str, Layer],
     host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com",
 ) -> str:
-    from cloudfiles import CloudFiles
     payload = generate_ng_payload(layers)
 
-    url = "<https://{host}/#!{payload}|*neuroglancer link*>".format(
-        host=host,
-        payload=urllib.parse.quote(json.dumps(payload)))
+    return wrap_payload(payload, host)
 
-    return url
+
+def wrap_payload(
+    payload: Union[OrderedDict, str],
+    host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com"
+    link_text: str = "neuroglancer link"
+) -> str:
+    if isinstance(payload, OrderedDict):
+        payload = urllib.parse.quote(json.dumps(payload))
+
+    return f"<https://{host}/#!{payload}|*{link_text}*>"
 
 
 def fullpath(layer: Layer):

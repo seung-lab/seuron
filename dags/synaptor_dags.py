@@ -97,7 +97,10 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
         dag,
         param["Volumes"]["descriptor"],
         param["Volumes"]["output"],
+        param["Workflow"]["workflowtype"],
+        param["Workflow"]["storagedir"],
         param["Volumes"]["image"],
+        tuple(map(int, param["Dimensions"]["voxelres"].split(","))),
     )
     curr_operator >> nglink
     scale_down_cluster(dag, curr_cluster, nglink)
