@@ -226,12 +226,9 @@ def populate_parameters(
             "descriptor": output_path,
             "output": output_path.replace("inference", "seg"),
             "tempoutput": output_path.replace("inference", "seg_temp"),
-            "baseseg": "None",
+            "baseseg": seg_params["Volumes"].get("baseseg", ""),
             "image": inf_params["IMAGE_PATH"],
-            "overlap_seg": (
-                seg_params["Volumes"]["overlap_seg"]
-                if "overlap_seg" in seg_params["Volumes"] else None
-            )
+            "overlap_seg": seg_params["Volumes"].get("overlap_seg", None),
         }
 
         seg_params["Dimensions"] = {
@@ -242,7 +239,7 @@ def populate_parameters(
             ),
             "chunkshape": tupstr(seg_params["Dimensions"]["chunkshape"]),
             "blockshape": tupstr(seg_params["Dimensions"]["blockshape"]),
-            "patchshape": tupstr((0, 0, 0)),
+            "patchshape": tupstr(seg_params["Dimensions"].get("patchshape", (0, 0, 0))),
         }
 
         seg_params["Parameters"] = {
@@ -250,18 +247,19 @@ def populate_parameters(
             "szthresh": seg_params["Parameters"]["szthresh"],
             "dustthresh": 0,
             "nummergetasks": 1,
-            "mergethresh": 0,
+            "mergethresh": 100,
         }
 
         seg_params["Workflow"] = {
-            "workflowtype": "Segmentation",
-            "workspacetype": "File",
+            "workflowtype": seg_params["Workflow"].get("workflowtype", "Segmentation"),
+            "workspacetype": seg_params["Workflow"].get("workspacetype", "File"),
             "queueurl": "SHOULD_BE_SET_BY_AIRFLOW",
             "queuename": "SHOULD_BE_SET_BY_AIRFLOW",
             "connectionstr": "None",
             "storagedir": output_path.replace("inference", "scratch"),
-            "maxclustersize": 10,
+            "maxclustersize": seg_params["Workflow"].get("maxclustersize", 4),
             "synaptor_image": seg_params["Workflow"]["synaptor_image"],
+            "modelpath": seg_params["Workflow"].get("modelpath", None),
         }
 
     # a flag for handle_batch so that chunkflow parameters aren't
