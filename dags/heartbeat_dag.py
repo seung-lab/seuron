@@ -113,7 +113,7 @@ def delete_dead_instances():
                     if delta > 3600:
                         msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
                         dead_instances.append(instance_url)
-                    elif delta > 300:
+                    elif delta > 600:
                         msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
                         idle_instances.append(instance_url)
 
