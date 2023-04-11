@@ -1,0 +1,65 @@
+version: '3.7'
+x-airflow-common:
+    &airflow-common
+    image: ${SEURON_TAG}
+    restart: always
+    environment:
+        &airflow-common-env
+        VENDOR:
+        AIRFLOW__CORE__FERNET_KEY:
+        AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:
+        AIRFLOW__CELERY__BROKER_URL:
+        AIRFLOW__CELERY__CELERY_RESULT_BACKEND:
+        AIRFLOW__WEBSERVER__SECRET_KEY:
+        AIRFLOW__LOGGING__BASE_LOG_FOLDER:
+        AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER:
+        AIRFLOW__METRICS__STATSD_ON:
+        AIRFLOW__METRICS__STATSD_HOST:
+        AIRFLOW__METRICS__STATSD_PORT:
+        REDIS_SERVER:
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /tmp:/tmp
+
+services:
+    worker-atomic:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
+        command: airflow celery worker --without-gossip --without-mingle -q atomic
+        deploy:
+            restart_policy:
+                condition: any
+
+    worker-igneous:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+        command: python custom/task_execution.py --queue igneous --concurrency 1
+        deploy:
+            restart_policy:
+                condition: any
+
+    add-secrets:
+        <<: *airflow-common
+        restart: on-failure
+        command: python scripts/secrets_to_airflow_variables.py
+        depends_on:
+            init-seuronbot:
+                condition: service_completed_successfully
+        secrets:
+            - aws-secret.json
+            - google-secret.json
+            - gsutil-secret.json
+            - s3-secret
+
+secrets:
+    aws-secret.json:
+        file: ~/.cloudvolume/secrets/aws-secret.json
+    google-secret.json:
+        file: ~/.cloudvolume/secrets/google-secret.json
+    gsutil-secret.json:
+        file: ~/.cloudvolume/secrets/google-secret.json
+    s3-secret:
+        file: ~/.aws/credentials
