@@ -22,6 +22,16 @@ x-airflow-common:
         - /tmp:/tmp
 
 services:
+    worker-manager:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 3
+        command: airflow celery worker --without-gossip --without-mingle -q manager
+        deploy:
+            restart_policy:
+                condition: any
+
     worker-atomic:
         <<: *airflow-common
         environment:
