@@ -41,7 +41,6 @@ def GenerateManagerStartupScript(context, hostname_manager):
     startup_script = f'''
 #!/bin/bash
 set -e
-mkdir -p /var/lib/postgresql/data /var/lib/rabbitmq
 
 {GenerateEnvironVar(context, hostname_manager)}
 

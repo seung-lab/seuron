@@ -22,6 +22,8 @@ x-airflow-common:
         - /tmp:/tmp
 
 volumes:
+    rabbitmq-storage:
+    postgres-storage:
     prometheus-storage:
     grafana-storage:
     redis-storage:
@@ -32,7 +34,7 @@ services:
         environment:
             - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
         volumes:
-            - /var/lib/rabbitmq:/var/lib/rabbitmq
+            - rabbitmq-storage:/var/lib/rabbitmq
         ports:
             - "5672:5672"
             - "15672:15672"
@@ -48,7 +50,7 @@ services:
             - POSTGRES_PASSWORD
             - POSTGRES_DB
         volumes:
-            - /var/lib/postgresql/data:/var/lib/postgresql/data
+            - postgres-storage:/var/lib/postgresql/data
         command: -c max_connections=${POSTGRES_MAX_CONN} -c shared_buffers=${POSTGRES_MEM_MB}MB -c idle_in_transaction_session_timeout=300000
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
