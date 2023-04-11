@@ -4,7 +4,10 @@ set -eo pipefail
 source scripts/add-user-docker.sh
 
 # this doesn't protect from docker but it's a little more secure
-sudo sed -i "/$AIRFLOW_USER/d" /etc/sudoers
+if [ ! -f .sudo.disabled  ]; then
+    sudo sed -i "/$AIRFLOW_USER/d" /etc/sudoers
+    touch .sudo.disabled
+fi
 
 export PYTHONPATH=$AIRFLOW_HOME/common:$PYTHONPATH
 
