@@ -51,25 +51,29 @@ services:
             restart_policy:
                 condition: any
 
-    add-secrets:
-        <<: *airflow-common
-        restart: on-failure
-        command: python scripts/secrets_to_airflow_variables.py
-        depends_on:
-            init-seuronbot:
-                condition: service_completed_successfully
-        secrets:
-            - aws-secret.json
-            - google-secret.json
-            - gsutil-secret.json
-            - s3-secret
-
-secrets:
-    aws-secret.json:
-        file: ~/.cloudvolume/secrets/aws-secret.json
-    google-secret.json:
-        file: ~/.cloudvolume/secrets/google-secret.json
-    gsutil-secret.json:
-        file: ~/.cloudvolume/secrets/google-secret.json
-    s3-secret:
-        file: ~/.aws/credentials
+# Enable this services to import secrets needed to access cloud services, for
+# segmentation GCS requires google-secret.json and gsutil-secret.json. AWS
+# requires aws-secret.json and s3-secret
+#
+#     add-secrets:
+#         <<: *airflow-common
+#         restart: on-failure
+#         command: python scripts/secrets_to_airflow_variables.py
+#         depends_on:
+#             init-seuronbot:
+#                 condition: service_completed_successfully
+#         secrets:
+#             - google-secret.json
+#             - gsutil-secret.json
+#             - aws-secret.json
+#             - s3-secret
+#
+# secrets:
+#     google-secret.json:
+#         file: ~/.cloudvolume/secrets/google-secret.json
+#     gsutil-secret.json:
+#         file: ~/.cloudvolume/secrets/google-secret.json
+#     aws-secret.json:
+#         file: ~/.cloudvolume/secrets/aws-secret.json
+#     s3-secret:
+#         file: ~/.aws/credentials
