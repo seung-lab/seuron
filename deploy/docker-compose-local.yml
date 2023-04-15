@@ -18,6 +18,8 @@ x-airflow-common:
         AIRFLOW__METRICS__STATSD_PORT:
         REDIS_SERVER:
     volumes:
+        # Add local input data here
+        # - /my/local/data:/path/to/mount
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp:/tmp
 
