@@ -1,6 +1,7 @@
 import os
 import shutil
 import json
+import socket
 from time import sleep
 from docker import APIClient as Client
 from docker.types import Mount
@@ -224,6 +225,25 @@ class DockerConfigurableOperator(DockerOperator):
                 except KeyError:
                     pass
 
+        network_id = None
+        if os.environ.get("VENDOR", None) == "LocalDockerCompose":
+            self.log.info("Mount extra volumes specified by docker composer")
+            container_id = socket.gethostname()
+            info = self.cli.inspect_container(container=container_id)
+            mounts = info['Mounts']
+            for m in mounts:
+                if m['Source'] == '/tmp' or m['Source'] == '/var/run/docker.sock':
+                    continue
+                self.log.info(f"mount {m['Source']} to {m['Destination']}")
+                self.mounts.append(Mount(source=m['Source'], target=m['Destination'], type=m['Type']))
+            self.log.info("Try to connect to the network created by docker composer")
+            networks = info['NetworkSettings']['Networks']
+            for n in networks:
+                network_id = networks[n].get('NetworkID', None)
+                if network_id:
+                    self.log.info(f"use network: {n} ({network_id})")
+                    break
+
         cpu_shares = int(round(self.cpus * 1024))
 
         with TemporaryDirectory(prefix='airflowtmp') as host_tmp_dir:
@@ -255,6 +275,9 @@ class DockerConfigurableOperator(DockerOperator):
             self.container = self.cli.create_container(**container_args)
 
             self.cli.start(self.container['Id'])
+
+            if network_id:
+                self.cli.connect_container_to_network(self.container['Id'], network_id)
 
             log_reader = threading.Thread(
                 target=self._read_task_stats,

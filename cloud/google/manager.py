@@ -3,6 +3,9 @@ from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, Generate
 from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 def GenerateEnvironVar(context, hostname_manager):
+    basic_auth_username = context.properties['nginx'].get('user', '')
+    basic_auth_password = context.properties['nginx'].get('password', '')
+
     env_variables = {
         'VENDOR': 'Google',
         'SLACK_TOKEN': context.properties['slack']['botToken'],
@@ -15,11 +18,15 @@ def GenerateEnvironVar(context, hostname_manager):
         'POSTGRES_USER': context.properties['postgres']['user'],
         'POSTGRES_PASSWORD': context.properties['postgres']['password'],
         'POSTGRES_DB': context.properties['postgres']['database'],
-        'POSTGRES_MEM': """$(free -m|grep Mem|awk '{print int($2/4)}')""",
+        'POSTGRES_MEM_MB': """$(free -m|grep Mem|awk '{print int($2/4)}')""",
         'POSTGRES_MAX_CONN': """$(free -m|grep Mem|awk '{print int($2/32)}')""",
         'GRAFANA_USERNAME': context.properties['grafana']['user'],
         'GRAFANA_PASSWORD': context.properties['grafana']['password'],
     }
+
+    if basic_auth_username and basic_auth_password:
+        env_variables['BASIC_AUTH_USERNAME'] = basic_auth_username
+        env_variables['BASIC_AUTH_PASSWORD'] = basic_auth_password
 
     env_variables.update(GenerateAirflowVar(context, hostname_manager))
 
@@ -34,7 +41,6 @@ def GenerateManagerStartupScript(context, hostname_manager):
     startup_script = f'''
 #!/bin/bash
 set -e
-mkdir -p /var/lib/postgresql/data /var/lib/rabbitmq
 
 {GenerateEnvironVar(context, hostname_manager)}
 
@@ -47,14 +53,6 @@ systemctl start cron.service
 echo "0 0 * * * docker system prune -f"|crontab -
 
 docker swarm init
-
-echo '{str(context.properties["nginx"]["user"] or "")}' | docker secret create basic_auth_username -
-echo '{str(context.properties["nginx"]["password"] or "")}' | docker secret create basic_auth_password -
-
-sudo openssl genrsa 2048 | tee >(
-    docker secret create ssl_certificate_key -) |
-    sudo openssl req -x509 -nodes -days 365 -new -key /dev/stdin -subj "/C=US/ST=NJ/L=P/O=P/OU=SL/CN=SEURON" |
-    docker secret create ssl_certificate -
 
 wget -O compose.yml {context.properties["composeLocation"]}
 

@@ -87,6 +87,7 @@ def process_output(conn, queue_name, task):
         elif ret.get('msg', None) == "error":
             if ret.get('ret', None):
                 err_queue.put(json.dumps(ret['ret']))
+                raise RuntimeError("Task failed, restart the worker")
         else:
             raise RuntimeError("Unknown message from worker: {ret}")
     else:
