@@ -85,7 +85,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     elif worker['type'] == 'custom-cpu':
         cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + f"custom/worker_cpu.sh {worker['concurrency']} >& /dev/null"
     elif worker['type'] == 'custom-gpu':
-        cmd = GenerateDockerCommand(docker_image, docker_env+['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + f"custom/worker_gpu.sh {worker['concurrency']} >& /dev/null"
+        cmd = GenerateDockerCommand(docker_image, docker_env + ['--gpus all'] + ['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + f"custom/worker_gpu.sh {worker['concurrency']} >& /dev/null"
     elif worker['type'] in SYNAPTOR_TYPES:
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     else:
