@@ -202,28 +202,41 @@ def kombu_tasks(cluster_name, init_workers):
                     return
 
                 if not task_generator:
-                    task_generator = chunk_tasks(task_list, 100000)
+                    task_generator = [task_list]
 
-                for tasks in task_generator:
+                batch_size = 500_000
+
+                for tlist in task_generator:
                     try:
-                        tasks = list(tasks)
+                        tlist = list(tlist)
                     except TypeError:
                         slack_message("{} must return a list of tasks".format(create_tasks.__name__))
                         continue
 
-                    slack_message(f"Populate the message queue with {len(tasks)} tasks")
-
-                    with Connection(broker, connect_timeout=60) as conn:
-                        queue = conn.SimpleQueue(queue_name)
-                        for t in tasks:
-                            payload = extract_payload(metadata, t)
-                            submit_message(queue, payload)
-                        queue.close()
+                    slack_message(f"{len(tlist)} tasks received")
+                    batch_generator = chunk_tasks(tlist, batch_size)
 
                     if cluster_api:
-                        target_size = estimate_worker_instances(len(tasks), cluster_info[cluster_name])
-                        cluster_api.ramp_up_cluster(cluster_name, min(target_size, init_workers) , target_size)
-                    check_queue(queue_name, agg)
+                        target_size = estimate_worker_instances(min(batch_size, len(tlist)), cluster_info[cluster_name])
+                        cluster_api.ramp_up_cluster(cluster_name, min(target_size, init_workers), target_size)
+
+                    total_task_submitted = 0
+
+                    for tasks in batch_generator:
+                        slack_message(f"Populate the message queue with {len(tasks)} tasks")
+
+                        with Connection(broker, connect_timeout=60) as conn:
+                            queue = conn.SimpleQueue(queue_name)
+                            for t in tasks:
+                                payload = extract_payload(metadata, t)
+                                submit_message(queue, payload)
+                            queue.close()
+
+                        total_task_submitted += len(tasks)
+                        slack_message(f"{total_task_submitted} tasks submitted in total")
+
+                        check_queue(queue_name, agg=agg)
+
                     if agg:
                         agg.finalize()
 
