@@ -256,6 +256,7 @@ class DockerConfigurableOperator(DockerOperator):
                 'mounts': self.mounts,
                 'cpu_shares': cpu_shares,
                 'mem_limit': self.mem_limit,
+                'device_requests': self.device_requests,
                 'cap_add': ["IPC_LOCK", "SYS_NICE"],
                 'network_mode': self.network_mode
             }
@@ -333,13 +334,19 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
     def __init__(self,
                  variables,
                  mount_point=DEFAULT_MOUNT_POINT,
+                 use_gpus=False,
                  *args, **kwargs):
         self.variables = variables
         if mount_point:
             self.mount_point = mount_point
         else:
             self.mount_point=self.DEFAULT_MOUNT_POINT,
-        super().__init__(*args, **kwargs)
+
+        if use_gpus:
+            device_requests = [docker.types.DeviceRequest(driver="nvidia", count=-1, capabilities=[['gpu']])]
+            super().__init__(device_requests=device_requests, *args, **kwargs)
+        else:
+            super().__init__(*args, **kwargs)
 
     def execute(self, context):
         with TemporaryDirectory(prefix='dockervariables') as tmp_var_dir:
