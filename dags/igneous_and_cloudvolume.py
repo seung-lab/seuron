@@ -39,7 +39,7 @@ def process_worker_errors(err_queue):
         slack_message(f"{msg_count} worker errors: {err_msg}")
 
 
-def check_queue(queue, agg=None):
+def check_queue(queue, agg=None, refill_threshold=0):
     from airflow import configuration
     import requests
     from time import sleep
@@ -73,7 +73,7 @@ def check_queue(queue, agg=None):
             process_worker_messages(ret_queue, agg)
             process_worker_errors(err_queue)
 
-            if nTasks == 0:
+            if nTasks <= refill_threshold:
                 nTries -= 1
             else:
                 nTries = totalTries
@@ -235,8 +235,9 @@ def kombu_tasks(cluster_name, init_workers):
                         total_task_submitted += len(tasks)
                         slack_message(f"{total_task_submitted} tasks submitted in total")
 
-                        check_queue(queue_name, agg=agg)
+                        check_queue(queue_name, agg=agg, refill_threshold=batch_size)
 
+                    check_queue(queue_name, agg=agg, refill_threshold=0)
                     if agg:
                         agg.finalize()
 
