@@ -282,6 +282,7 @@ def synaptor_op(
         mount_point=MOUNT_POINT,
         task_id=task_id,
         command=command,
+        use_gpus=True,
         force_pull=True,
         image=image,
         priority_weight=100_000,
