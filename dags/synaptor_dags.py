@@ -9,7 +9,7 @@ from airflow.models import Variable, BaseOperator
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from param_default import synaptor_param_default, default_synaptor_image
 from synaptor_ops import manager_op, drain_op
-from synaptor_ops import synaptor_op, wait_op, generate_op
+from synaptor_ops import synaptor_op, wait_op, generate_op, nglink_op
 
 
 # Processing parameters
@@ -95,7 +95,18 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
         curr_operator = add_task(dag, task, curr_operator)
 
     assert curr_cluster != "", "no tasks?"
-    scale_down_cluster(dag, curr_cluster, curr_operator)
+    nglink = nglink_op(
+        dag,
+        param["Volumes"]["descriptor"],
+        param["Volumes"]["output"],
+        param["Workflow"]["workflowtype"],
+        param["Workflow"]["storagedir"],
+        param["Workflow"].get("add_synapse_points", True),
+        param["Volumes"]["image"],
+        tuple(map(int, param["Dimensions"]["voxelres"].split(","))),
+    )
+    curr_operator >> nglink
+    scale_down_cluster(dag, curr_cluster, nglink)
 
     return dag
 
