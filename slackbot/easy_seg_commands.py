@@ -188,7 +188,7 @@ def run_easy_seg(msg: dict) -> None:
         return
 
     handle_batch("inf_run", msg)
-    run_dag("easy_seg_link")
+    #run_dag("easy_seg_link")
 
 
 @SeuronBot.on_message("show easy seg link",
