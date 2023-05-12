@@ -46,7 +46,7 @@ Variable.setdefault("cluster_target_size", target_sizes, deserialize_json=True)
 Variable.setdefault("param", param_default, deserialize_json=True)
 Variable.setdefault("inference_param", inference_param_default, deserialize_json=True)
 Variable.setdefault("vendor", os.environ.get("VENDOR", "Google"))
-Variable.setdefault("synaptor_param.json", synaptor_param_default)
+Variable.setdefault("synaptor_param.json", synaptor_param_default, deserialize_json=True)
 
 db_utils.merge_conn(
         models.Connection(

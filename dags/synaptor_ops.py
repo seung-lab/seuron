@@ -6,7 +6,7 @@ from typing import Optional
 from airflow import DAG
 from airflow.utils.weight_rule import WeightRule
 from airflow.operators.python import PythonOperator
-from airflow.models import Variable, BaseOperator as Operator
+from airflow.models import Variable, BaseOperator
 
 from worker_op import worker_op
 from igneous_and_cloudvolume import check_queue
@@ -32,7 +32,7 @@ def drain_op(
     dag: DAG,
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
     queue: Optional[str] = "manager",
-) -> Operator:
+) -> PythonOperator:
     """Drains leftover messages from the RabbitMQ."""
     from airflow import configuration as conf
 
@@ -56,7 +56,7 @@ def manager_op(
     synaptor_task_name: str,
     queue: str = "manager",
     image: str = default_synaptor_image,
-) -> Operator:
+) -> BaseOperator:
     """An operator fn for running synaptor tasks on the airflow node."""
     config_path = os.path.join(MOUNT_POINT, "synaptor_param.json")
     command = f"{synaptor_task_name} {config_path}"
@@ -87,7 +87,7 @@ def generate_op(
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
     tag: Optional[str] = None,
     image: str = default_synaptor_image,
-) -> Operator:
+) -> BaseOperator:
     """Generates tasks to run and adds them to the RabbitMQ."""
     from airflow import configuration as conf
 
@@ -128,7 +128,7 @@ def synaptor_op(
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
     tag: Optional[str] = None,
     image: str = default_synaptor_image,
-) -> Operator:
+) -> BaseOperator:
     """Runs a synaptor worker until it receives a self-destruct task."""
     from airflow import configuration as conf
 
@@ -167,7 +167,7 @@ def synaptor_op(
     )
 
 
-def wait_op(dag: DAG, taskname: str) -> Operator:
+def wait_op(dag: DAG, taskname: str) -> PythonOperator:
     """Waits for a task to finish."""
     return PythonOperator(
         task_id=f"wait_for_queue_{taskname}",
