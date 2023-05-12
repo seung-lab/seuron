@@ -311,7 +311,7 @@ def bbox_and_center(
 
     maxsz = defaults.get("max_bbox_width", None)
     if maxsz is not None and any(sz > mx for sz, mx in zip(bboxsz, maxsz)):
-        raise ValueError("bounding box is too large: max size = {maxsz}")
+        raise ValueError(f"bounding box is too large: max size = {maxsz}")
 
     # resampling coordinates to data resolution
     if resample and "index_resolution" in defaults and "data_resolution" in defaults:
