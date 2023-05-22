@@ -58,8 +58,22 @@ inference_param_default = {
     "BBOX": [7168, 20480, 1500, 8608, 21920, 1764],
 }
 
-default_synaptor_param = {
-    "Workflow": dict(maxclustersize=1)
+default_synaptor_image = "zettaai/synaptor:json"
+
+synaptor_param_default = {
+    "Volumes": {
+        "descriptor": "default",
+        "output": "default",
+        "image": "default",
+    },
+    "Dimensions": {
+        "voxelres": "1, 1, 1",
+    },
+    "Workflow": {
+        "maxclustersize": 1,
+        "workflowtype": "Segmentation",
+        "storagedir": "default",
+    },
 }
 
 default_args = {

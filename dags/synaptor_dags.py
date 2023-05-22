@@ -1,22 +1,26 @@
 """DAG definition for synaptor workflows."""
+from typing import Optional
 from datetime import datetime
+from dataclasses import dataclass
 
 from airflow import DAG
-from airflow.models import Variable
+from airflow.models import Variable, BaseOperator
 
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
-from param_default import default_synaptor_param
+from param_default import synaptor_param_default, default_synaptor_image
 from synaptor_ops import manager_op, drain_op
-from synaptor_ops import synaptor_op, wait_op, generate_op
+from synaptor_ops import synaptor_op, wait_op, generate_op, nglink_op
 
 
 # Processing parameters
 # We need to set a default so any airflow container can parse the dag before we
 # pass in a configuration file
 param = Variable.get(
-    "synaptor_param.json", default_synaptor_param, deserialize_json=True
+    "synaptor_param.json", synaptor_param_default, deserialize_json=True
 )
-MAX_CLUSTER_SIZE = int(param.get("Workflow", {}).get("maxclustersize", 1))
+WORKFLOW_PARAMS = param.get("Workflow", {})
+MAX_CLUSTER_SIZE = int(WORKFLOW_PARAMS.get("maxclustersize", 1))
+SYNAPTOR_IMAGE = WORKFLOW_PARAMS.get("synaptor_image", default_synaptor_image)
 
 default_args = {
     "owner": "seuronbot",
@@ -25,6 +29,7 @@ default_args = {
     "catchup": False,
     "retries": 0,
 }
+
 
 # =========================================
 # Sanity check DAG
@@ -37,308 +42,233 @@ dag_sanity = DAG(
     tags=["synaptor"],
 )
 
-manager_op(dag_sanity, "sanity_check")
+manager_op(dag_sanity, "sanity_check", image=SYNAPTOR_IMAGE)
 
 
 # =========================================
-# File segmentation
-# "run synaptor file segmentation"
+# Workflow DAGs
 
-fileseg_dag = DAG(
-    "synaptor_file_seg",
-    default_args=default_args,
-    schedule_interval=None,
-    tags=["synaptor"],
-)
+@dataclass
+class Task:
+    name: str
+    cluster_key: str
 
 
-# OP INSTANTIATION
-# Cluster management
-drain = drain_op(fileseg_dag)
-sanity_check = manager_op(fileseg_dag, "sanity_check")
-init_cloudvols = manager_op(fileseg_dag, "init_cloudvols")
+class CPUTask(Task):
 
-scale_up_cluster = scale_up_cluster_op(
-    fileseg_dag, "synaptor", "synaptor-cpu", 1, MAX_CLUSTER_SIZE, "cluster"
-)
-scale_down_cluster = scale_down_cluster_op(
-    fileseg_dag, "synaptor", "synaptor-cpu", 0, "cluster"
-)
-
-generate_self_destruct = generate_op(fileseg_dag, "self_destruct")
-wait_self_destruct = wait_op(fileseg_dag, "self_destruct")
+    def __init__(self, name):
+        self.name = name
+        self.cluster_key = "synaptor-cpu"
 
 
-# Ops that do actual work
-workers = [synaptor_op(fileseg_dag, i) for i in range(MAX_CLUSTER_SIZE)]
+class GPUTask(Task):
 
-generate_chunk_ccs = generate_op(fileseg_dag, "chunk_ccs")
-wait_chunk_ccs = wait_op(fileseg_dag, "chunk_ccs")
-
-generate_merge_ccs = generate_op(fileseg_dag, "merge_ccs")
-wait_merge_ccs = wait_op(fileseg_dag, "merge_ccs")
-
-generate_remap = generate_op(fileseg_dag, "remap")
-wait_remap = wait_op(fileseg_dag, "remap")
+    def __init__(self, name):
+        self.name = name
+        self.cluster_key = "synaptor-gpu"
 
 
-# DEPENDENCIES
-# Drain old tasks before doing anything
-collect_metrics_op(fileseg_dag) >> drain >> sanity_check >> init_cloudvols  # >> generate_ngl_link
+class GraphTask(Task):
 
-# Worker dag
-(init_cloudvols >> scale_up_cluster >> workers >> scale_down_cluster)
+    def __init__(self, name):
+        self.name = name
+        self.cluster_key = "synaptor-seggraph"
 
-# Generator/task dag
-(
-    init_cloudvols
-    # >> sanity_check_report
-    >> generate_chunk_ccs
-    >> wait_chunk_ccs
-    >> generate_merge_ccs
-    >> wait_merge_ccs
-    >> generate_remap
-    >> wait_remap
-    >> generate_self_destruct
-    >> wait_self_destruct
-)
+
+def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DAG:
+    """Fills a synaptor DAG from a list of Tasks."""
+    drain = drain_op(dag)
+    init_cloudvols = manager_op(dag, "init_cloudvols", image=SYNAPTOR_IMAGE)
+
+    drain >> init_cloudvols
+
+    if collect_metrics:
+        metrics = collect_metrics_op(dag)
+        metrics >> drain
+
+    curr_cluster = ""
+    curr_operator = init_cloudvols
+    for task in tasklist:
+        curr_cluster, curr_operator = change_cluster_if_required(
+            dag, curr_cluster, curr_operator, task
+        )
+        curr_operator = add_task(dag, task, curr_operator)
+
+    assert curr_cluster != "", "no tasks?"
+    nglink = nglink_op(
+        dag,
+        param["Volumes"]["descriptor"],
+        param["Volumes"]["output"],
+        param["Workflow"]["workflowtype"],
+        param["Workflow"]["storagedir"],
+        param["Workflow"].get("add_synapse_points", True),
+        param["Volumes"]["image"],
+        tuple(map(int, param["Dimensions"]["voxelres"].split(","))),
+    )
+    curr_operator >> nglink
+    scale_down_cluster(dag, curr_cluster, nglink)
+
+    return dag
+
+
+def change_cluster_if_required(
+    dag: DAG, prev_cluster_tag: str, curr_operator: BaseOperator, next_task: Task,
+) -> tuple[str, BaseOperator]:
+    if next_task.cluster_key in prev_cluster_tag:
+        # don't need to change the cluster
+        return prev_cluster_tag, curr_operator
+
+    # scaling down previous cluster
+    scale_down, curr_operator = scale_down_cluster(dag, prev_cluster_tag, curr_operator)
+
+    # generating a new cluster tag
+    guess_i = 0
+    while True:
+        guess_tag = f"{next_task.cluster_key}{guess_i}"
+        if dag.has_task(f"resize_{guess_tag}_0"):
+            guess_i += 1
+        else:
+            break
+    new_tag = guess_tag
+
+    # scale up and worker ops
+    cluster_size = (
+        MAX_CLUSTER_SIZE if next_task.cluster_key != "synaptor-seggraph" else 1
+    )
+    scale_up = scale_up_cluster_op(
+        dag, new_tag, next_task.cluster_key, 1, cluster_size, "cluster"
+    )
+
+    workers = [
+        synaptor_op(
+            dag,
+            i,
+            image=SYNAPTOR_IMAGE,
+            op_queue_name=next_task.cluster_key,
+            tag=new_tag,
+        )
+        for i in range(cluster_size)
+    ]
+
+    # dependencies
+    if scale_down is not None:
+        scale_down >> scale_up
+    else:
+        curr_operator >> scale_up
+
+    scale_up >> workers
+
+    return new_tag, curr_operator
+
+
+def scale_down_cluster(
+    dag: DAG, prev_cluster_tag: str, prev_operator: BaseOperator
+) -> None:
+    """Adds a self-destruct op, finds worker nodes, and chains these to a downscale."""
+    if prev_cluster_tag == "":
+        return None, prev_operator
+
+    # cluster sub-dag
+    cluster_key = cluster_key_from_tag(prev_cluster_tag)
+    scale_down = scale_down_cluster_op(dag, prev_cluster_tag, cluster_key, 0, "cluster")
+    prev_workers = [
+        dag.get_task(f"worker_{prev_cluster_tag}_{i}") for i in range(MAX_CLUSTER_SIZE)
+    ]
+
+    prev_workers >> scale_down
+
+    # management sub-dag
+    wait_op = add_task(
+        dag, CPUTask("self_destruct"), prev_operator, tag=prev_cluster_tag
+    )
+
+    return scale_down, wait_op
+
+
+def cluster_key_from_tag(cluster_tag: str) -> str:
+    if "graph" in cluster_tag:
+        return "synaptor-seggraph"
+    elif "cpu" in cluster_tag:
+        return "synaptor-cpu"
+    elif "gpu" in cluster_tag:
+        return "synaptor-gpu"
+    else:
+        raise ValueError(f"unrecognized cluster tag: {cluster_tag}")
+
+
+def add_task(
+    dag: DAG, task: Task, prev_operator: BaseOperator, tag: Optional[str] = None
+) -> BaseOperator:
+    """Adds a processing step to a DAG."""
+    generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, tag=tag)
+    if tag:
+        wait = wait_op(dag, f"{task.name}_{tag}")
+    else:
+        wait = wait_op(dag, task.name)
+
+    prev_operator >> generate >> wait
+
+    return wait
 
 
 # =========================================
-# DB segmentation
-# "run synaptor db segmentation"
-#
-# This performs the "merge_ccs" task above in separate extra steps (in parallel)
-#
-# I will also soon add some database management commands (creating indexes)
-
-dbseg_dag = DAG(
-    "synaptor_db_seg",
-    default_args=default_args,
-    schedule_interval=None,
-    tags=["synaptor"],
-)
-
-
-# OP INSTANTIATION
-# Cluster management
-drain = drain_op(dbseg_dag)
-sanity_check = manager_op(dbseg_dag, "sanity_check")
-init_cloudvols = manager_op(dbseg_dag, "init_cloudvols")
-init_db = manager_op(dbseg_dag, "init_db")
-
-scale_up_cluster = scale_up_cluster_op(
-    dbseg_dag, "synaptor", "synaptor-cpu", 1, MAX_CLUSTER_SIZE, "cluster"
-)
-scale_down_cluster = scale_down_cluster_op(
-    dbseg_dag, "synaptor", "synaptor-cpu", 0, "cluster"
-)
-
-generate_self_destruct = generate_op(dbseg_dag, "self_destruct")
-wait_self_destruct = wait_op(dbseg_dag, "self_destruct")
-
-
-# Ops that do actual work
-workers = [synaptor_op(dbseg_dag, i) for i in range(MAX_CLUSTER_SIZE)]
-
-generate_chunk_ccs = generate_op(dbseg_dag, "chunk_ccs")
-wait_chunk_ccs = wait_op(dbseg_dag, "chunk_ccs")
-
-generate_match_contins = generate_op(dbseg_dag, "match_contins")
-wait_match_contins = wait_op(dbseg_dag, "match_contins")
-
-generate_seg_graph_ccs = generate_op(dbseg_dag, "seg_graph_ccs")
-wait_seg_graph_ccs = wait_op(dbseg_dag, "seg_graph_ccs")
-
-generate_chunk_seg_map = generate_op(dbseg_dag, "chunk_seg_map")
-wait_chunk_seg_map = wait_op(dbseg_dag, "chunk_seg_map")
-
-generate_merge_seginfo = generate_op(dbseg_dag, "merge_seginfo")
-wait_merge_seginfo = wait_op(dbseg_dag, "merge_seginfo")
-
-generate_remap = generate_op(dbseg_dag, "remap")
-wait_remap = wait_op(dbseg_dag, "remap")
-
-
-# DEPENDENCIES
-# Drain old tasks before doing anything
-collect_metrics_op(dbseg_dag) >> drain >> sanity_check >> init_cloudvols >> init_db  # >> generate_ngl_link
-
-# Worker dag
-(init_db >> scale_up_cluster >> workers >> scale_down_cluster)
-
-# Generator/task dag
-(
-    init_db
-    # >> sanity_check_report
-    >> generate_chunk_ccs
-    >> wait_chunk_ccs
-    >> generate_match_contins
-    >> wait_match_contins
-    >> generate_seg_graph_ccs
-    >> wait_seg_graph_ccs
-    >> generate_chunk_seg_map
-    >> wait_chunk_seg_map
-    >> generate_merge_seginfo
-    >> wait_merge_seginfo
-    >> generate_remap
-    >> wait_remap
-    >> generate_self_destruct
-    >> wait_self_destruct
-)
-
-
-# =========================================
-# DB assignment
-# "run synaptor assignment"
-#
-# This adds three more parallel processing stages for synapse assignment
-#
-# The "chunk_edges" steps requires a GPU, so we need to add some extra
-# operators to scale CPU/GPU nodes up and down in waves.
-#
-# I will also soon add some database management commands (creating indexes)
-
-assign_dag = DAG(
-    "synaptor_assignment",
-    default_args=default_args,
-    schedule_interval=None,
-    tags=["synaptor"],
-)
-
-
-# OP INSTANTIATION
-# Cluster management
-drain = drain_op(assign_dag)
-sanity_check = manager_op(assign_dag, "sanity_check")
-init_cloudvols = manager_op(assign_dag, "init_cloudvols")
-init_db = manager_op(assign_dag, "init_db")
-
-scale_up_cluster_cpu0 = scale_up_cluster_op(
-    assign_dag, "synaptor-cpu0", "synaptor-cpu", 1, MAX_CLUSTER_SIZE, "cluster"
-)
-scale_down_cluster_cpu0 = scale_down_cluster_op(
-    assign_dag, "synaptor-cpu0", "synaptor-cpu", 0, "cluster"
-)
-scale_up_cluster_gpu = scale_up_cluster_op(
-    assign_dag, "synaptor-gpu", "synaptor-gpu", 1, MAX_CLUSTER_SIZE, "cluster"
-)
-scale_down_cluster_gpu = scale_down_cluster_op(
-    assign_dag, "synaptor-gpu", "synaptor-gpu", 0, "cluster"
-)
-scale_up_cluster_cpu1 = scale_up_cluster_op(
-    assign_dag, "synaptor-cpu1", "synaptor-cpu", 1, MAX_CLUSTER_SIZE, "cluster"
-)
-scale_down_cluster_cpu1 = scale_down_cluster_op(
-    assign_dag, "synaptor-cpu1", "synaptor-cpu", 0, "cluster"
-)
-
-generate_self_destruct_cpu0 = generate_op(assign_dag, "self_destruct", tag="cpu0")
-wait_self_destruct_cpu0 = wait_op(assign_dag, "self_destruct_cpu0")
-generate_self_destruct_gpu = generate_op(assign_dag, "self_destruct", tag="gpu")
-wait_self_destruct_gpu = wait_op(assign_dag, "self_destruct_gpu")
-generate_self_destruct_cpu1 = generate_op(assign_dag, "self_destruct", tag="cpu1")
-wait_self_destruct_cpu1 = wait_op(assign_dag, "self_destruct_cpu1")
-
-
-# Ops that do actual work
-cpu0_workers = [synaptor_op(assign_dag, i, tag="cpu0") for i in range(MAX_CLUSTER_SIZE)]
-gpu_workers = [
-    synaptor_op(assign_dag, i, op_queue_name="synaptor-gpu", tag="gpu")
-    for i in range(MAX_CLUSTER_SIZE)
+# Workflow definitions - which tasks are run for each workflow
+file_segmentation = [
+    CPUTask("chunk_ccs"),
+    CPUTask("merge_ccs"),
+    CPUTask("remap"),
 ]
-cpu1_workers = [synaptor_op(assign_dag, i, tag="cpu1") for i in range(MAX_CLUSTER_SIZE)]
 
-generate_chunk_ccs = generate_op(assign_dag, "chunk_ccs")
-wait_chunk_ccs = wait_op(assign_dag, "chunk_ccs")
+db_segmentation = [
+    CPUTask("chunk_ccs"),
+    CPUTask("match_contins"),
+    CPUTask("seg_graph_ccs"),
+    CPUTask("chunk_seg_map"),
+    CPUTask("merge_seginfo"),
+    CPUTask("remap"),
+]
 
-generate_match_contins = generate_op(assign_dag, "match_contins")
-wait_match_contins = wait_op(assign_dag, "match_contins")
+file_assignment = [
+    CPUTask("chunk_ccs"),
+    CPUTask("merge_ccs"),
+    GPUTask("chunk_edges"),
+    CPUTask("merge_edges"),
+    CPUTask("remap"),
+]
 
-generate_seg_graph_ccs = generate_op(assign_dag, "seg_graph_ccs")
-wait_seg_graph_ccs = wait_op(assign_dag, "seg_graph_ccs")
+db_assignment = [
+    CPUTask("chunk_ccs"),
+    CPUTask("match_contins"),
+    CPUTask("seg_graph_ccs"),
+    CPUTask("chunk_seg_map"),
+    CPUTask("merge_seginfo"),
+    GraphTask("seg_graph_ccs"),
+    GPUTask("chunk_edges"),
+    CPUTask("pick_edge"),
+    CPUTask("merge_dups"),
+    CPUTask("merge_dup_maps"),
+    CPUTask("remap"),
+]
 
-generate_chunk_seg_map = generate_op(assign_dag, "chunk_seg_map")
-wait_chunk_seg_map = wait_op(assign_dag, "chunk_seg_map")
-
-generate_merge_seginfo = generate_op(assign_dag, "merge_seginfo")
-wait_merge_seginfo = wait_op(assign_dag, "merge_seginfo")
-
-generate_chunk_edges = generate_op(assign_dag, "chunk_edges")
-wait_chunk_edges = wait_op(assign_dag, "chunk_edges")
-
-generate_pick_edge = generate_op(assign_dag, "pick_edge")
-wait_pick_edge = wait_op(assign_dag, "pick_edge")
-
-generate_merge_dups = generate_op(assign_dag, "merge_dups")
-wait_merge_dups = wait_op(assign_dag, "merge_dups")
-
-generate_merge_dup_maps = generate_op(assign_dag, "merge_dup_maps")
-wait_merge_dup_maps = wait_op(assign_dag, "merge_dup_maps")
-
-generate_remap = generate_op(assign_dag, "remap")
-wait_remap = wait_op(assign_dag, "remap")
-
-
-# DEPENDENCIES
-# Drain old tasks before doing anything
-collect_metrics_op(assign_dag) >> drain >> sanity_check >> init_cloudvols >> init_db  # >> generate_ngl_link
-
-# Worker dag
-(
-    init_db
-    # Segmentation wave (CPU)
-    >> scale_up_cluster_cpu0
-    >> cpu0_workers
-    >> scale_down_cluster_cpu0
-    # Chunk-wise synapse assignment (GPU)
-    >> scale_up_cluster_gpu
-    >> gpu_workers
-    >> scale_down_cluster_gpu
-    # Merging synapse assignment (CPU)
-    >> scale_up_cluster_cpu1
-    >> cpu1_workers
-    >> scale_down_cluster_cpu1
+# =========================================
+# DAG definition
+dag = DAG(
+    "synaptor",
+    default_args=default_args,
+    schedule_interval=None,
+    tags=["synaptor"],
 )
 
-# Generator/task dag
-(
-    init_db
-    # Segmentation wave (CPU)
-    >> generate_chunk_ccs
-    >> wait_chunk_ccs
-    >> generate_match_contins
-    >> wait_match_contins
-    >> generate_seg_graph_ccs
-    >> wait_seg_graph_ccs
-    >> generate_chunk_seg_map
-    >> wait_chunk_seg_map
-    >> generate_merge_seginfo
-    >> wait_merge_seginfo
-    >> generate_self_destruct_cpu0
-    >> wait_self_destruct_cpu0
-)
+workflows = {
+    "Segmentation": {"File": file_segmentation, "Database": db_segmentation},
+    "Segmentation+Assignment": {"File": file_assignment, "Database": db_assignment},
+}
 
-(
-    wait_self_destruct_cpu0
-    # Chunk-wise synapse assignment (GPU)
-    >> generate_chunk_edges
-    >> wait_chunk_edges
-    >> generate_self_destruct_gpu
-    >> wait_self_destruct_gpu
-)
-
-(
-    wait_self_destruct_gpu
-    # Merging synapse assignment (CPU)
-    >> generate_pick_edge
-    >> wait_pick_edge
-    >> generate_merge_dups
-    >> wait_merge_dups
-    >> generate_merge_dup_maps
-    >> wait_merge_dup_maps
-    >> generate_remap
-    >> wait_remap
-    >> generate_self_destruct_cpu1
-    >> wait_self_destruct_cpu1
+fill_dag(
+    dag,
+    workflows[
+        WORKFLOW_PARAMS.get("workflowtype", "Segmentation")
+    ][
+        WORKFLOW_PARAMS.get("workspacetype", "File")
+    ]
 )
