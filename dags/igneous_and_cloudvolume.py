@@ -388,6 +388,13 @@ def create_info(stage, param, top_mip):
 
 
 @mount_secrets
+def read_single_file(path, filename):
+    from cloudfiles import CloudFiles
+    cf = CloudFiles(path)
+    return cf.get(filename)
+
+
+@mount_secrets
 def upload_json(path, filename, content):
     from cloudfiles import CloudFiles
     cf = CloudFiles(path)
