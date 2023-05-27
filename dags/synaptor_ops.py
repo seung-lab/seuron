@@ -257,6 +257,7 @@ def synaptor_op(
     op_queue_name: Optional[str] = "synaptor-cpu",
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
     tag: Optional[str] = None,
+    use_gpus: Optional[bool] = False,
     image: str = default_synaptor_image,
 ) -> BaseOperator:
     """Runs a synaptor worker until it receives a self-destruct task."""
@@ -282,7 +283,7 @@ def synaptor_op(
         mount_point=MOUNT_POINT,
         task_id=task_id,
         command=command,
-        use_gpus=True,
+        use_gpus=use_gpus,
         force_pull=True,
         image=image,
         priority_weight=100_000,
