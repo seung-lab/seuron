@@ -378,6 +378,7 @@ def inference_op(dag, param, queue, wid):
         mount_point=param.get("MOUNT_PATH", default_mount_path),
         task_id='worker_{}'.format(wid),
         command=cmdlist,
+        use_gpus=True,
         force_pull=True,
         image=param["CHUNKFLOW_IMAGE"],
         priority_weight=1,

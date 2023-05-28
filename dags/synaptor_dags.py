@@ -52,6 +52,7 @@ manager_op(dag_sanity, "sanity_check", image=SYNAPTOR_IMAGE)
 class Task:
     name: str
     cluster_key: str
+    use_gpus: bool
 
 
 class CPUTask(Task):
@@ -59,6 +60,7 @@ class CPUTask(Task):
     def __init__(self, name):
         self.name = name
         self.cluster_key = "synaptor-cpu"
+        self.use_gpus = False
 
 
 class GPUTask(Task):
@@ -66,6 +68,7 @@ class GPUTask(Task):
     def __init__(self, name):
         self.name = name
         self.cluster_key = "synaptor-gpu"
+        self.use_gpus = True
 
 
 class GraphTask(Task):
@@ -73,6 +76,7 @@ class GraphTask(Task):
     def __init__(self, name):
         self.name = name
         self.cluster_key = "synaptor-seggraph"
+        self.use_gpus = False
 
 
 def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DAG:
@@ -146,6 +150,7 @@ def change_cluster_if_required(
             image=SYNAPTOR_IMAGE,
             op_queue_name=next_task.cluster_key,
             tag=new_tag,
+            use_gpus=next_task.use_gpus
         )
         for i in range(cluster_size)
     ]
