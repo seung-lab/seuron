@@ -20,7 +20,7 @@ def get_composite_worker_capacities():
     except:
         return set()
 
-    if not isinstance(composite_worker_info, dict):
+    if not isinstance(composite_worker_info, list):
         return set()
 
     layers = []
