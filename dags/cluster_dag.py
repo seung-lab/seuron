@@ -91,13 +91,13 @@ def cluster_control():
             slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
             continue
 
-        if num_tasks != target_sizes[key]:
-            target_sizes[key] = max(num_tasks, 1)
-
         if target_sizes[key] == 0:
             if requested_size != 0:
                 cluster_api.resize_instance_group(cluster_info[key], 0)
             continue
+
+        if num_tasks != target_sizes[key]:
+            target_sizes[key] = max(num_tasks, 1)
 
         if stable and requested_size < target_sizes[key]:
             max_size = sum(ig['max_size'] for ig in cluster_info[key])
