@@ -104,6 +104,12 @@ def delete_dead_instances():
         if target_sizes.get(key, 0) == 0:
             continue
 
+        stable, _ = cluster_api.cluster_status(key, cluster_info[key])
+
+        if not stable:
+            slack_message(f"Cluster {key} is still stablizing, skip heartbeat check", notification=True)
+            continue
+
         for ig in cluster_info[key]:
             instances = cluster_api.list_managed_instances(ig)
             if not instances:
