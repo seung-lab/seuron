@@ -253,6 +253,16 @@ def collect_resource_metrics(start_time, end_time):
         }
     )
 
+    aggregation_sum_gcs = monitoring_v3.Aggregation(
+        {
+            # Use SUM for DELTA metrics
+            "alignment_period": {"seconds": alignment_period},
+            "per_series_aligner": monitoring_v3.Aggregation.Aligner.ALIGN_SUM,
+            "cross_series_reducer": monitoring_v3.Aggregation.Reducer.REDUCE_SUM,
+            "group_by_fields": ["metric.label.method", "resource.label.bucket_name"],
+        }
+    )
+
     aggregation_mean = monitoring_v3.Aggregation(
         {
             # SUM over series so we can average by uptime
@@ -304,5 +314,17 @@ def collect_resource_metrics(start_time, end_time):
         if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["gputime"] = pendulum.duration(seconds=sum(p.value.double_value*alignment_period/100 for p in result.points))
             resources[group_name]["gpu_utilization"] = resources[group_name]["gputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
+
+    buckets = Variable.get("gcs_buckets", deserialize_json=True, default_var=[])
+    resources["GCS"] = {}
+
+    for result in query_metric("storage.googleapis.com/api/request_count", aggregation_sum_gcs):
+        bucket = result.resource.labels['bucket_name']
+        if bucket in buckets:
+            if bucket not in resources["GCS"]:
+                resources["GCS"][bucket] = {}
+
+            resources["GCS"][bucket][result.metric.labels['method']] = resources["GCS"][bucket].get(result.metric.labels['method'], 0) + sum(p.value.int64_value for p in result.points)
+
 
     return resources

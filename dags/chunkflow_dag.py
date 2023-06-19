@@ -394,6 +394,8 @@ def process_output(**kwargs):
     from airflow import configuration as conf
     from dag_utils import check_manager_node
     import re
+    from cloudfiles.paths import extract
+
     param = Variable.get("inference_param", deserialize_json=True)
     ti = kwargs['ti']
     output = ti.xcom_pull(task_ids="setup_env")
@@ -424,6 +426,15 @@ def process_output(**kwargs):
             raise ValueError('Chunkflow output error')
 
     Variable.set("inference_param", param, serialize_json=True)
+
+    gcs_buckets = set()
+    for path in [param["IMAGE_PATH"], param["OUTPUT_PATH"], param.get("IMAGE_MASK_PATH", None), param.get("OUTPUT_MASK_MIP", None)]:
+        if path:
+            components = extract(path)
+            if components.protocol == "gs":
+                gcs_buckets.add(components.bucket)
+
+    Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
     if conf.get('logging', 'remote_logging') == "True":
         remote_log_path = conf.get('logging', 'remote_base_log_folder')

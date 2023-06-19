@@ -63,11 +63,18 @@ with DAG("compute_metrics",
         messages = []
         resources = collect_resource_metrics(start_time, end_time)
         for ig in resources:
+            if ig == "GCS":
+                continue
             if resources[ig]:
                 if "gpu_utilization" in resources[ig]:
                     messages += [f"`{ig}`: `{format_uptime(resources[ig]['uptime'])}` (`{resources[ig]['gpu_utilization']:.2f}%` GPU utilization, `{resources[ig]['cpu_utilization']:.2f}%` CPU utilization), `{humanize.naturalsize(resources[ig]['received_bytes'])}` received, `{humanize.naturalsize(resources[ig]['sent_bytes'])}` sent"]
                 else:
                     messages += [f"`{ig}`: `{format_uptime(resources[ig]['uptime'])}` (`{resources[ig]['cpu_utilization']:.2f}%` CPU utilization), `{humanize.naturalsize(resources[ig]['received_bytes'])}` received, `{humanize.naturalsize(resources[ig]['sent_bytes'])}` sent"]
+
+        if resources["GCS"]:
+            for b in resources["GCS"]:
+                api_summary = ",".join([f"`{k}`: {humanize.intword(v)}" for k, v in resources["GCS"][b].items()])
+                messages += [f"GCS api call to bucket `{b}`: {api_summary}"]
 
         if messages:
             slack_message("\n".join([f"*Compute resources used by* `{target_dag_id}` *in {pendulum.period(start_time, end_time).in_words()}*:"] + messages), broadcast=True)
