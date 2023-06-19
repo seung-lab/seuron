@@ -245,6 +245,8 @@ def check_worker_image_op(dag):
 def print_summary():
     from docker_helper import health_check_info
     from dag_utils import check_manager_node, get_composite_worker_capacities
+    from cloudfiles.paths import extract
+
     param = Variable.get("param", deserialize_json=True)
     data_bbox = param["BBOX"]
 
@@ -293,6 +295,15 @@ def print_summary():
             paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
         else:
             paths[path] = param["{}_PATH".format(p)]
+
+    gcs_buckets = set()
+    for path in list(paths.values()) + [param['AFF_PATH'], param.get("SEM_PATH", None), param.get("GT_PATH", None)]:
+        if path:
+            components = extract(path)
+            if components.protocol == "gs":
+                gcs_buckets.add(components.bucket)
+
+    Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
     msg = '''
 :heavy_check_mark: *Sanity Check, everything looks OK*
