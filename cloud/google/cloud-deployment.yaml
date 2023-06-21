@@ -66,12 +66,8 @@ resources:
               reserveHugePages: True
               workerConcurrencies:
                 - layer: 5
-                  concurrency: 4
-                - layer: 6
                   concurrency: 2
-                - layer: 7
-                  concurrency: 1
-                - layer: 8
+                - layer: 6
                   concurrency: 1
               sizeLimit: 1
             - type: igneous
