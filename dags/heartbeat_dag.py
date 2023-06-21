@@ -78,6 +78,7 @@ def delete_dead_instances():
     import json
     import redis
     import humanize
+    from time import sleep
     from datetime import datetime
     from airflow.models import Variable
     from airflow.hooks.base_hook import BaseHook
@@ -110,13 +111,14 @@ def delete_dead_instances():
             slack_message(f"Cluster {key} is still stablizing, skip heartbeat check", notification=True)
             continue
 
+        cluster_alive = False
+
         for ig in cluster_info[key]:
             instances = cluster_api.list_managed_instances(ig)
             if not instances:
                 continue
 
             idle_instances = []
-            dead_instances = []
             msg = ["The follow instances are deleted due to heartbeat timeout:"]
             for instance_url in instances:
                 instance = instance_url.split("/")[-1]
@@ -125,19 +127,21 @@ def delete_dead_instances():
                     r.set(instance, timestamp)
                 else:
                     delta = timestamp - float(ts)
-                    if delta > 3600:
-                        msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
-                        dead_instances.append(instance_url)
-                    elif delta > 300:
+                    if delta > 300:
                         msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
                         idle_instances.append(instance_url)
 
-            if (len(instances) == (len(idle_instances) + len(dead_instances))) and len(idle_instances) > 0:
-                idle_instances = idle_instances[:-1]
+            if len(instances) > len(idle_instances):
+                cluster_alive = True
 
             if idle_instances:
                 cluster_api.delete_instances(ig, idle_instances)
                 slack_message("\n".join(msg), notification=True)
+
+        sleep(60)
+        if not cluster_alive:
+            slack_message(f"All instances in {key} are dead, add one instance back", notification=True)
+            cluster_api.ramp_up_cluster(key, 1, 1)
 
 
 latest = LatestOnlyOperator(
