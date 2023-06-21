@@ -536,7 +536,9 @@ def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
 def merge_mesh_fragments(run_name, seg_cloudpath, concurrency=None):
     import igneous.task_creation as tc
     from slack_message import slack_message
-    tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath, max_labels_per_shard=10000)
+    tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath,
+                                                  num_lod=8,
+                                                  max_labels_per_shard=10000)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
     if concurrency:
