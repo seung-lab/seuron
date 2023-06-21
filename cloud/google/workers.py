@@ -31,6 +31,8 @@ mkdir -p /var/log/airflow/logs
 chmod 777 /var/log/airflow/logs
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 {INSTALL_DOCKER_CMD}
+mkdir -p /share
+chmod 777 /share
 '''
 
     if use_hugepages:

@@ -225,17 +225,18 @@ class DockerConfigurableOperator(DockerOperator):
                 except KeyError:
                     pass
 
+        self.log.info("Mount extra volumes specified by docker composer")
+        container_id = socket.gethostname()
+        info = self.cli.inspect_container(container=container_id)
+        mounts = info['Mounts']
+        for m in mounts:
+            if m['Source'] == '/tmp' or m['Source'] == '/var/run/docker.sock':
+                continue
+            self.log.info(f"mount {m['Source']} to {m['Destination']}")
+            self.mounts.append(Mount(source=m['Source'], target=m['Destination'], type=m['Type']))
+
         network_id = None
         if os.environ.get("VENDOR", None) == "LocalDockerCompose":
-            self.log.info("Mount extra volumes specified by docker composer")
-            container_id = socket.gethostname()
-            info = self.cli.inspect_container(container=container_id)
-            mounts = info['Mounts']
-            for m in mounts:
-                if m['Source'] == '/tmp' or m['Source'] == '/var/run/docker.sock':
-                    continue
-                self.log.info(f"mount {m['Source']} to {m['Destination']}")
-                self.mounts.append(Mount(source=m['Source'], target=m['Destination'], type=m['Type']))
             self.log.info("Try to connect to the network created by docker composer")
             networks = info['NetworkSettings']['Networks']
             for n in networks:
