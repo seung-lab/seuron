@@ -4,7 +4,6 @@ from airflow import configuration
 CELERY_CONFIG = {
     'worker_prefetch_multiplier': 1,
     'task_acks_late': True,
-    'task_reject_on_worker_lost': True,
     'broker_url': configuration.get('celery', 'broker_url'),
     'result_backend': configuration.get('celery', 'celery_result_backend'),
     'worker_concurrency':
