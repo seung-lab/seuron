@@ -51,16 +51,18 @@ def check_queue(queue):
     return queue_status["messages"]
 
 
-def get_num_task(cluster):
-    from dag_utils import get_composite_worker_capacities
+def estimate_optimal_number_of_workers(cluster, cluster_info):
+    from dag_utils import get_composite_worker_capacities, estimate_worker_instances
 
     if cluster == "composite":
         layers = get_composite_worker_capacities()
         tasks = [check_queue(f"{cluster}_{layer}") for layer in layers]
-        num_tasks = sum(tasks)
+        num_workers = sum(tasks)
     else:
         num_tasks = check_queue(cluster)
-    return num_tasks
+        num_workers = estimate_worker_instances(num_tasks, cluster_info)
+
+    return num_workers
 
 
 def cluster_control():
@@ -85,7 +87,7 @@ def cluster_control():
 
         print(f"processing cluster: {key}")
         try:
-            num_tasks = get_num_task(key)
+            num_workers = estimate_optimal_number_of_workers(key, cluster_info[key])
             stable, requested_size = cluster_api.cluster_status(key, cluster_info[key])
         except:
             slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
@@ -96,8 +98,8 @@ def cluster_control():
                 cluster_api.resize_instance_group(cluster_info[key], 0)
             continue
 
-        if num_tasks != target_sizes[key]:
-            target_sizes[key] = max(num_tasks, 1)
+        if num_workers != target_sizes[key]:
+            target_sizes[key] = max(num_workers, 1)
 
         if stable and requested_size < target_sizes[key]:
             max_size = sum(ig['max_size'] for ig in cluster_info[key])
