@@ -5,7 +5,8 @@ from networks import GenerateNetworks
 
 def GenerateConfig(context):
 
-    hostname_manager = f"{context.env['deployment']}-bootstrap"
+    common_ext = f"{context.properties['zone']}.c.{context.env['project']}.internal"
+    hostname_manager = f"{context.env['deployment']}-bootstrap.{common_ext}"
     workers = context.properties['workerInstanceGroups']
     worker_resource = []
     worker_metadata = []

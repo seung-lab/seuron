@@ -129,7 +129,7 @@ def GenerateManager(context, hostname_manager, worker_metadata):
     }
 
     manager_resource = {
-        'name': hostname_manager,
+        'name': hostname_manager.split('.')[0],
         'type': 'compute.v1.instance',
         'properties': instance_resource,
     }
