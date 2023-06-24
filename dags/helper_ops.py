@@ -17,7 +17,7 @@ def slack_message_op(dag, tid, msg):
     return PythonOperator(
         task_id='slack_message_{}'.format(tid),
         python_callable=slack_message,
-        op_args = (msg,),
+        op_args=(msg,),
         queue="manager",
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
@@ -27,11 +27,11 @@ def slack_message_op(dag, tid, msg):
 
 def placeholder_op(dag, tid):
     return DummyOperator(
-        task_id = "dummy_{}".format(tid),
+        task_id="dummy_{}".format(tid),
         dag=dag,
         priority_weight=1000,
         weight_rule=WeightRule.ABSOLUTE,
-        queue = "manager"
+        queue="manager"
     )
 
 
@@ -92,7 +92,7 @@ def setup_redis_op(dag, varname, dbname):
     return PythonOperator(
         task_id="setup_redis",
         python_callable=setup_redis,
-        op_args = (varname, dbname, ),
+        op_args=(varname, dbname, ),
         queue="manager",
         dag=dag)
 
@@ -198,5 +198,5 @@ def collect_metrics_op(dag):
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,
         dag=dag,
-        queue = "manager"
+        queue="manager"
     )
