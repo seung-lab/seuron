@@ -392,7 +392,7 @@ def create_info(stage, param, top_mip):
             encoding        = 'raw',
             resolution      = resolution, # Pick scaling for your data!
             voxel_offset    = bbox[0:3],
-            chunk_size      = cv_chunk_size, # This must divide evenly into image length or you won't cover the #
+            chunk_size      = param["CHUNK_SIZE"], # This must divide evenly into image length or you won't cover the #
             volume_size     = [bbox[i+3] - bbox[i] for i in range(3)]
             )
         commit_info(os.path.join(param['SEG_PATH'], 'size_map'), metadata_size, provenance)
