@@ -200,6 +200,11 @@ def check_cv_data():
                 Variable.set("param", param, serialize_json=True)
                 slack_message("*Use chunkmap path derived from the watershed layer* `{}`".format(ws_chunkmap_path))
 
+            if any(i != j for i, j in zip(param["BBOX"], ws_param["BBOX"])):
+                slack_message(f":u7981:*ERROR: BBOX does not align with the watershed layer: {param['BBOX']} != {ws_param['BBOX']} *")
+                raise ValueError('BBOX has to match the watershed layer')
+
+
             if "CHUNK_SIZE" not in param:
                 param["CHUNK_SIZE"] = ws_chunk_size
                 Variable.set("param", param, serialize_json=True)
