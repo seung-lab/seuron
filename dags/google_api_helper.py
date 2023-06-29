@@ -41,6 +41,13 @@ def list_managed_instances(instance_group):
 
     return instances
 
+def get_instance_property(instance_group, instance, key):
+    project_id = get_project_id()
+    service = discovery.build("compute", "v1")
+    request = service.instances().get(project=project_id, zone=instance_group['zone'], instance=instance)
+    ret = request.execute()
+    return ret[key]
+
 def delete_instances(ig, instances):
     project_id = get_project_id()
     request_body = {
