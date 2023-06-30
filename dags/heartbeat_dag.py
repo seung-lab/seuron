@@ -79,7 +79,7 @@ def delete_dead_instances():
     import redis
     import humanize
     from time import sleep
-    from datetime import datetime
+    from datetime import datetime, timezone
     from airflow.models import Variable
     from airflow.hooks.base_hook import BaseHook
     if Variable.get("vendor") == "Google":
@@ -105,12 +105,6 @@ def delete_dead_instances():
         if target_sizes.get(key, 0) == 0:
             continue
 
-        stable, _ = cluster_api.cluster_status(key, cluster_info[key])
-
-        if not stable:
-            slack_message(f"Cluster {key} is still stablizing, skip heartbeat check", notification=True)
-            continue
-
         cluster_alive = False
 
         for ig in cluster_info[key]:
@@ -128,8 +122,14 @@ def delete_dead_instances():
                 else:
                     delta = timestamp - float(ts)
                     if delta > 300:
-                        msg.append(f"{instance} has no heartbeat for {humanize.naturaldelta(delta)}")
-                        idle_instances.append(instance_url)
+                        try:
+                            creationTimestamp = datetime.fromisoformat(cluster_api.get_instance_property(ig, instance, "creationTimestamp"))
+                            delta2 = timestamp - creationTimestamp.timestamp()
+                        except:
+                            continue
+                        if delta2 > 600:
+                            msg.append(f"{instance} created {humanize.naturaltime(creationTimestamp.astimezone(timezone.utc), when=datetime.now(timezone.utc))} has no heartbeat for {humanize.naturaldelta(delta)}")
+                            idle_instances.append(instance_url)
 
             if len(instances) > len(idle_instances):
                 cluster_alive = True
