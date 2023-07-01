@@ -379,7 +379,7 @@ Fundamental chunk size: {chunk_size}
     if param.get("MESH_QUALITY", "NORMAL") == "PERFECT":
         msg += ":exclamation:Meshing without any simplification requires significantly more time and resources!\n"
 
-    if "GT_PATH" in param:
+    if not param.get("SKIP_AGG", False) and "GT_PATH" in param:
         msg += """:vs: Evaluate the output against ground truth `{}`\n""".format(param["GT_PATH"])
 
     missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
