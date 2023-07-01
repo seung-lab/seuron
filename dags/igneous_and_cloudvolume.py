@@ -292,7 +292,7 @@ def isotropic_mip(path):
     from math import log2
     from cloudvolume import CloudVolume
     vol = CloudVolume(path)
-    return int(log2(vol.resolution[2]/vol.resolution[0]))
+    return round(log2(vol.resolution[2]/vol.resolution[0]))
 
 def mip_for_mesh_and_skeleton(path):
     from cloudvolume import CloudVolume
