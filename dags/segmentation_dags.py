@@ -625,10 +625,12 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     slack_ops['ws']['remap'] >> reset_cluster_after_ws
 
-
-    scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
-
-    scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0, "cluster")
+    if param.get("SKIP_AGG", False) and param.get("SKIP_WS", False):
+        scaling_global_start = placeholder_op(dag_manager, "global_start")
+        scaling_global_finish = placeholder_op(dag_manager, "global_finish")
+    else:
+        scaling_global_start = scale_up_cluster_op(dag_manager, "global_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
+        scaling_global_finish = scale_down_cluster_op(dag_manager, "global_finish", CLUSTER_1_CONN_ID, 0, "cluster")
 
     scaling_cs_start = scale_up_cluster_op(dag_cs, "cs_start", CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
 
