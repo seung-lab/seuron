@@ -382,9 +382,10 @@ Fundamental chunk size: {chunk_size}
     if not param.get("SKIP_AGG", False) and "GT_PATH" in param:
         msg += """:vs: Evaluate the output against ground truth `{}`\n""".format(param["GT_PATH"])
 
-    missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
-    if missing_workers:
-        msg += f"""*WARNING: No dedicated worker for layer {','.join(str(x) for x in missing_workers)}, the tasks will be done by workers configured for other layers*"""
+    if not (param.get("SKIP_WS", False) and param.get("SKIP_AGG", False)):
+        missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
+        if missing_workers:
+            msg += f"""*WARNING: No dedicated worker for layer {','.join(str(x) for x in missing_workers)}, the tasks will be done by workers configured for other layers*"""
 
     slack_message(msg, broadcast=True)
 
