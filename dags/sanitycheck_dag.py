@@ -289,8 +289,8 @@ def print_summary():
         ntasks += bchunks
         ntasks *= 2
 
-    if not check_manager_node(bchunks):
-        raise RuntimeError("Not enough resources")
+        if not check_manager_node(bchunks):
+            raise RuntimeError("Not enough resources")
 
     paths = {}
 
