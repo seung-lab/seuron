@@ -668,6 +668,22 @@ def downsample_and_mesh(param):
     downsample(ws_cloudpath, seg_cloudpath, os.path.join(seg_cloudpath, "size_map"))
 
 
+def extract_gcs_buckets(script_source):
+    import ast
+    from cloudfiles.paths import extract
+    gcs_buckets = set()
+    token = ast.parse(script_source)
+    for node in ast.walk(token):
+        if isinstance(node, ast.Constant):
+            val = node.value
+            if isinstance(val, str) and (val.startswith("gs://") or val.startswith("precomputed://gs://")):
+                components = extract(val)
+                if components.protocol == "gs":
+                    gcs_buckets.add(components.bucket)
+
+    return gcs_buckets
+
+
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4)
 def submit_igneous_tasks():
@@ -680,6 +696,11 @@ def submit_igneous_tasks():
     if "submit_tasks" not in globals() or not callable(globals()["submit_tasks"]):
         slack_message(":exclamation:*Error* cannot find the submit_tasks function")
         return
+
+    gcs_buckets = extract_gcs_buckets(python_string)
+    if gcs_buckets:
+        slack_message(f"Track GCS api call to buckets: {','.join(f'`{x}`' for x in gcs_buckets)}")
+        Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
     tasks = list(globals()["submit_tasks"]())
 
@@ -711,6 +732,11 @@ def submit_custom_cpu_tasks():
         slack_message(":exclamation:*Error* cannot find the process_task function")
         return
 
+    gcs_buckets = extract_gcs_buckets(python_string)
+    if gcs_buckets:
+        slack_message(f"Track GCS api call to buckets: {','.join(f'`{x}`' for x in gcs_buckets)}")
+        Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
+
     tasks = globals()["submit_tasks"]()
 
     return tasks
@@ -732,6 +758,11 @@ def submit_custom_gpu_tasks():
     if "process_task" not in globals() or not callable(globals()["process_task"]):
         slack_message(":exclamation:*Error* cannot find the process_task function")
         return
+
+    gcs_buckets = extract_gcs_buckets(python_string)
+    if gcs_buckets:
+        slack_message(f"Track GCS api call to buckets: {','.join(f'`{x}`' for x in gcs_buckets)}")
+        Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
     tasks = globals()["submit_tasks"]()
 
