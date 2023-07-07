@@ -48,7 +48,7 @@ def prep_parameters() -> dict:
     )
 
     param["train_ids"] = annotation_ids
-    param["val_ids"] = param.get("validation_ids", annotation_ids[-1:])
+    param["val_ids"] = param.pop("validation_ids", annotation_ids[-1:])
 
     # Default samwise period
     if "samwise_period" not in param:
