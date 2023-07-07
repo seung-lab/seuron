@@ -126,8 +126,12 @@ def GenerateWorkers(context, hostname_manager, worker):
     }
 
     if worker['type'] in GPU_TYPES:
+        if worker['type'] == 'deepem-gpu':
+            accelerator_count = worker['gpuWorkerAcceleratorCount']
+        else:
+            accelerator_count = 1
         instance_template['guestAccelerators'] = [{
-                'acceleratorCount': 1,
+                'acceleratorCount': accelerator_count,
                 'acceleratorType': worker['gpuWorkerAcceleratorType'],
         }]
 
