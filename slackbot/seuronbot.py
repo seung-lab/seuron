@@ -3,10 +3,14 @@ import functools
 import json
 import itertools
 import difflib
+import concurrent.futures
+import time
+import slack_sdk as slack
 from slack_sdk.rtm_v2 import RTMClient
-from bot_info import botid, workerid
-from bot_utils import replyto, extract_command, update_slack_thread, create_run_token
+from bot_info import botid, workerid, broker_url
+from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_slack_message
 from airflow_api import check_running
+from kombu_helper import get_message
 
 
 _help_trigger = ["help"]
@@ -53,6 +57,7 @@ class SeuronBot:
         self.rtmclient.on("message")(functools.partial(self.process_message.__func__, self))
         self.rtmclient.on("reaction_added")(functools.partial(self.process_reaction.__func__, self))
         self.rtmclient.on("hello")(functools.partial(self.process_hello.__func__, self))
+        self.executor = concurrent.futures.ThreadPoolExecutor()
 
     def update_task_owner(self, msg):
         sc = self.rtmclient.web_client
@@ -184,5 +189,17 @@ class SeuronBot:
 
         return __call__
 
+    def fetch_bot_messages(self, queue="bot-message-queue"):
+        client = slack.WebClient(token=self.slack_token)
+        while True:
+            msg_payload = get_message(broker_url, queue, timeout=30)
+            if msg_payload:
+                try:
+                    send_slack_message(msg_payload, client=client)
+                except:
+                    pass
+                time.sleep(1)
+
     def start(self):
+        self.executor.submit(self.fetch_bot_messages)
         self.rtmclient.start()

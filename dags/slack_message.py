@@ -1,60 +1,14 @@
 def slack_message(msg, notification=False, broadcast=False, attachment=None):
-    from param_default import SLACK_CONN_ID
-    from airflow.hooks.base_hook import BaseHook
-    import slack_sdk as slack
-    import json
-    import base64
-    try:
-        slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
-        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
-        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
-    except:
-        return
-
-    try:
-        slack_username = slack_extra['user']
-        slack_channel = slack_extra['channel']
-        slack_thread = slack_extra['thread_ts']
-        slack_notification_channel = slack_extra['notification_channel']
-    except KeyError:
-        return
-
-    sc = slack.WebClient(slack_token, timeout=300)
-
-    if notification:
-        text="{message}".format(
-            message=msg
-        )
-        sc.chat_postMessage(
-            username=slack_workername,
-            channel=slack_notification_channel,
-            text=text
-        )
-    else:
-        text="<@{username}>, {message}".format(
-            username=slack_username,
-            message=msg
-        )
-
-        if attachment is None:
-            sc.chat_postMessage(
-                username=slack_workername,
-                channel=slack_channel,
-                thread_ts=slack_thread,
-                reply_broadcast=broadcast,
-                text=text
-            )
-        else:
-            response = sc.files_upload(
-                username=slack_workername,
-                channels=slack_channel,
-                thread_ts=slack_thread,
-                title=attachment['title'],
-                filetype=attachment['filetype'],
-                content=base64.b64decode(attachment['content']),
-                initial_comment=text
-            )
-            print(response)
+    from airflow import configuration as conf
+    import kombu_helper
+    msg_payload = {
+            'text': msg,
+            'notification': notification,
+            'broadcast': broadcast,
+            'attachment': attachment,
+    }
+    broker_url = conf.get('celery', 'broker_url')
+    kombu_helper.put_message(broker_url, 'bot-message-queue', msg_payload)
 
 
 def slack_userinfo():

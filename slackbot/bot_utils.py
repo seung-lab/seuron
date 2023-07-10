@@ -2,12 +2,13 @@ import string
 import requests
 import json
 import json5
+import base64
 import traceback
 from collections import OrderedDict
 from secrets import token_hex
 import slack_sdk as slack
 from airflow.hooks.base_hook import BaseHook
-from bot_info import slack_token, botid, workerid, broker_url
+from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from airflow_api import update_slack_connection, set_variable
 from kombu_helper import drain_messages, peek_message
 
@@ -22,6 +23,45 @@ def extract_command(msg):
     cmd = cmd.translate(str.maketrans('', '', string.punctuation))
     cmd = cmd.lower()
     return "".join(cmd.split())
+
+
+def send_slack_message(msg_payload, client=None, context=None):
+    if client is None:
+        client = slack.WebClient(slack_token, timeout=300)
+
+    slack_workername, slack_info = fetch_slack_thread()
+
+    if context:
+        slack_info = context
+
+    if msg_payload.get("notification", False):
+        text = msg_payload["text"]
+        slack_channel = slack_notification_channel
+        slack_thread = None
+    else:
+        text = f"<@{slack_info['user']}>, {msg_payload['text']}"
+        slack_channel = slack_info["channel"]
+        slack_thread = slack_info.get("thread_ts", slack_info.get("ts", None))
+
+    if msg_payload.get("attachment", None) is None:
+        client.chat_postMessage(
+            username=slack_workername,
+            channel=slack_channel,
+            thread_ts=slack_thread,
+            reply_broadcast=msg_payload.get("broadcast", False),
+            text=text
+        )
+    else:
+        attachment = msg_payload["attachment"]
+        client.files_upload(
+            username=slack_workername,
+            channels=slack_channel,
+            thread_ts=slack_thread,
+            title=attachment['title'],
+            filetype=attachment['filetype'],
+            content=base64.b64decode(attachment['content']),
+            initial_comment=text
+        )
 
 
 def replyto(msg, reply, username=workerid, broadcast=False):
