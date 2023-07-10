@@ -34,6 +34,9 @@ def send_slack_message(msg_payload, client=None, context=None):
     if context:
         slack_info = context
 
+    if "workername" in msg_payload:
+        slack_workername = msg_payload["workername"]
+
     if msg_payload.get("notification", False):
         text = msg_payload["text"]
         slack_channel = slack_notification_channel
@@ -64,22 +67,13 @@ def send_slack_message(msg_payload, client=None, context=None):
         )
 
 
-def replyto(msg, reply, username=workerid, broadcast=False):
-    sc = slack.WebClient(slack_token, timeout=300)
-    channel = msg['channel']
-    userid = msg['user']
-    thread_ts = msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
-    reply_msg = f"<@{userid}> {reply}"
-    rc = sc.chat_postMessage(
-        username=username,
-        channel=channel,
-        thread_ts=thread_ts,
-        reply_broadcast=broadcast,
-        text=reply_msg
-    )
-    if not rc["ok"]:
-        print("Failed to send slack message")
-        print(rc)
+def replyto(msg, reply, workername=workerid, broadcast=False):
+    msg_payload = {
+            "text": reply,
+            "broadcast": broadcast,
+            "workername": workername,
+    }
+    send_slack_message(msg_payload, context=msg)
 
 
 def update_slack_thread(msg):
