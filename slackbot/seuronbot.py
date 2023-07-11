@@ -5,7 +5,6 @@ import itertools
 import difflib
 import concurrent.futures
 import time
-import slack_sdk as slack
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
 from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_slack_message
@@ -190,7 +189,7 @@ class SeuronBot:
         return __call__
 
     def fetch_bot_messages(self, queue="bot-message-queue"):
-        client = slack.WebClient(token=self.slack_token)
+        client = self.rtmclient.web_client
         while True:
             msg_payload = get_message(broker_url, queue, timeout=30)
             if msg_payload:
