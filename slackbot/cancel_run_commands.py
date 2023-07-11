@@ -14,7 +14,7 @@ from kombu_helper import drain_messages, put_message
                       extra_parameters=True)
 def on_cancel_run(msg):
     token = get_variable("run_token")
-    cmd = extract_command(msg)
+    cmd = extract_command(msg["text"])
     if not token:
         replyto(msg, "The bot is idle, nothing to cancel")
     elif cmd != "cancelrun"+token:

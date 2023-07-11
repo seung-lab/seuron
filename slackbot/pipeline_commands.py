@@ -43,7 +43,7 @@ def on_update_parameters(msg):
                       cancelable=False,
                       file_inputs=True)
 def on_update_segmentation_parameters(msg):
-    cmd = extract_command(msg)
+    cmd = extract_command(msg['text'])
     if cmd.startswith("please"):
         update_segmentation_param(msg, advanced=True)
     else:

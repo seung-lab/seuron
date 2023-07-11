@@ -15,7 +15,7 @@ from kombu_helper import get_message
 _help_trigger = ["help"]
 
 def help_listener(context):
-    cmd = extract_command(context)
+    cmd = extract_command(context['text'])
     if cmd in _help_trigger:
         replyto(context, "Here is a list of the commands supported:\n"+SeuronBot.generate_cmdlist())
         return True
@@ -83,7 +83,7 @@ class SeuronBot:
         return "\n".join(cls.generate_command_description(listener) for listener in cls.message_listeners)
 
     def find_suggestions(self, context):
-        cmd = extract_command(context)
+        cmd = extract_command(context['text'])
         candidates = list(itertools.chain(*[x['triggers'] for x in self.message_listeners]))
 
         return difflib.get_close_matches(cmd, candidates, n=2)
@@ -104,7 +104,7 @@ class SeuronBot:
         text = msg["text"].strip('''_*~"'`''')
 
         if text.startswith(botid):
-            cmd = extract_command(msg)
+            cmd = extract_command(msg['text'])
             if cmd == "report":
                 self.report(msg)
             return False
@@ -161,7 +161,7 @@ class SeuronBot:
             trigger_cmds = ["".join(p.split()) for p in trigger_phrases]
 
             def new_message_listener(context):
-                actual_cmd = extract_command(context)
+                actual_cmd = extract_command(context['text'])
                 if not extra_parameters:
                     if actual_cmd in trigger_cmds:
                         run_cmd(func, context, exclusive=exclusive, cancelable=cancelable)

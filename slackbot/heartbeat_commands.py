@@ -9,7 +9,7 @@ from airflow_api import set_is_paused
                       cancelable=False,
                       extra_parameters=False)
 def on_heartbeat_check(msg):
-    cmd = extract_command(msg)
+    cmd = extract_command(msg["text"])
     if cmd.startswith("disable"):
         set_is_paused("pipeline_heartbeat", True)
         replyto(msg, "Heartbeat check disabled")

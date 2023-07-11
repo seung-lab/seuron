@@ -4,6 +4,7 @@ import json
 import json5
 import base64
 import traceback
+from functools import lru_cache
 from collections import OrderedDict
 from secrets import token_hex
 import slack_sdk as slack
@@ -18,8 +19,9 @@ def clear_queues():
     drain_messages(broker_url, "seuronbot_cmd")
 
 
-def extract_command(msg):
-    cmd = msg["text"].replace(workerid, "").replace(botid, "")
+@lru_cache(maxsize=1)
+def extract_command(text):
+    cmd = text.replace(workerid, "").replace(botid, "")
     cmd = cmd.translate(str.maketrans('', '', string.punctuation))
     cmd = cmd.lower()
     return "".join(cmd.split())
