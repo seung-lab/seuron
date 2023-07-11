@@ -6,6 +6,7 @@ from seuronbot import SeuronBot
 import os
 import logging
 import sys
+from bot_utils import send_slack_message
 
 if os.environ.get("VENDOR", None) == "Google":
     from google_metadata import gce_external_ip
@@ -39,19 +40,12 @@ def update_ip_address():
 
 @SeuronBot.on_hello()
 def process_hello():
-    hello_world()
-
-
-def hello_world(client=None):
-    if not client:
-        client = slack.WebClient(token=slack_token)
-
     host_ip = update_ip_address()
-
-    client.chat_postMessage(
-        channel=slack_notification_channel,
-        username=workerid,
-        text="Hello from <https://{}/airflow/home|{}>".format(host_ip, host_ip))
+    msg_payload = {
+            'text': f"Hello from <https://{host_ip}/airflow/home|{host_ip}>",
+            'notification': True,
+    }
+    send_slack_message(msg_payload)
 
 
 if __name__ == '__main__':
