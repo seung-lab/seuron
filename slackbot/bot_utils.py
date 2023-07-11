@@ -150,18 +150,16 @@ def download_json(msg):
 
 
 def upload_param(msg, param):
-    sc = slack.WebClient(slack_token, timeout=300)
-    channel = msg['channel']
-    userid = msg['user']
-    thread_ts = msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
-    sc.files_upload(
-        channels=channel,
-        filename="param.json",
-        filetype="javascript",
-        thread_ts=thread_ts,
-        content=json.dumps(param, indent=4),
-        initial_comment="<@{}> current parameters".format(userid)
-    )
+    attachment = {
+            "title": "Pipeline parameters",
+            "filetype": "javascript",
+            "content": base64.b64encode(json.dumps(param, indent=4).encode("utf-8")).decode("utf-8"),
+            }
+    msg_payload = {
+            "text": "current parameters",
+            "attachment": attachment,
+    }
+    send_slack_message(msg_payload, context=msg)
 
 
 def guess_run_type(param):
