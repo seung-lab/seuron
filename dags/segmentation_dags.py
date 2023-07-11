@@ -284,9 +284,10 @@ voi merge : *{voi_merge}*
     slack_message(msg, broadcast=True)
 
 
-def plot_histogram(data, title, xlabel, ylabel, fn):
+def plot_histogram(data, title, xlabel, ylabel, format):
     import math
     import matplotlib.pyplot as plt
+    from io import BytesIO
     plt.clf()
     min_bin = math.floor(math.log10(max(1,min(data))))
     max_bin = math.ceil(math.log10(max(data)))
@@ -296,10 +297,13 @@ def plot_histogram(data, title, xlabel, ylabel, fn):
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.savefig(fn)
+    buf = BytesIO()
+    plt.savefig(buf, format=format)
+    return buf.getvalue()
 
 
 def contact_surfaces(param):
+    import base64
     prefix = "cs/cs/complete_cs"
     content = get_files(param, prefix)
     cs_type = [('s1', np.uint64), ('s2', np.uint64), ('sumx', np.uint64), ('sumy', np.uint64),('sumz', np.uint64), ('size', np.uint64), ('sizex', np.uint64), ('sizey', np.uint64),('sizez', np.uint64),
@@ -310,7 +314,6 @@ def contact_surfaces(param):
     title = "Distribution of the contact sizes"
     xlabel = "Number of voxels in the contact surface"
     ylabel = "Number of contact surfaces"
-    plot_histogram(data['size'], title, xlabel, ylabel, '/tmp/hist.png')
 
     order = np.argsort(data['size'])[::-1]
 
@@ -326,17 +329,38 @@ output location: `{url}`
     max_cs=data[order[0]]['size'],
     url="{}/{}".format(param["SCRATCH_PATH"], "cs/cs")
     )
-    slack_message(msg, attachment='/tmp/hist.png')
+    plot_data = plot_histogram(data['size'], title, xlabel, ylabel, 'png')
+    attachment = {
+            'title': 'Histogram of contact area',
+            'filetype': 'png',
+            'content': base64.b64encode(plot_data).decode('utf-8'),
+            }
+    slack_message(msg, attachment=attachment)
 
     xlabel = "Number of boundary voxels in the x direction"
-    plot_histogram(data['sizex'], title, xlabel, ylabel, '/tmp/histx.png')
-    slack_message("", attachment='/tmp/histx.png')
+    plot_data = plot_histogram(data['sizex'], title, xlabel, ylabel, 'png')
+    attachment = {
+            'title': 'Histogram of contact area in x direction',
+            'filetype': 'png',
+            'content': base64.b64encode(plot_data).decode('utf-8'),
+            }
+    slack_message("", attachment=attachment)
     xlabel = "Number of boundary voxels in the y direction"
-    plot_histogram(data['sizey'], title, xlabel, ylabel, '/tmp/histy.png')
-    slack_message("", attachment='/tmp/histy.png')
+    plot_data = plot_histogram(data['sizey'], title, xlabel, ylabel, 'png')
+    attachment = {
+            'title': 'Histogram of contact area in y direction',
+            'filetype': 'png',
+            'content': base64.b64encode(plot_data).decode('utf-8'),
+            }
+    slack_message("", attachment=attachment)
     xlabel = "Number of boundary voxels in the z direction"
-    plot_histogram(data['sizez'], title, xlabel, ylabel, '/tmp/histz.png')
-    slack_message("", attachment='/tmp/histz.png')
+    plot_data = plot_histogram(data['sizez'], title, xlabel, ylabel, 'png')
+    attachment = {
+            'title': 'Histogram of contact area in z direction',
+            'filetype': 'png',
+            'content': base64.b64encode(plot_data).decode('utf-8'),
+            }
+    slack_message("", attachment=attachment)
 
 
 def get_files(param, prefix):
@@ -375,6 +399,7 @@ def humanize_volume(volume_in_nm, precision=0):
 
 
 def process_infos(param):
+    import base64
     dt_count = np.dtype([('segid', np.uint64), ('count', np.uint64)])
     prefix = "agg/info/seg_size"
     content = get_files(param, prefix)
@@ -383,7 +408,6 @@ def process_infos(param):
     title = "Distribution of the segment sizes"
     xlabel = f"Size of segments (nm^3)"
     ylabel = "Number of segments"
-    plot_histogram(vol_data, title, xlabel, ylabel, '/tmp/hist.png')
     order = np.argsort(vol_data)[::-1]
     ntops = min(20,len(data))
     msg = '''*Agglomeration Finished*
@@ -395,7 +419,14 @@ Largest segments:
     nsv=humanize_volume(np.sum(vol_data)),
     top20list="\n".join(f"id: {data[order[i]][0]} ({humanize_volume(vol_data[order[i]])})" for i in range(ntops))
     )
-    slack_message(msg, attachment='/tmp/hist.png')
+
+    plot_data = plot_histogram(vol_data, title, xlabel, ylabel, 'png')
+    attachment = {
+            'title': 'Histogram of segment size',
+            'filetype': 'png',
+            'content': base64.b64encode(plot_data).decode('utf-8'),
+            }
+    slack_message(msg, attachment=attachment)
     Variable.set("topsegs", " ".join(str(int(data[order[i]][0])) for i in range(ntops)))
 
 

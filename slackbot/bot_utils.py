@@ -2,12 +2,13 @@ import string
 import requests
 import json
 import json5
+import base64
 import traceback
 from collections import OrderedDict
 from secrets import token_hex
 import slack_sdk as slack
 from airflow.hooks.base_hook import BaseHook
-from bot_info import slack_token, botid, workerid, broker_url
+from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from airflow_api import update_slack_connection, set_variable
 from kombu_helper import drain_messages, peek_message
 
@@ -24,22 +25,55 @@ def extract_command(msg):
     return "".join(cmd.split())
 
 
-def replyto(msg, reply, username=workerid, broadcast=False):
-    sc = slack.WebClient(slack_token, timeout=300)
-    channel = msg['channel']
-    userid = msg['user']
-    thread_ts = msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
-    reply_msg = f"<@{userid}> {reply}"
-    rc = sc.chat_postMessage(
-        username=username,
-        channel=channel,
-        thread_ts=thread_ts,
-        reply_broadcast=broadcast,
-        text=reply_msg
-    )
-    if not rc["ok"]:
-        print("Failed to send slack message")
-        print(rc)
+def send_slack_message(msg_payload, client=None, context=None):
+    if client is None:
+        client = slack.WebClient(slack_token, timeout=300)
+
+    slack_workername, slack_info = fetch_slack_thread()
+
+    if context:
+        slack_info = context
+
+    if "workername" in msg_payload:
+        slack_workername = msg_payload["workername"]
+
+    if msg_payload.get("notification", False):
+        text = msg_payload["text"]
+        slack_channel = slack_notification_channel
+        slack_thread = None
+    else:
+        text = f"<@{slack_info['user']}>, {msg_payload['text']}"
+        slack_channel = slack_info["channel"]
+        slack_thread = slack_info.get("thread_ts", slack_info.get("ts", None))
+
+    if msg_payload.get("attachment", None) is None:
+        client.chat_postMessage(
+            username=slack_workername,
+            channel=slack_channel,
+            thread_ts=slack_thread,
+            reply_broadcast=msg_payload.get("broadcast", False),
+            text=text
+        )
+    else:
+        attachment = msg_payload["attachment"]
+        client.files_upload(
+            username=slack_workername,
+            channels=slack_channel,
+            thread_ts=slack_thread,
+            title=attachment['title'],
+            filetype=attachment['filetype'],
+            content=base64.b64decode(attachment['content']),
+            initial_comment=text
+        )
+
+
+def replyto(msg, reply, workername=workerid, broadcast=False):
+    msg_payload = {
+            "text": reply,
+            "broadcast": broadcast,
+            "workername": workername,
+    }
+    send_slack_message(msg_payload, context=msg)
 
 
 def update_slack_thread(msg):
@@ -116,18 +150,16 @@ def download_json(msg):
 
 
 def upload_param(msg, param):
-    sc = slack.WebClient(slack_token, timeout=300)
-    channel = msg['channel']
-    userid = msg['user']
-    thread_ts = msg['thread_ts'] if 'thread_ts' in msg else msg['ts']
-    sc.files_upload(
-        channels=channel,
-        filename="param.json",
-        filetype="javascript",
-        thread_ts=thread_ts,
-        content=json.dumps(param, indent=4),
-        initial_comment="<@{}> current parameters".format(userid)
-    )
+    attachment = {
+            "title": "Pipeline parameters",
+            "filetype": "javascript",
+            "content": base64.b64encode(json.dumps(param, indent=4).encode("utf-8")).decode("utf-8"),
+            }
+    msg_payload = {
+            "text": "current parameters",
+            "attachment": attachment,
+    }
+    send_slack_message(msg_payload, context=msg)
 
 
 def guess_run_type(param):
