@@ -29,13 +29,15 @@ def send_slack_message(msg_payload, client=None, context=None):
     if client is None:
         client = slack.WebClient(slack_token, timeout=300)
 
-    slack_workername, slack_info = fetch_slack_thread()
+    slack_info = fetch_slack_thread()
 
     if context:
         slack_info = context
 
     if "workername" in msg_payload:
         slack_workername = msg_payload["workername"]
+    else:
+        slack_workername = workerid
 
     if msg_payload.get("notification", False):
         text = msg_payload["text"]
@@ -87,9 +89,8 @@ def update_slack_thread(msg):
 
 def fetch_slack_thread():
     SLACK_CONN_ID = "Slack"
-    slack_workername = BaseHook.get_connection(SLACK_CONN_ID).login
     slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
-    return slack_workername, slack_extra
+    return slack_extra
 
 
 def create_run_token(msg):
