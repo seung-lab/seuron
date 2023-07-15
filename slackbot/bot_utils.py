@@ -27,6 +27,13 @@ def extract_command(text):
     return "".join(cmd.split())
 
 
+def send_message(msg_payload, client=None, context=None):
+    try:
+        send_slack_message(msg_payload, client, context)
+    except Exception:
+        pass
+
+
 def send_slack_message(msg_payload, client=None, context=None):
     if client is None:
         client = slack.WebClient(slack_token, timeout=300)
@@ -77,7 +84,7 @@ def replyto(msg, reply, workername=workerid, broadcast=False):
             "broadcast": broadcast,
             "workername": workername,
     }
-    send_slack_message(msg_payload, context=msg)
+    send_message(msg_payload, context=msg)
 
 
 def update_slack_thread(msg):
@@ -162,7 +169,7 @@ def upload_param(msg, param):
             "text": "current parameters",
             "attachment": attachment,
     }
-    send_slack_message(msg_payload, context=msg)
+    send_message(msg_payload, context=msg)
 
 
 def guess_run_type(param):

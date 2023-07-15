@@ -28,6 +28,7 @@ volumes:
     prometheus-storage:
     grafana-storage:
     redis-storage:
+    jupyterlab-storage:
 
 services:
     rabbitmq:
@@ -181,10 +182,13 @@ services:
         <<: *airflow-common
         environment:
             <<: *airflow-common-env
+            CONDA_INSTALL_JUPYTER: "true"
             SLACK_TOKEN:
             SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py
+        volumes:
+            - jupyterlab-storage:/usr/local/airflow/jupyterlab
         deploy:
             restart_policy:
                 condition: any
@@ -242,6 +246,10 @@ services:
                     gzip_proxied expired no-cache no-store private auth;\\n
                     gzip_types text\\/plain text\\/css text\\/xml text\\/javascript application\\/x-javascript application\\/xml;\\n
                     gzip_disable \\\"MSIE [1-6]\.\\\";\\n
+                    map \\$$http_upgrade \\$$connection_upgrade {\\n
+                        default upgrade;\\n
+                        \\'\\'      close;\\n
+                    }\\n
                     server {\\n
                         listen 80;\\n
                         listen 443;\\n
@@ -258,6 +266,19 @@ services:
                             proxy_set_header Upgrade \\$$http_upgrade; \\n
                             proxy_set_header Connection \\\"upgrade\\\"; \\n
                             proxy_set_header X-Forwarded-Proto \\$$scheme; \\n
+                        }\\n
+                        location \\/jupyter\\/ {\\n
+                            proxy_pass http:\\/\\/slackbot:8888;\\n
+                            proxy_set_header X-Real-IP \\$$remote_addr;\\n
+                            proxy_set_header Host \\$$http_host;\\n
+                            proxy_set_header X-Forwarded-For \\$$proxy_add_x_forwarded_for;\\n
+                            proxy_redirect off;\\n
+                            proxy_http_version 1.1; \\n
+                            proxy_set_header Upgrade \\$$http_upgrade; \\n
+                            proxy_set_header Connection \\$$connection_upgrade; \\n
+                            proxy_set_header X-Scheme \\$$scheme;
+                            proxy_set_header X-Forwarded-Proto \\$$scheme;\\n
+                            proxy_buffering off;\\n
                         }\\n
                         location ^~ \\/grafana\\/ {\\n
                             proxy_pass http:\\/\\/grafana:3000\\/;\\n

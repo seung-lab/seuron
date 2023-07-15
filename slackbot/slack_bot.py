@@ -6,7 +6,8 @@ from seuronbot import SeuronBot
 import os
 import logging
 import sys
-from bot_utils import send_slack_message
+from bot_utils import send_message
+import subprocess
 
 if os.environ.get("VENDOR", None) == "Google":
     from google_metadata import gce_external_ip
@@ -45,11 +46,20 @@ def process_hello():
             'text': f"Hello from <https://{host_ip}/airflow/home|{host_ip}>",
             'notification': True,
     }
-    send_slack_message(msg_payload)
+    send_message(msg_payload)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
+
+    token = weburl_commands.extract_jupyterlab_token()
+
+    if not token:
+        try:
+            subprocess.Popen(["jupyter", "lab", "--ip=0.0.0.0", "--no-browser", "--ServerApp.base_url=/jupyter"])
+        except FileNotFoundError:
+            pass
+
     seuronbot = SeuronBot(slack_token=slack_token)
     seuronbot.start()

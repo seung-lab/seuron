@@ -7,7 +7,7 @@ import concurrent.futures
 import time
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
-from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_slack_message
+from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
 from airflow_api import check_running
 from kombu_helper import get_message
 
@@ -194,8 +194,8 @@ class SeuronBot:
             msg_payload = get_message(broker_url, queue, timeout=30)
             if msg_payload:
                 try:
-                    send_slack_message(msg_payload, client=client)
-                except:
+                    send_message(msg_payload, client=client)
+                except Exception:
                     pass
                 time.sleep(1)
 

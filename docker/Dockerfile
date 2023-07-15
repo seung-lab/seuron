@@ -52,7 +52,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && chown -R ${AIRFLOW_USER}: ${AIRFLOW_HOME} \
     # Deleting this symlink not handled correctly by shutil.copy
     && apt-mark auto '.*' > /dev/null \
-    && apt-mark manual sudo curl parallel tzdata \
+    && apt-mark manual sudo curl parallel tzdata git ca-certificates \
     && apt-mark manual $savedAptMark \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf \
