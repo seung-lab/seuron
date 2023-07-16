@@ -3,6 +3,7 @@ import time
 import threading
 import logging
 import base64
+import fasteners
 
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
@@ -59,8 +60,17 @@ class SeuronBot(Magics):
 for k in logging.Logger.manager.loggerDict:
     logging.getLogger(k).setLevel(logging.CRITICAL)
 
+lock = fasteners.InterProcessLock('/run/lock/seuronbot.lock')
+if lock.acquire(timeout=10):
+    lock_acquired = True
+else:
+    lock_acquired = False
+
 
 def load_ipython_extension(ipython):
-    seuronbot = SeuronBot(ipython)
-    ipython.register_magics(seuronbot)
-    print("'seuronbot' magic loaded.")
+    if lock_acquired:
+        seuronbot = SeuronBot(ipython)
+        ipython.register_magics(seuronbot)
+        print("'seuronbot' magic loaded.")
+    else:
+        print("Another seuronbot is already running")
