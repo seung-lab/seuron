@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+import logging
 import base64
 
 
@@ -52,6 +53,10 @@ class SeuronBot(Magics):
                 for m in msg_payload.split("\n"):
                     display(Markdown(m))
                 time.sleep(1)
+
+
+for k in logging.Logger.manager.loggerDict:
+    logging.getLogger(k).setLevel(logging.CRITICAL)
 
 
 def load_ipython_extension(ipython):
