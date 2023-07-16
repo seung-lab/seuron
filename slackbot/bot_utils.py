@@ -136,10 +136,7 @@ def create_run_token(msg):
 
 
 def download_file(msg):
-    if "files" not in msg:
-        replyto(msg, "You need to upload a parameter file with this message")
-        return None, None
-    else:
+    if "files" in msg:
         # only use the first file:
         file_info = msg["files"][0]
         private_url = file_info["url_private_download"]
@@ -150,6 +147,21 @@ def download_file(msg):
             return filetype, response.content.decode("ascii", "ignore")
         else:
             return None, None
+    elif msg.get("from_jupyter", False) and msg.get("attachment", None):
+        attachment = {
+            'title': 'Script sent by jupyter',
+            'filetype': 'Python',
+            'content': msg["attachment"],
+        }
+        msg_payload = {
+            "text": "Use python script from jupyter cell",
+            "attachment": attachment,
+        }
+        send_message(msg_payload)
+        return "Python", base64.b64decode(attachment["content"].encode("utf-8")).decode("utf-8")
+    else:
+        replyto(msg, "You need to upload a parameter file with this message")
+        return None, None
 
 
 def download_json(msg):
