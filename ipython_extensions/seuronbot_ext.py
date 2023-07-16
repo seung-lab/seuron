@@ -26,6 +26,7 @@ class SeuronBot(Magics):
     def seuronbot(self, command, cell=None):
         msg_payload = {
                 "text": command,
+                "from_jupyter": True,
         }
         if cell:
             code_content = self.shell.input_transformer_manager.transform_cell(cell)

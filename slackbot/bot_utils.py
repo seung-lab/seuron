@@ -90,7 +90,11 @@ def replyto(msg, reply, workername=workerid, broadcast=False):
             "broadcast": broadcast,
             "workername": workername,
     }
-    send_message(msg_payload, context=msg)
+
+    if msg.get("from_jupyter", False):
+        send_message(msg_payload, context=None)
+    else:
+        send_message(msg_payload, context=msg)
 
 
 def update_slack_thread(msg):

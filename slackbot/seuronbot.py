@@ -27,7 +27,8 @@ def run_cmd(func, context, exclusive=False, cancelable=False):
         if check_running():
             replyto(context, "Busy right now")
             return
-        update_slack_thread(context)
+        if not context.get("from_jupyter", False):
+            update_slack_thread(context)
 
     if cancelable:
         create_run_token(context)
@@ -113,8 +114,7 @@ class SeuronBot:
             return True
 
     def process_message(self, client: RTMClient, event: dict):
-        if self.filter_msg(event) or client is None:
-            print(json.dumps(event, indent=4))
+        if self.filter_msg(event) or event.get("from_jupyter", False):
             handled = False
             for listener in self.message_listeners:
                 handled |= listener["command"](event)
@@ -126,7 +126,8 @@ class SeuronBot:
                     reply_msg += "\nDo you mean "+ " or ".join(f"`{x}`" for x in candidates)
                 replyto(event, reply_msg)
             else:
-                self.update_task_owner(event)
+                if not event.get("from_jupyter", False):
+                    self.update_task_owner(event)
 
     def process_reaction(self, client: RTMClient, event: dict):
         print("reaction added")
