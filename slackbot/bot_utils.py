@@ -7,6 +7,7 @@ import traceback
 from functools import lru_cache
 from collections import OrderedDict
 from secrets import token_hex
+from kombu_helper import put_message, visible_messages
 import slack_sdk as slack
 from airflow.hooks.base_hook import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
@@ -28,6 +29,11 @@ def extract_command(text):
 
 
 def send_message(msg_payload, client=None, context=None):
+    output_queue = "jupyter-output-queue"
+    if msg_payload["text"]:
+        if visible_messages(broker_url, output_queue) < 100:
+            put_message(broker_url, output_queue, msg_payload["text"])
+
     try:
         send_slack_message(msg_payload, client, context)
     except Exception:
@@ -105,6 +111,9 @@ def fetch_slack_thread():
 def create_run_token(msg):
     token = token_hex(16)
     set_variable("run_token", token)
+    jupyter_msg = f"use `cancel run {token}` to cancel the current run"
+    put_message(broker_url, "jupyter-output-queue", jupyter_msg)
+
     try:
         sc = slack.WebClient(slack_token, timeout=300)
         if 'user' in msg:

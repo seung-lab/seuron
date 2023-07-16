@@ -113,7 +113,7 @@ class SeuronBot:
             return True
 
     def process_message(self, client: RTMClient, event: dict):
-        if self.filter_msg(event):
+        if self.filter_msg(event) or client is None:
             print(json.dumps(event, indent=4))
             handled = False
             for listener in self.message_listeners:
@@ -199,6 +199,15 @@ class SeuronBot:
                     pass
                 time.sleep(1)
 
+    def fetch_jupyter_messages(self, queue="jupyter-input-queue"):
+        while True:
+            msg_payload = get_message(broker_url, queue, timeout=30)
+            if msg_payload:
+                self.executor.submit(self.process_message, None, msg_payload)
+                time.sleep(1)
+
     def start(self):
-        self.executor.submit(self.fetch_bot_messages)
+        futures = []
+        futures.append(self.executor.submit(self.fetch_bot_messages))
+        futures.append(self.executor.submit(self.fetch_jupyter_messages))
         self.rtmclient.start()
