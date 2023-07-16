@@ -10,8 +10,9 @@ def get_botid():
     except Exception:
         return ""
 
-slack_token = environ["SLACK_TOKEN"]
-slack_notification_channel = environ["SLACK_NOTIFICATION_CHANNEL"]
+
+slack_token = environ.get("SLACK_TOKEN", None)
+slack_notification_channel = environ.get("SLACK_NOTIFICATION_CHANNEL", "seuron-alerts")
 botid = get_botid()
 workerid = "seuron-worker-"+environ["DEPLOYMENT"]
 broker_url = environ['AIRFLOW__CELERY__BROKER_URL']

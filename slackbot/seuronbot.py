@@ -211,4 +211,8 @@ class SeuronBot:
         futures = []
         futures.append(self.executor.submit(self.fetch_bot_messages))
         futures.append(self.executor.submit(self.fetch_jupyter_messages))
-        self.rtmclient.start()
+        try:
+            self.rtmclient.start()
+        except Exception:
+            pass
+        concurrent.futures.wait(futures)
