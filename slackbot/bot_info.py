@@ -3,9 +3,12 @@ import slack_sdk as slack
 
 
 def get_botid():
-    client = slack.WebClient(token=slack_token)
-    auth_info = client.auth_test()
-    return f'<@{auth_info["user_id"]}>'
+    try:
+        client = slack.WebClient(token=slack_token)
+        auth_info = client.auth_test()
+        return f'<@{auth_info["user_id"]}>'
+    except Exception:
+        return ""
 
 slack_token = environ["SLACK_TOKEN"]
 slack_notification_channel = environ["SLACK_NOTIFICATION_CHANNEL"]

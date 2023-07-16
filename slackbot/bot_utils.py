@@ -105,16 +105,21 @@ def fetch_slack_thread():
 def create_run_token(msg):
     token = token_hex(16)
     set_variable("run_token", token)
-    sc = slack.WebClient(slack_token, timeout=300)
-    userid = msg['user']
-    reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
-    rc = sc.chat_postMessage(
-        channel=userid,
-        text=reply_msg
-    )
-    if not rc["ok"]:
-        print("Failed to send direct message")
-        print(rc)
+    try:
+        sc = slack.WebClient(slack_token, timeout=300)
+        if 'user' in msg:
+            userid = msg['user']
+        else:
+            slack_info = fetch_slack_thread()
+            userid = slack_info["user"]
+
+        reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
+        sc.chat_postMessage(
+            channel=userid,
+            text=reply_msg
+        )
+    except Exception:
+        pass
 
 
 def download_file(msg):
