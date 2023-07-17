@@ -88,7 +88,8 @@ COPY . .
 # .git/HEAD
 RUN if [ -f .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') ]; then cat .git/refs/$(cat .git/HEAD | sed -e's/ref: refs\///g') > version/COMMIT \
     && grep $(cat version/COMMIT) .git/refs/tags/* -l | xargs -n 1 -r basename > version/TAGS; fi \
-    && mkdir -p ${AIRFLOW_HOME}/.cloudvolume/secrets
+    && mkdir -p ${AIRFLOW_HOME}/.cloudvolume/secrets \
+    && git clone https://github.com/eMerzh/slack_down.git $AIRFLOW_HOME/ipython_extensions/slack_down
 RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/custom
 RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
 

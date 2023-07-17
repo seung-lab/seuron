@@ -4,10 +4,11 @@ import threading
 import logging
 import base64
 import fasteners
-
+from slack_down import slack_md
+import markdown
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
-from IPython.display import display, Markdown
+from IPython.display import display, HTML
 
 from kombu_helper import get_message, put_message, drain_messages
 
@@ -19,6 +20,7 @@ class SeuronBot(Magics):
         self.broker_url = "amqp://rabbitmq"
         self.output_queue = "jupyter-output-queue"
         self.input_queue = "jupyter-input-queue"
+        self.slack_conv = markdown.Markdown(extensions=[slack_md.SlackExtension()])
         drain_messages(self.broker_url, self.input_queue)
         drain_messages(self.broker_url, self.output_queue)
         threading.Thread(target=self.forward_bot_message).start()
@@ -52,8 +54,7 @@ class SeuronBot(Magics):
         while True:
             msg_payload = get_message(self.broker_url, self.output_queue, timeout=30)
             if msg_payload:
-                for m in msg_payload.split("\n"):
-                    display(Markdown(m))
+                display(HTML(self.slack_conv.convert(msg_payload)))
                 time.sleep(1)
 
 
