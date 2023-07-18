@@ -51,7 +51,7 @@ Variable.setdefault("synaptor_param.json", synaptor_param_default, deserialize_j
 db_utils.merge_conn(
         models.Connection(
             conn_id='Slack', conn_type='http',
-            host='localhost', extra=json.dumps({"notification_channel": os.environ["SLACK_NOTIFICATION_CHANNEL"]})))
+            host='localhost', extra=json.dumps({"notification_channel": os.environ.get("SLACK_NOTIFICATION_CHANNEL", "seuron-alerts")})))
 
 if os.environ.get("VENDOR", None) == "Google":
     deployment = os.environ.get("DEPLOYMENT", None)

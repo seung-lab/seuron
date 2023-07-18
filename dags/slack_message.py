@@ -19,20 +19,20 @@ def slack_userinfo():
     try:
         slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
         slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
+        slack_username = slack_extra['user']
+
+        sc = slack.WebClient(slack_token, timeout=600)
+        rc = sc.users_info(
+            user=slack_username
+        )
+        if rc["ok"]:
+            username = rc["user"]["profile"]["display_name"]
+            return username
+        else:
+            return None
     except:
         return None
 
-    slack_username = slack_extra['user']
-
-    sc = slack.WebClient(slack_token, timeout=600)
-    rc = sc.users_info(
-        user=slack_username
-    )
-    if rc["ok"]:
-        username = rc["user"]["profile"]["display_name"]
-        return username
-
-    return None
 
 def slack_alert(msg, context):
     text="""

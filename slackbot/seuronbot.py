@@ -7,7 +7,7 @@ import concurrent.futures
 import time
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
-from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_slack_message
+from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
 from airflow_api import check_running
 from kombu_helper import get_message
 
@@ -27,7 +27,8 @@ def run_cmd(func, context, exclusive=False, cancelable=False):
         if check_running():
             replyto(context, "Busy right now")
             return
-        update_slack_thread(context)
+        if not context.get("from_jupyter", False):
+            update_slack_thread(context)
 
     if cancelable:
         create_run_token(context)
@@ -113,8 +114,7 @@ class SeuronBot:
             return True
 
     def process_message(self, client: RTMClient, event: dict):
-        if self.filter_msg(event):
-            print(json.dumps(event, indent=4))
+        if self.filter_msg(event) or event.get("from_jupyter", False):
             handled = False
             for listener in self.message_listeners:
                 handled |= listener["command"](event)
@@ -126,7 +126,8 @@ class SeuronBot:
                     reply_msg += "\nDo you mean "+ " or ".join(f"`{x}`" for x in candidates)
                 replyto(event, reply_msg)
             else:
-                self.update_task_owner(event)
+                if not event.get("from_jupyter", False):
+                    self.update_task_owner(event)
 
     def process_reaction(self, client: RTMClient, event: dict):
         print("reaction added")
@@ -194,11 +195,24 @@ class SeuronBot:
             msg_payload = get_message(broker_url, queue, timeout=30)
             if msg_payload:
                 try:
-                    send_slack_message(msg_payload, client=client)
-                except:
+                    send_message(msg_payload, client=client)
+                except Exception:
                     pass
                 time.sleep(1)
 
+    def fetch_jupyter_messages(self, queue="jupyter-input-queue"):
+        while True:
+            msg_payload = get_message(broker_url, queue, timeout=30)
+            if msg_payload:
+                self.executor.submit(self.process_message, None, msg_payload)
+                time.sleep(1)
+
     def start(self):
-        self.executor.submit(self.fetch_bot_messages)
-        self.rtmclient.start()
+        futures = []
+        futures.append(self.executor.submit(self.fetch_bot_messages))
+        futures.append(self.executor.submit(self.fetch_jupyter_messages))
+        try:
+            self.rtmclient.start()
+        except Exception:
+            pass
+        concurrent.futures.wait(futures)

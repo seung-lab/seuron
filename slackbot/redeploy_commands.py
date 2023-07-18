@@ -1,6 +1,6 @@
 import time
 from seuronbot import SeuronBot
-from bot_utils import replyto, send_slack_message
+from bot_utils import replyto, send_message
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 import tenacity
 
@@ -47,4 +47,4 @@ def send_reset_message():
     msg_payload = {
         "text": "bot upgraded/reboot."
     }
-    send_slack_message(msg_payload)
+    send_message(msg_payload)

@@ -4,11 +4,6 @@ set -eo pipefail
 source scripts/add-user-docker.sh
 
 # this doesn't protect from docker but it's a little more secure
-if [ ! -f .sudo.disabled  ]; then
-    sudo sed -i "/$AIRFLOW_USER/d" /etc/sudoers
-    touch .sudo.disabled
-fi
-
 export PYTHONPATH=$AIRFLOW_HOME/common:$PYTHONPATH
 
 echo "start script with group $DOCKER_GROUP"
@@ -21,6 +16,20 @@ if [[ -n "${CONDA_INSTALL_PYTORCH=}" ]] ; then
     conda uninstall -y nomkl
     conda install -y pytorch cudatoolkit=11.3 -c pytorch
 fi
+
+if [[ -n "${CONDA_INSTALL_JUPYTER=}" ]] ; then
+    export PYTHONPATH=$AIRFLOW_HOME/ipython_extensions:$PYTHONPATH
+    conda install -y jupyterlab jupyterlab-lsp jupyterlab-git python-lsp-server
+    if [ ! -f .sudo.disabled  ]; then
+        sudo chown -R $AIRFLOW_USER $AIRFLOW_HOME/jupyterlab
+    fi
+fi
+
+if [ ! -f .sudo.disabled  ]; then
+    sudo sed -i "/$AIRFLOW_USER/d" /etc/sudoers
+    touch .sudo.disabled
+fi
+
 
 # DOCKER_GROUP from /add-user-docker.sh
 if [ -z ${DOCKER_GROUP} ]; then

@@ -7,6 +7,7 @@ import traceback
 from functools import lru_cache
 from collections import OrderedDict
 from secrets import token_hex
+from kombu_helper import put_message, visible_messages
 import slack_sdk as slack
 from airflow.hooks.base_hook import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
@@ -25,6 +26,18 @@ def extract_command(text):
     cmd = cmd.translate(str.maketrans('', '', string.punctuation))
     cmd = cmd.lower()
     return "".join(cmd.split())
+
+
+def send_message(msg_payload, client=None, context=None):
+    output_queue = "jupyter-output-queue"
+    if msg_payload["text"]:
+        if visible_messages(broker_url, output_queue) < 100:
+            put_message(broker_url, output_queue, msg_payload["text"])
+
+    try:
+        send_slack_message(msg_payload, client, context)
+    except Exception:
+        pass
 
 
 def send_slack_message(msg_payload, client=None, context=None):
@@ -77,7 +90,11 @@ def replyto(msg, reply, workername=workerid, broadcast=False):
             "broadcast": broadcast,
             "workername": workername,
     }
-    send_slack_message(msg_payload, context=msg)
+
+    if msg.get("from_jupyter", False):
+        send_message(msg_payload, context=None)
+    else:
+        send_message(msg_payload, context=msg)
 
 
 def update_slack_thread(msg):
@@ -98,23 +115,28 @@ def fetch_slack_thread():
 def create_run_token(msg):
     token = token_hex(16)
     set_variable("run_token", token)
-    sc = slack.WebClient(slack_token, timeout=300)
-    userid = msg['user']
-    reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
-    rc = sc.chat_postMessage(
-        channel=userid,
-        text=reply_msg
-    )
-    if not rc["ok"]:
-        print("Failed to send direct message")
-        print(rc)
+    jupyter_msg = f"use `cancel run {token}` to cancel the current run"
+    put_message(broker_url, "jupyter-output-queue", jupyter_msg)
+
+    try:
+        sc = slack.WebClient(slack_token, timeout=300)
+        if 'user' in msg:
+            userid = msg['user']
+        else:
+            slack_info = fetch_slack_thread()
+            userid = slack_info["user"]
+
+        reply_msg = "use `{}, cancel run {}` to cancel the current run".format(workerid, token)
+        sc.chat_postMessage(
+            channel=userid,
+            text=reply_msg
+        )
+    except Exception:
+        pass
 
 
 def download_file(msg):
-    if "files" not in msg:
-        replyto(msg, "You need to upload a parameter file with this message")
-        return None, None
-    else:
+    if "files" in msg:
         # only use the first file:
         file_info = msg["files"][0]
         private_url = file_info["url_private_download"]
@@ -125,6 +147,21 @@ def download_file(msg):
             return filetype, response.content.decode("ascii", "ignore")
         else:
             return None, None
+    elif msg.get("from_jupyter", False) and msg.get("attachment", None):
+        attachment = {
+            'title': 'Script sent by jupyter',
+            'filetype': 'Python',
+            'content': msg["attachment"],
+        }
+        msg_payload = {
+            "text": "Use python script from jupyter cell",
+            "attachment": attachment,
+        }
+        send_message(msg_payload)
+        return "Python", base64.b64decode(attachment["content"].encode("utf-8")).decode("utf-8")
+    else:
+        replyto(msg, "You need to upload a parameter file with this message")
+        return None, None
 
 
 def download_json(msg):
@@ -162,7 +199,7 @@ def upload_param(msg, param):
             "text": "current parameters",
             "attachment": attachment,
     }
-    send_slack_message(msg_payload, context=msg)
+    send_message(msg_payload, context=msg)
 
 
 def guess_run_type(param):
