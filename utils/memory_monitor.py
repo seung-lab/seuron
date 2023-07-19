@@ -40,6 +40,11 @@ if __name__ == "__main__":
         hostname = gce_hostname().split(".")[0]
     except:
         hostname = socket.gethostname()
+
+    msg_payload = {
+        'text': f":u6e80: *OOM detected from instance* `{hostname}`!"
+    }
+
     run_oom_canary()
     logging.warning("canary died")
-    put_message(sys.argv[1], sys.argv[2], f":u6e80: *OOM detected from instance* `{hostname}`!")
+    put_message(sys.argv[1], sys.argv[2], msg_payload)
