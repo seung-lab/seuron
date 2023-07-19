@@ -1,5 +1,4 @@
 from taskqueue import totask
-from igneous import EmptyVolumeException
 
 import igneous.tasks
 
