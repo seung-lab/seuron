@@ -73,7 +73,7 @@ class SeuronBot:
         if cmd['extra_parameters']:
             command += " + _parameters_"
         if cmd['file_inputs']:
-            command += " + _input file_"
+            command += " + _input file/cell_"
         if cmd['description']:
             command += f"\n> {cmd['description']}"
 
