@@ -8,6 +8,7 @@ from airflow_api import set_variable
 
 @SeuronBot.on_message(["update python package", "update python packages"],
                       description="Install extra python packages before starting the docker containers",
+                      file_inputs=True,
                       cancelable=False)
 def on_update_python_packages(msg):
     _, payload = download_file(msg)
