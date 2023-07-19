@@ -2,6 +2,9 @@ import sys
 import socket
 import logging
 import psutil
+import os
+import redis
+from datetime import datetime
 from collections import namedtuple
 from time import sleep
 from kombu_helper import put_message
@@ -20,6 +23,9 @@ def run_oom_canary():
             SleepCondition(0.95, 1),
     ]
     while True:
+        cpu_usage = sum(psutil.cpu_percent(interval=1, percpu=True))
+        if cpu_usage > 20:
+            redis_conn.set(hostname, datetime.now().timestamp())
         mem_used = psutil.virtual_memory().percent
         logging.info(f"{mem_used}% memory used")
         mem_used /= 100
@@ -36,6 +42,7 @@ def run_oom_canary():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+    redis_conn = redis.Redis(os.environ["REDIS_SERVER"])
     try:
         hostname = gce_hostname().split(".")[0]
     except:
