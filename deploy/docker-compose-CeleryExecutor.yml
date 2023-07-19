@@ -182,7 +182,7 @@ services:
         <<: *airflow-common
         environment:
             <<: *airflow-common-env
-            CONDA_INSTALL_JUPYTER: "true"
+            ENABLE_JUPYTER_INTERFACE:
             SLACK_TOKEN:
             SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:

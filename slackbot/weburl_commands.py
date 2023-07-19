@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 
@@ -44,6 +45,10 @@ def on_show_grafana(msg):
                       cancelable=False,
                       extra_parameters=False)
 def on_show_jupyter(msg):
+    if not os.environ.get("ENABLE_JUPYTER_INTERFACE"):
+        replyto(msg, "Jupyter interface is not enabled")
+        return
+
     host_ip = get_variable("webui_ip")
     token = extract_jupyterlab_token()
     if token:

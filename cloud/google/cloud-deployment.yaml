@@ -18,6 +18,7 @@ resources:
           slack:
             botToken: # bot token for slack
             notificationChannel: seuron-alerts
+          enableJupyterInterface: True
           nginx:
             user: # nginx username
             password: # nginx password, set it to null if you do not want a password
