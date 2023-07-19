@@ -34,7 +34,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && rm ~/miniconda.sh \
     && conda update conda \
     && conda install -y nomkl \
-    && conda install -y -c conda-forge numpy=1.24.3 scipy cryptography=40.0.2 redis-py boto3=1.26.76 botocore=1.29.76 boto=2.49.0 celery=5.2.7 networkx gevent pillow matplotlib-base kombu=5.2.4 pysimdjson zstandard awscli\
+    && conda install -y -c conda-forge numpy=1.24.4 scipy cryptography=40.0.2 redis-py boto3=1.26.161 botocore=1.29.161 boto=2.49.0 celery=5.3.1 networkx gevent pillow matplotlib-base kombu=5.3.1 pysimdjson zstandard \
     && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
     && find ${MINICONDA_PATH} -follow -type f -name '*.js.map' -delete \
     && conda clean -yaf \
