@@ -45,7 +45,7 @@ def on_show_grafana(msg):
                       cancelable=False,
                       extra_parameters=False)
 def on_show_jupyter(msg):
-    if not os.environ.get("ENABLE_JUPYTER_INTERFACE"):
+    if os.environ.get("ENABLE_JUPYTER_INTERFACE", None) != "True":
         replyto(msg, "Jupyter interface is not enabled")
         return
 

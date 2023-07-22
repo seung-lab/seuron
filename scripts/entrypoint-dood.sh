@@ -17,7 +17,7 @@ if [[ -n "${CONDA_INSTALL_PYTORCH=}" ]] ; then
     conda install -y pytorch cudatoolkit=11.3 -c pytorch
 fi
 
-if [[ -n "${ENABLE_JUPYTER_INTERFACE=}" ]] ; then
+if [[ "${ENABLE_JUPYTER_INTERFACE=}" == "True" ]] ; then
     export PYTHONPATH=$AIRFLOW_HOME/ipython_extensions:$PYTHONPATH
     conda install -y jupyterlab jupyterlab-lsp jupyterlab-git python-lsp-server
     if [ ! -f .sudo.disabled  ]; then

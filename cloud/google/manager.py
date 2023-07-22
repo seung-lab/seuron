@@ -29,7 +29,7 @@ def GenerateEnvironVar(context, hostname_manager):
         env_variables['BASIC_AUTH_PASSWORD'] = basic_auth_password
 
     if context.properties['enableJupyterInterface']:
-        env_variables['ENABLE_JUPYTER_INTERFACE'] = "true"
+        env_variables['ENABLE_JUPYTER_INTERFACE'] = "True"
 
     env_variables.update(GenerateAirflowVar(context, hostname_manager))
 
