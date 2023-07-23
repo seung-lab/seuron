@@ -180,6 +180,7 @@ services:
 
     slackbot:
         <<: *airflow-common
+        container_name: slackbot
         environment:
             <<: *airflow-common-env
             ENABLE_JUPYTER_INTERFACE:
