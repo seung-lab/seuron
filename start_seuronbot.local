@@ -1,0 +1,157 @@
+#!/bin/bash
+set -e
+
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RESET="\033[0m"
+
+function error()
+{
+    echo -e "${RED}$1${RESET}"
+}
+
+function important()
+{
+    echo -e "${RED}$1${RESET}"
+}
+
+function info()
+{
+    echo -e "${GREEN}$1${RESET}"
+}
+
+function input_prompt()
+{
+    echo -e "${YELLOW}$1${RESET}"
+}
+
+function start_bot()
+{
+    info "Local deployment configuration saved to .env.local"
+    info "Starting seuron services..."
+    ${DOCKER_COMPOSE_CMD} --env-file .env.local -f deploy/docker-compose-CeleryExecutor.yml -f deploy/docker-compose-local.yml up -d
+    while [[ -z "${token}" ]]
+    do
+        info "Waiting for jupyter lab..."
+        sleep 30
+        token=$(${DOCKER_CMD} exec -it slackbot jupyter lab list | grep -o -m 1 "token=[^ ]*" | awk -F= '{print $2}')
+    done
+    info "Jupyter lab frontend:"
+    info "https://localhost/jupyter/lab?token=${token}&file-browser-path=/jupyterlab"
+    important "Stop seuronbot with the following command"
+    important "${DOCKER_COMPOSE_CMD} --env-file .env.local -f deploy/docker-compose-CeleryExecutor.yml -f deploy/docker-compose-local.yml down -v"
+    important "Modify deploy/docker-compose-local.yml to mount extra volume or add cloud vendor credentials"
+    important "For more details checkout https://github.com/seung-lab/seuron"
+}
+
+function generate_env() {
+    input_prompt "Specify the docker image you want to use [ranlu/seuron:main]:"
+    read -r seuron_image
+    seuron_image=${seuron_image:-"ranlu/seuron:main"}
+
+    info "Pulling docker image ${seuron_image}"
+    ${DOCKER_CMD} pull "${seuron_image}"
+
+    input_prompt "Token for slack RTM bot if you have one [xoxb-****]:"
+    read -r -s slack_token
+
+    if [[ -n "${slack_token}" ]]; then
+        input_prompt "Slack channel to send generic bot messages [seuron-alerts]:"
+        read -r slack_notification_channel
+        slack_notification_channel=${slack_notification_channel:-"seuron-alerts"}
+        important "Do not forget to invite bot user into the channels you plan to use the bot"
+    else
+        error "No slack token, slack frontend unavailable"
+    fi
+
+    info "Generating Fernet key"
+    fernet_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ranlu/seuron:main -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    info "Fernet key: ${fernet_key}"
+
+    info "Generating secret key for airflow webservice"
+    secret_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ranlu/seuron:main -c "import os; from base64 import b64encode; print(b64encode(os.urandom(16)).decode('utf-8'))")
+    info "Secret key: ${secret_key}"
+
+    cat << EOF > .env.local
+# Add your slack bot token starts with xoxb-
+# https://api.slack.com/authentication/token-types#bot
+SLACK_TOKEN=${slack_token}
+# Channel to send runtime notifications
+SLACK_NOTIFICATION_CHANNEL=${slack_notification_channel}
+# The bot will listen to commands starting with seuron-worker-example-deployment
+DEPLOYMENT=seuron-local-deployment
+# Seuron images to use
+SEURON_TAG=${seuron_image}
+# Fernet key for airflow database
+# https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/security/secrets/fernet.html#generating-fernet-key
+AIRFLOW__CORE__FERNET_KEY=${fernet_key}
+# Secret key for airflow webservice
+# https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#secret-key
+AIRFLOW__WEBSERVER__SECRET_KEY=${secret_key}
+# Username/password for airflow web interface
+_AIRFLOW_WWW_USER_USERNAME=airflow
+_AIRFLOW_WWW_USER_PASSWORD=airflow
+# Postgres parameters
+POSTGRES_USER=airflow
+POSTGRES_PASSWORD=airflow
+POSTGRES_DB=airflow
+POSTGRES_MEM_MB=1000
+POSTGRES_MAX_CONN=100
+# Grafana username/password
+GRAFANA_USERNAME=airflow
+GRAFANA_PASSWORD=airflow
+
+# No need to change the variables below
+VENDOR=LocalDockerCompose
+ENABLE_JUPYTER_INTERFACE=True
+AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://\${POSTGRES_USER}:\${POSTGRES_PASSWORD}@postgres/airflow
+AIRFLOW__CELERY__BROKER_URL=amqp://rabbitmq
+AIRFLOW__CELERY__CELERY_RESULT_BACKEND=db+postgresql+psycopg2://\${POSTGRES_USER}:\${POSTGRES_PASSWORD}@postgres/airflow
+AIRFLOW__LOGGING__BASE_LOG_FOLDER=/usr/local/airflow/logs
+AIRFLOW__LOGGING__REMOTE_LOGGING=False
+AIRFLOW__METRICS__STATSD_ON=True
+AIRFLOW__METRICS__STATSD_HOST=statsd-exporter
+AIRFLOW__METRICS__STATSD_PORT=9125
+REDIS_SERVER=redis
+EOF
+}
+
+DOCKER_CMD="docker"
+DOCKER_COMPOSE_CMD="docker compose"
+
+current_user=$(id -un)
+
+if [[ "${current_user}" != "root" ]] && ! id -nG "$current_user" | grep -qw "docker"; then
+    DOCKER_CMD="sudo ${DOCKER_CMD}"
+    DOCKER_COMPOSE_CMD="sudo ${DOCKER_COMPOSE_CMD}"
+fi
+
+if ! ${DOCKER_CMD} --version &>/dev/null; then
+    error "Docker is not installed or not in the PATH."
+    exit 1
+fi
+
+if [[ -e .env.local ]]; then
+    important "Found existing configuration in .env.local"
+    input_prompt "Do you want to reconfigure the bot? [y/N]"
+    read -r reconf
+    case "$reconf" in
+        "y" | "Y")
+            info "Reconfigure the bot, overwrite .env.local"
+            ;;
+        ""| "n" | "N")
+            info "Starting the bot with .env.local"
+            start_bot
+            exit 0
+            ;;
+        *)
+            error "Do not understand the answer, exit"
+            exit 1
+            ;;
+    esac
+fi
+
+generate_env
+
+start_bot
