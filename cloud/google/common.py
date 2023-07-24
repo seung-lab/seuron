@@ -41,7 +41,7 @@ systemctl daemon-reload
 systemctl --no-reload --now enable /lib/systemd/system/google_gpu_monitoring_agent_venv.service
 '''
 
-DOCKER_CMD = 'docker run --restart on-failure -v /var/run/docker.sock:/var/run/docker.sock -v /share:/share -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'
+DOCKER_CMD = 'docker run -v /var/run/docker.sock:/var/run/docker.sock -v /share:/share -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'
 
 CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concurrency)s -q %(queue)s'
 
