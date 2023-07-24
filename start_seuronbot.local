@@ -53,6 +53,8 @@ function generate_env() {
     info "Pulling docker image ${seuron_image}"
     ${DOCKER_CMD} pull "${seuron_image}"
 
+    worker_name=$(tr -dc 'a-z0-9' < /dev/urandom | head -c 4)
+
     input_prompt "Token for slack RTM bot if you have one [xoxb-****]:"
     read -r -s slack_token
 
@@ -61,6 +63,7 @@ function generate_env() {
         read -r slack_notification_channel
         slack_notification_channel=${slack_notification_channel:-"seuron-alerts"}
         important "Do not forget to invite bot user into the channels you plan to use the bot"
+        important "Access seuronbot from slack with seuron-worker-local-${worker_name}"
     else
         error "No slack token, slack frontend unavailable"
     fi
@@ -72,8 +75,6 @@ function generate_env() {
     info "Generating secret key for airflow webservice"
     secret_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ranlu/seuron:main -c "import os; from base64 import b64encode; print(b64encode(os.urandom(16)).decode('utf-8'))")
     info "Secret key: ${secret_key}"
-
-    worker_name=$(tr -dc 'a-z0-9' < /dev/urandom | head -c 4)
 
     cat << EOF > .env.local
 # Add your slack bot token starts with xoxb-
