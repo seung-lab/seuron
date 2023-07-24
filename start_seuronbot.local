@@ -73,6 +73,8 @@ function generate_env() {
     secret_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ranlu/seuron:main -c "import os; from base64 import b64encode; print(b64encode(os.urandom(16)).decode('utf-8'))")
     info "Secret key: ${secret_key}"
 
+    worker_name=$(tr -dc 'a-z0-9' < /dev/urandom | head -c 4)
+
     cat << EOF > .env.local
 # Add your slack bot token starts with xoxb-
 # https://api.slack.com/authentication/token-types#bot
@@ -80,7 +82,7 @@ SLACK_TOKEN=${slack_token}
 # Channel to send runtime notifications
 SLACK_NOTIFICATION_CHANNEL=${slack_notification_channel}
 # The bot will listen to commands starting with seuron-worker-example-deployment
-DEPLOYMENT=seuron-local-deployment
+DEPLOYMENT=local-${worker_name}
 # Seuron images to use
 SEURON_TAG=${seuron_image}
 # Fernet key for airflow database
