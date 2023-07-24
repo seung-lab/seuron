@@ -138,6 +138,7 @@ fi
 if [[ -e .env.local ]]; then
     important "Found existing configuration in .env.local"
     input_prompt "Do you want to reconfigure the bot? [y/N]"
+    important "(Make sure you already deleted the docker volumes created by the previous deployment before reconfigure)"
     read -r reconf
     case "$reconf" in
         "y" | "Y")
