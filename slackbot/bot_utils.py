@@ -150,7 +150,7 @@ def download_file(msg):
     elif msg.get("from_jupyter", False) and msg.get("attachment", None):
         attachment = {
             'title': 'Script sent by jupyter',
-            'filetype': 'Python',
+            'filetype': 'python',
             'content': msg["attachment"],
         }
         msg_payload = {
@@ -158,7 +158,7 @@ def download_file(msg):
             "attachment": attachment,
         }
         send_message(msg_payload)
-        return "Python", base64.b64decode(attachment["content"].encode("utf-8")).decode("utf-8")
+        return "python", base64.b64decode(attachment["content"].encode("utf-8")).decode("utf-8")
     else:
         replyto(msg, "You need to upload a parameter file with this message")
         return None, None
@@ -168,7 +168,7 @@ def download_json(msg):
     filetype, content = download_file(msg)
     if not content:
         return None
-    if filetype == "Python":
+    if filetype == "python":
         scope = {}
         try:
             exec(content, scope)
