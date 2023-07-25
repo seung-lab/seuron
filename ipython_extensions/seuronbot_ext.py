@@ -8,7 +8,7 @@ from slack_down import slack_md
 import markdown
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
-from IPython.display import display, HTML
+from IPython.display import display, HTML, Code, Image
 
 from kombu_helper import get_message, put_message, drain_messages
 
@@ -46,7 +46,19 @@ class SeuronBot(Magics):
         while True:
             msg_payload = get_message(self.broker_url, self.output_queue, timeout=30)
             if msg_payload:
-                display(HTML(self.slack_conv.convert(msg_payload)))
+                display(HTML(self.slack_conv.convert(msg_payload.get("text", None))))
+                attachment = msg_payload.get("attachment", None)
+                if attachment:
+                    if attachment["filetype"] in ["png", "jpeg", "gif"]:
+                        display(Image(
+                            data=base64.b64decode(attachment["content"]),
+                            format=attachment["filetype"]
+                        ))
+                    elif attachment["filetype"] in ["python", "javascript"]:
+                        display(Code(
+                            data=base64.b64decode(attachment["content"]).decode("utf-8"),
+                            language=attachment["filetype"]
+                        ))
                 time.sleep(1)
 
 

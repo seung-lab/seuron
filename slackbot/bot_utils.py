@@ -32,7 +32,7 @@ def send_message(msg_payload, client=None, context=None):
     output_queue = "jupyter-output-queue"
     if msg_payload["text"]:
         if visible_messages(broker_url, output_queue) < 100:
-            put_message(broker_url, output_queue, msg_payload["text"])
+            put_message(broker_url, output_queue, msg_payload)
 
     try:
         send_slack_message(msg_payload, client, context)
@@ -116,7 +116,7 @@ def create_run_token(msg):
     token = token_hex(16)
     set_variable("run_token", token)
     jupyter_msg = f"use `cancel run {token}` to cancel the current run"
-    put_message(broker_url, "jupyter-output-queue", jupyter_msg)
+    put_message(broker_url, "jupyter-output-queue", {"text": jupyter_msg})
 
     try:
         sc = slack.WebClient(slack_token, timeout=300)
