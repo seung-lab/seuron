@@ -77,6 +77,7 @@ def load_ipython_extension(ipython):
         seuronbot = SeuronBot(ipython)
         ipython.register_magics(seuronbot)
         print("'seuronbot' magic loaded.")
-        print("Try %seuronbot help")
+        print('Use "%seuronbot help" to list all available commands')
+        print('Use cell magic "%%seuronbot" for commands requiring additinoal cell input')
     else:
         print("Another seuronbot is already running")
