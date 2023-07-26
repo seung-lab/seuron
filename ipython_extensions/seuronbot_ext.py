@@ -77,5 +77,6 @@ def load_ipython_extension(ipython):
         seuronbot = SeuronBot(ipython)
         ipython.register_magics(seuronbot)
         print("'seuronbot' magic loaded.")
+        print("Try %seuronbot help")
     else:
         print("Another seuronbot is already running")

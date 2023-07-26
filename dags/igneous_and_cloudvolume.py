@@ -165,6 +165,7 @@ def kombu_tasks(cluster_name, init_workers):
             from airflow.models import Variable
             from airflow.hooks.base_hook import BaseHook
             from kombu import Connection
+            from kombu_helper import drain_messages
             from dag_utils import estimate_worker_instances
             from slack_message import slack_message
             import traceback
@@ -179,6 +180,8 @@ def kombu_tasks(cluster_name, init_workers):
             broker = configuration.get('celery', 'BROKER_URL')
             queue_name = cluster_name
             start_time = time.monotonic()
+
+            drain_messages(broker, queue_name)
 
             try:
                 ret = create_tasks(*args, **kwargs)
