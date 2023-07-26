@@ -7,6 +7,7 @@ import socket
 import json
 import base64
 import requests
+import shutil
 from datetime import datetime
 import redis
 from concurrent.futures import ProcessPoolExecutor
@@ -43,6 +44,11 @@ def command(queue, timeout, concurrency):
     statsd_port = conf.get('metrics', 'statsd_port')
 
     statsd = StatsClient(host=statsd_host, port=statsd_port)
+
+    try:
+        shutil.rmtree(os.path.join(os.path.expanduser('~'), ".cloudvolume/cache"))
+    except Exception:
+        pass
 
     cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
     if not os.path.exists(cv_secrets_path):
