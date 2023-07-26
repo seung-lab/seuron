@@ -139,11 +139,12 @@ fi
 if [[ -e .env.local ]]; then
     important "Found existing configuration in .env.local"
     input_prompt "Do you want to reconfigure the bot? [y/N]"
-    important "(Make sure you already deleted the docker volumes created by the previous deployment before reconfigure)"
+    important "(AIRFLOW DATABASE WILL BE WIPED)"
     read -r reconf
     case "$reconf" in
         "y" | "Y")
-            info "Reconfigure the bot, overwrite .env.local"
+            info "Reconfigure the bot, delete database and overwrite .env.local"
+            docker volume rm deploy_postgres-storage
             ;;
         ""| "n" | "N")
             info "Starting the bot with .env.local"
