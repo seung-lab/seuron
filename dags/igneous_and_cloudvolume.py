@@ -184,6 +184,7 @@ def kombu_tasks(cluster_name, init_workers):
             drain_messages(broker, queue_name)
 
             try:
+                run_token = Variable.get("run_token")
                 ret = create_tasks(*args, **kwargs)
                 metadata = {}
                 if isinstance(ret, dict):
@@ -195,6 +196,12 @@ def kombu_tasks(cluster_name, init_workers):
                     task_generator = None
                     task_list = ret
                     agg = None
+
+                if "__seuron_run_token" in metadata:
+                    slack_message(":exclamation:*Error*: `__seuron_run_token` already used in metadata")
+                    return
+
+                metadata["__seuron_run_token"] = run_token
 
                 if task_list and task_generator:
                     slack_message("Received both task list and task generator from {}, bail".format(create_tasks.__name__))

@@ -103,6 +103,7 @@ def update_concurrency(running_tasks, max_concurrency):
 
 
 def execute(qurl, timeout, queue_name, statsd, max_concurrency):
+    run_token = Variable.get("run_token", default_var="")
     with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(max_concurrency) as executor:
         queue = conn.SimpleQueue(queue_name)
 
@@ -115,6 +116,8 @@ def execute(qurl, timeout, queue_name, statsd, max_concurrency):
             try:
                 while len(running_tasks) < concurrency:
                     message = queue.get_nowait()
+                    if message.payload['metadata'].get('__seuron_run_token') != run_token:
+                        raise RuntimeError("Run token does not match, restart worker")
                     print("put message into queue: {}".format(message.payload))
                     future = executor.submit(handle_task, message.payload, statsd)
                     running_tasks.append(CustomTask(message, future))
