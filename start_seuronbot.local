@@ -70,11 +70,11 @@ function generate_env() {
     fi
 
     info "Generating Fernet key"
-    fernet_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ranlu/seuron:main -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    fernet_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ${seuron_image} -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
     info "Fernet key: ${fernet_key}"
 
     info "Generating secret key for airflow webservice"
-    secret_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ranlu/seuron:main -c "import os; from base64 import b64encode; print(b64encode(os.urandom(16)).decode('utf-8'))")
+    secret_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ${seuron_image} -c "import os; from base64 import b64encode; print(b64encode(os.urandom(16)).decode('utf-8'))")
     info "Secret key: ${secret_key}"
 
     cat << EOF > .env.local
