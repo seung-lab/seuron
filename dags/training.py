@@ -10,7 +10,7 @@ from airflow.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator as Operator
 
 from worker_op import worker_op
-from helper_ops import scale_up_cluster_op, scale_down_cluster_op
+from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from slack_message import slack_message, task_failure_alert, task_done_alert
 from webknossos import export_op, report_export
 
@@ -147,6 +147,7 @@ if not SKIP_EXPORT:
         dag=training_dag,
     )
 
+collect_metrics = collect_metrics_op(training_dag)
 scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", 1, 1, "cluster")
 scale_down = scale_down_cluster_op(
     training_dag, "training", "deepem-gpu", 0, "cluster", trigger_rule="all_done"
@@ -163,7 +164,8 @@ report_training = PythonOperator(
 )
 
 (
-    scale_up
+    collect_metrics
+    >> scale_up
     >> training
     >> report_training
     >> scale_down
@@ -172,5 +174,5 @@ if not SKIP_EXPORT:
     (
         export
         >> report_export_task
-        >> scale_up
+        >> collect_metrics
     )
