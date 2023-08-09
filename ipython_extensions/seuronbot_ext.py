@@ -6,11 +6,20 @@ import base64
 import fasteners
 from slack_down import slack_md
 import markdown
+from bs4 import BeautifulSoup
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
-from IPython.display import display, HTML, Image
+from IPython.display import display, HTML, Image, IFrame
 
 from kombu_helper import get_message, put_message, drain_messages
+
+def embed_links(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    link_tags = soup.find_all('a', href=True)
+
+    for link_tag in link_tags:
+        href = link_tag['href']
+        display(IFrame(src=href, width=800, height=600))
 
 
 @magics_class
@@ -46,7 +55,9 @@ class SeuronBot(Magics):
         while True:
             msg_payload = get_message(self.broker_url, self.output_queue, timeout=30)
             if msg_payload:
-                display(HTML(self.slack_conv.convert(msg_payload.get("text", None))))
+                html_content = self.slack_conv.convert(msg_payload.get("text", None))
+                display(HTML(html_content))
+                embed_links(html_content)
                 attachment = msg_payload.get("attachment", None)
                 if attachment:
                     if attachment["filetype"] in ["png", "jpeg", "gif"]:
