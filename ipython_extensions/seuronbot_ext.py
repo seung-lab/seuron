@@ -8,7 +8,7 @@ from slack_down import slack_md
 import markdown
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
-from IPython.display import display, HTML, Code, Image
+from IPython.display import display, HTML, Image
 
 from kombu_helper import get_message, put_message, drain_messages
 
@@ -53,11 +53,6 @@ class SeuronBot(Magics):
                         display(Image(
                             data=base64.b64decode(attachment["content"]),
                             format=attachment["filetype"]
-                        ))
-                    elif attachment["filetype"] in ["python", "javascript"]:
-                        display(Code(
-                            data=base64.b64decode(attachment["content"]).decode("utf-8"),
-                            language=attachment["filetype"]
                         ))
                 time.sleep(1)
 
