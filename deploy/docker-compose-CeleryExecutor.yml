@@ -229,13 +229,10 @@ services:
             mkdir -p /run/secrets/ &&
             openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /run/secrets/ssl_certificate_key -subj "/C=US/ST=NJ/L=P/O=P/OU=SL/CN=SEURON" -out /run/secrets/ssl_certificate &&
             SSL_CERTIFICATE=$$(cat /run/secrets/ssl_certificate) &&
-            [ -n \"$$SSL_CERTIFICATE\" ] &&
-                   SSL_BLOCK=\"ssl_certificate \\/run\\/secrets\\/ssl_certificate;\\n
-                    ssl_certificate_key \\/run\\/secrets\\/ssl_certificate_key;\\n
-                    ssl_session_cache  builtin:1000  shared:SSL:10m;\\n
-                    ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;\\n
-                    ssl on;\" ||
-            SSL_BLOCK=\"ssl off;\" && 
+            SSL_BLOCK=\"ssl_certificate \\/run\\/secrets\\/ssl_certificate;\\n
+             ssl_certificate_key \\/run\\/secrets\\/ssl_certificate_key;\\n
+             ssl_session_cache  builtin:1000  shared:SSL:10m;\\n
+             ssl_protocols  TLSv1 TLSv1.1 TLSv1.2;\" &&
             echo $$SSL_BLOCK && 
             if ! grep airflow /etc/nginx/nginx.conf; then
                 sed -i -e \"s/include \\/etc\\/nginx\\/conf\\.d\\/\\*\.conf;//\" 
@@ -252,8 +249,7 @@ services:
                         \\'\\'      close;\\n
                     }\\n
                     server {\\n
-                        listen 80;\\n
-                        listen 443;\\n
+                        listen 443 ssl;\\n
                         auth_basic $${AUTH_BASIC_STRING};\\n
                         auth_basic_user_file \\/etc\\/nginx\\/\.htpasswd;\\n
                         $${SSL_BLOCK}\\n
