@@ -72,6 +72,17 @@ services:
             restart_policy:
                 condition: any
 
+    cv-viewer:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+        command: python utils/cv_viewer.py file:///tmp/scratch/ng
+        ports:
+          - "8080:8080"
+        deploy:
+            restart_policy:
+                condition: any
+
 # Enable this services to import secrets needed to access cloud services, for
 # segmentation GCS requires google-secret.json and gsutil-secret.json. AWS
 # requires aws-secret.json and s3-secret

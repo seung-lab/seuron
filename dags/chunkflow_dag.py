@@ -35,6 +35,7 @@ except:
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
     ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
+    ng_subs = Variable.get("ng_subs", deserialize_json=True)
 
     layers = OrderedDict()
 
@@ -64,6 +65,11 @@ def generate_ng_link():
         },
         "zoomFactor": 4
     }
+
+    for n in layers:
+        if "source" in layers[n]:
+            layers[n]["source"] = layers[n]["source"].replace(ng_subs["old"], ng_subs["new"])
+
     payload = OrderedDict([("layers", layers),("navigation", navigation),("showSlices", False),("layout", "xy-3d")])
     url = "<https://{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,

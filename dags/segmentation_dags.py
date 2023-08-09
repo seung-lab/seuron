@@ -24,6 +24,8 @@ from dag_utils import get_composite_worker_capacities
 
 def generate_ng_payload(param):
     from igneous_and_cloudvolume import dataset_resolution
+    ng_subs = Variable.get("ng_subs", deserialize_json=True)
+
     ng_resolution = dataset_resolution(param["SEG_PATH"])
     seg_resolution = ng_resolution
     layers = OrderedDict()
@@ -89,6 +91,10 @@ def generate_ng_payload(param):
         },
         "zoomFactor": 4
     }
+
+    for n in layers:
+        if "source" in layers[n]:
+            layers[n]["source"] = layers[n]["source"].replace(ng_subs["old"], ng_subs["new"])
 
     payload = OrderedDict([("layers", layers),("navigation", navigation),("showSlices", False),("layout", "xy-3d")])
     return payload
