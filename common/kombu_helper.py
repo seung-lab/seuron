@@ -35,10 +35,12 @@ def put_message(broker_url, queue, msg):
         return simple_queue.put(msg)
 
 # Can't use the variable name "conn" as an argument bc it's reserved by airflow
-def drain_messages(broker_url, queue):
+def drain_messages(broker_url, queue, verbose=True):
     with Connection(broker_url) as conn:
         channel = conn.channel()
         ret = channel.queue_delete(queue)
-        print(f"deleted {ret} messages")
+        if verbose:
+            print(f"deleted {ret} messages")
         simple_queue = conn.SimpleQueue(queue)
-        print(f"remaining {simple_queue.qsize()} messages")
+        if verbose:
+            print(f"remaining {simple_queue.qsize()} messages")

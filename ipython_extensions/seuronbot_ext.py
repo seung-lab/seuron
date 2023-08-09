@@ -21,8 +21,8 @@ class SeuronBot(Magics):
         self.output_queue = "jupyter-output-queue"
         self.input_queue = "jupyter-input-queue"
         self.slack_conv = markdown.Markdown(extensions=[slack_md.SlackExtension()])
-        drain_messages(self.broker_url, self.input_queue)
-        drain_messages(self.broker_url, self.output_queue)
+        drain_messages(self.broker_url, self.input_queue, verbose=False)
+        drain_messages(self.broker_url, self.output_queue, verbose=False)
         threading.Thread(target=self.forward_bot_message).start()
 
     @line_cell_magic
