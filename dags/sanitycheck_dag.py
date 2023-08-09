@@ -311,7 +311,7 @@ def print_summary():
     Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
     msg = '''
-:heavy_check_mark: *Sanity Check, everything looks OK*
+:heavy_check_mark: *Sanity check done, everything looks OK*
 Affinity map: `{aff}`
 Resolution: [{resolution}]
 Bounding box: [{bbox}]
