@@ -43,7 +43,7 @@ def update_ip_address():
 def process_hello():
     host_ip = update_ip_address()
     msg_payload = {
-            'text': f"Hello from <https://{host_ip}/airflow/home|{host_ip}>",
+            'text': f"Hello from {host_ip}",
             'notification': True,
     }
     send_message(msg_payload)
