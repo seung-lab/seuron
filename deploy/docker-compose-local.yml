@@ -34,6 +34,16 @@ services:
             restart_policy:
                 condition: any
 
+    worker-gpu:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
+        command: airflow celery worker --without-gossip --without-mingle -q gpu
+        deploy:
+            restart_policy:
+                condition: any
+
     worker-atomic:
         <<: *airflow-common
         environment:
@@ -49,6 +59,15 @@ services:
         environment:
             <<: *airflow-common-env
         command: python custom/task_execution.py --queue igneous --concurrency 1
+        deploy:
+            restart_policy:
+                condition: any
+
+    worker-custom-cpu:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+        command: custom/worker_cpu.sh 4
         deploy:
             restart_policy:
                 condition: any
