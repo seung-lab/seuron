@@ -156,7 +156,7 @@ class DockerConfigurableOperator(DockerOperator):
         while True:
             try:
                 x = self.cli.stats(container=self.container['Id'], decode=False, stream=False)
-            except docker.errors.APIError:
+            except Exception:
                 sleep(60)
 
 
