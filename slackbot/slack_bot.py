@@ -61,5 +61,8 @@ if __name__ == '__main__':
         except FileNotFoundError:
             pass
 
+
+    set_variable("webui_ip", "localhost")
+
     seuronbot = SeuronBot(slack_token=slack_token)
     seuronbot.start()
