@@ -34,7 +34,7 @@ except:
 
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
-    ng_host = "https://neuromancer-seung-import.appspot.com"
+    ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
 
     layers = OrderedDict()
 
@@ -65,7 +65,7 @@ def generate_ng_link():
         "zoomFactor": 4
     }
     payload = OrderedDict([("layers", layers),("navigation", navigation),("showSlices", False),("layout", "xy-3d")])
-    url = "<{host}/#!{payload}|*view the results in neuroglancer*>".format(
+    url = "<https://{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,
         payload=urllib.parse.quote(json.dumps(payload)))
     slack_message(url, broadcast=True)
