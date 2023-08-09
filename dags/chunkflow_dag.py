@@ -446,6 +446,7 @@ def process_output(**kwargs):
 
     slack_message('chunkflow set_env finished')
     slack_message('Output path: `{}`'.format(param["OUTPUT_PATH"]), broadcast=True)
+    slack_message(":heavy_check_mark: *Sanity check done, everything looks OK*")
 
 generator_default_args = {
     'owner': 'seuronbot',
