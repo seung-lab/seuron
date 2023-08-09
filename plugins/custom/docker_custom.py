@@ -230,7 +230,9 @@ class DockerConfigurableOperator(DockerOperator):
         info = self.cli.inspect_container(container=container_id)
         mounts = info['Mounts']
         for m in mounts:
-            if m['Source'] == '/tmp' or m['Source'] == '/var/run/docker.sock':
+            if m['Source'] == '/var/run/docker.sock':
+                continue
+            if os.environ.get("VENDOR", None) != "LocalDockerCompose" and m['Source'] == '/tmp':
                 continue
             self.log.info(f"mount {m['Source']} to {m['Destination']}")
             self.mounts.append(Mount(source=m['Source'], target=m['Destination'], type=m['Type']))
