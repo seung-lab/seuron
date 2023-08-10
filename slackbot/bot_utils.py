@@ -168,7 +168,7 @@ def download_json(msg):
     filetype, content = download_file(msg)
     if not content:
         return None
-    if filetype == "python":
+    if filetype.lower() == "python":
         scope = {}
         try:
             exec(content, scope)
