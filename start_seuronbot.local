@@ -147,7 +147,7 @@ if [[ -e .env.local ]]; then
     case "$reconf" in
         "y" | "Y")
             info "Reconfigure the bot, delete database and overwrite .env.local"
-            docker volume rm deploy_postgres-storage
+            ${DOCKER_CMD} volume rm deploy_postgres-storage
             ;;
         ""| "n" | "N")
             info "Starting the bot with .env.local"
