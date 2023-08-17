@@ -36,6 +36,7 @@ volumes:
 services:
     rabbitmq:
         image: rabbitmq:3.10-management
+        restart: always
         environment:
             - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
         volumes:
@@ -50,6 +51,7 @@ services:
 
     postgres:
         image: postgres:13-alpine
+        restart: always
         environment:
             - POSTGRES_USER
             - POSTGRES_PASSWORD
@@ -64,6 +66,7 @@ services:
 
     pgbouncer:
         image: ranlu/pgbouncer:1.17.0
+        restart: always
         environment:
             - DB_USER=${POSTGRES_USER}
             - DB_PASSWORD=${POSTGRES_PASSWORD}
@@ -77,6 +80,7 @@ services:
 
     postgres-exporter:
         image: quay.io/prometheuscommunity/postgres-exporter
+        restart: always
         environment:
             DATA_SOURCE_URI: postgres?sslmode=disable
             DATA_SOURCE_USER: ${POSTGRES_USER}
@@ -84,17 +88,20 @@ services:
 
     statsd-exporter:
         image: ranlu/statsd-exporter
+        restart: always
         command: "--statsd.listen-udp=:9125 --web.listen-address=:9102 --statsd.mapping-config=/statsd.conf"
         ports:
             - "9125:9125/udp"
 
     prometheus:
         image: ranlu/prometheus
+        restart: always
         volumes:
             - prometheus-storage:/prometheus
 
     grafana:
         image: ranlu/grafana
+        restart: always
         environment:
             GF_SECURITY_ADMIN_USER: ${GRAFANA_USERNAME}
             GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
@@ -109,6 +116,7 @@ services:
 
     redis:
         image: redis:7-alpine
+        restart: always
         command: redis-server --save 60 1
         ports:
             - "6379:6379"
