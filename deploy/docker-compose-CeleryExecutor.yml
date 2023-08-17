@@ -3,6 +3,9 @@ x-airflow-common:
     &airflow-common
     image: ${SEURON_TAG}
     restart: always
+    depends_on:
+        init-seuronbot:
+            condition: service_completed_successfully
     environment:
         &airflow-common-env
         VENDOR:
@@ -132,6 +135,9 @@ services:
     init-seuronbot:
         <<: *airflow-common
         restart: on-failure
+        depends_on:
+            postgres:
+                condition: service_healthy
         environment:
             <<: *airflow-common-env
             SLACK_NOTIFICATION_CHANNEL:
@@ -210,6 +216,13 @@ services:
         deploy:
             restart_policy:
                 condition: any
+        depends_on:
+            webserver:
+                condition: service_healthy
+            grafana:
+                condition: service_healthy
+            slackbot:
+                condition: service_healthy
         #volumes:
             #- ../secrets:/run/secrets/
         command:
