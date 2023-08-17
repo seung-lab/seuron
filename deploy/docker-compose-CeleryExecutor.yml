@@ -21,6 +21,9 @@ x-airflow-common:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp:/tmp
+    deploy:
+        restart_policy:
+            condition: any
 
 volumes:
     rabbitmq-storage:
@@ -142,9 +145,6 @@ services:
             interval: 60s
             timeout: 10s
             retries: 5
-        deploy:
-            restart_policy:
-                condition: any
 
     scheduler:
         <<: *airflow-common
@@ -154,9 +154,6 @@ services:
             interval: 60s
             timeout: 10s
             retries: 5
-        deploy:
-            restart_policy:
-                condition: any
 
     worker-cluster:
         <<: *airflow-common
@@ -164,9 +161,6 @@ services:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
         command: airflow celery worker --without-gossip --without-mingle -q cluster
-        deploy:
-            restart_policy:
-                condition: any
 
     worker-manager:
         <<: *airflow-common
@@ -174,9 +168,6 @@ services:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 3
         command: airflow celery worker --without-gossip --without-mingle -q manager
-        deploy:
-            restart_policy:
-                condition: any
 
     slackbot:
         <<: *airflow-common
@@ -190,19 +181,12 @@ services:
         command: python slackbot/slack_bot.py
         volumes:
             - jupyterlab-storage:/usr/local/airflow/jupyterlab
-        deploy:
-            restart_policy:
-                condition: any
 
     oom-detector:
         <<: *airflow-common
         environment:
             <<: *airflow-common-env
         command: python utils/memory_monitor.py amqp://rabbitmq worker-client-queue
-        deploy:
-            restart_policy:
-                delay: 60s
-                condition: any
 
     proxy:
         image: nginx:1.23.0-alpine

@@ -22,6 +22,9 @@ x-airflow-common:
         # - /my/local/data:/path/to/mount
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp:/tmp
+    deploy:
+        restart_policy:
+            condition: any
 
 services:
     worker-manager:
@@ -30,9 +33,6 @@ services:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 3
         command: airflow celery worker --without-gossip --without-mingle -q manager
-        deploy:
-            restart_policy:
-                condition: any
 
     worker-gpu:
         <<: *airflow-common
@@ -40,9 +40,6 @@ services:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
         command: airflow celery worker --without-gossip --without-mingle -q gpu
-        deploy:
-            restart_policy:
-                condition: any
 
     worker-atomic:
         <<: *airflow-common
@@ -50,27 +47,18 @@ services:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
         command: airflow celery worker --without-gossip --without-mingle -q atomic
-        deploy:
-            restart_policy:
-                condition: any
 
     worker-igneous:
         <<: *airflow-common
         environment:
             <<: *airflow-common-env
         command: python custom/task_execution.py --queue igneous --concurrency 1
-        deploy:
-            restart_policy:
-                condition: any
 
     worker-custom-cpu:
         <<: *airflow-common
         environment:
             <<: *airflow-common-env
         command: custom/worker_cpu.sh 4
-        deploy:
-            restart_policy:
-                condition: any
 
     cv-viewer:
         <<: *airflow-common
@@ -79,9 +67,6 @@ services:
         command: python utils/cv_viewer.py file:///tmp/scratch/ng
         ports:
           - "8080:8080"
-        deploy:
-            restart_policy:
-                condition: any
 
 # Enable this services to import secrets needed to access cloud services, for
 # segmentation GCS requires google-secret.json and gsutil-secret.json. AWS
