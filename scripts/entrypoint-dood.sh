@@ -30,6 +30,7 @@ if [ ! -f .sudo.disabled  ]; then
     touch .sudo.disabled
 fi
 
+rm -f /usr/local/airflow/airflow-worker.pid
 
 # DOCKER_GROUP from /add-user-docker.sh
 if [ -z ${DOCKER_GROUP} ]; then
