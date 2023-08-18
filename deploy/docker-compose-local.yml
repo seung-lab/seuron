@@ -3,9 +3,9 @@ x-airflow-common:
     &airflow-common
     image: ${SEURON_TAG}
     restart: always
-    depends_on:
-        init-seuronbot:
-            condition: service_completed_successfully
+    # depends_on:
+    #     init-seuronbot:
+    #         condition: service_completed_successfully
     environment:
         &airflow-common-env
         VENDOR:
