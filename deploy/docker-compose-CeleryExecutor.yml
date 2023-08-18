@@ -219,10 +219,6 @@ services:
         depends_on:
             webserver:
                 condition: service_healthy
-            grafana:
-                condition: service_healthy
-            slackbot:
-                condition: service_healthy
         #volumes:
             #- ../secrets:/run/secrets/
         command:
