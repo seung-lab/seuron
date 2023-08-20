@@ -74,7 +74,8 @@ def generate_ng_payload(param):
     if not param.get("SKIP_AGG", False):
         layers["size"] = {
             "source": "precomputed://"+param["SEG_PATH"]+"/size_map",
-            "type": "image"
+            "type": "image",
+            "visible": False
         }
 
     bbox = param["BBOX"]
