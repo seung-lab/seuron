@@ -29,7 +29,7 @@ function create_www_user() {
 
 function upgrade_db() {
     # Runs airflow db upgrade
-    airflow db upgrade || true
+    airflow db migrate || true
 }
 
 upgrade_db
