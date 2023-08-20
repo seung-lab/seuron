@@ -19,7 +19,7 @@ def embed_links(html_content):
 
     for link_tag in link_tags:
         href = link_tag['href']
-        display(IFrame(src=href, width=800, height=600))
+        display(IFrame(src=href, width=1200, height=600))
 
 
 @magics_class
