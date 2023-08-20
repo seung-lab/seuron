@@ -101,7 +101,7 @@ def generate_ng_payload(param):
     return payload
 
 def generate_link(param, broadcast):
-    ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
+    ng_host = param.get("NG_HOST", "cj-find-path-test-dot-neuroglancer-dot-seung-lab.appspot.com")
     payload = generate_ng_payload(param)
 
     if not param.get("SKIP_AGG", False):

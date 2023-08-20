@@ -34,7 +34,7 @@ except:
 
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
-    ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
+    ng_host = param.get("NG_HOST", "cj-find-path-test-dot-neuroglancer-dot-seung-lab.appspot.com")
     ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
 
     layers = OrderedDict()
