@@ -23,6 +23,9 @@ if [[ "${ENABLE_JUPYTER_INTERFACE=}" == "True" ]] ; then
     if [ ! -f .sudo.disabled  ]; then
         sudo chown -R $AIRFLOW_USER $AIRFLOW_HOME/jupyterlab
     fi
+    if [ ! -f $AIRFLOW_HOME/jupyterlab/local_pipeline_tutorial.ipynb ]; then
+        cp $AIRFLOW_HOME/examples/local_pipeline_tutorial.ipynb $AIRFLOW_HOME/jupyterlab/local_pipeline_tutorial.ipynb
+    fi
 fi
 
 if [ ! -f .sudo.disabled  ]; then
