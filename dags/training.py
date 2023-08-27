@@ -11,6 +11,7 @@ from airflow.models import Variable, BaseOperator as Operator
 
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
+from param_default import default_mount_path
 from slack_message import slack_message, task_failure_alert, task_done_alert
 from webknossos import export_op, report_export
 
@@ -83,8 +84,16 @@ def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
 
     wandb_api_key = param.pop("WANDB_API_KEY", None)
     environment = {"WANDB_API_KEY": wandb_api_key} if wandb_api_key else None
+
+    # these variables will be mounted in the containers
+    mount_secrets = param.pop("MOUNT_SECRETS", [])
+    variables = []
+    for key in mount_secrets:
+        variables.append(Variable.get(key))
+
     return worker_op(
-        variables={},
+        variables=variables,
+        mount_point=param.pop("MOUNT_PATH", default_mount_path),
         task_id="training",
         command=make_argstr(param),
         environment=environment,
