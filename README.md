@@ -3,6 +3,15 @@ SEUnglab neuRON pipeline
 
 A system for managing (distributed) reconstruction of neurons from electron microscopic image stacks.
 
+Highlights
+----------
+1. ### 3D Reconstruction from EM images (Neuroglancer screenshot)
+   ![neuroglancer](pics/3d.jpg)
+2. ### Slack and JupyterLab frontends
+   ![frontends](pics/frontends.png)
+3. ### Summarize segmentation and resources used (Google Cloud only)
+   ![summary](pics/summary.png)
+
 Local deployment with docker compose
 ------------------------------------
 The easiest way to try out SEURON is to deploy it locally using docker compose. It sets up a full-fledged system with workers for all type of tasks SEURON can perform, and a ready-to-use JupyterLab interface. **Keep in mind all computation and IO happens on a single computer, so make sure you have the necessary resources for the tasks.**
@@ -63,8 +72,8 @@ gcloud deployment-manager deployments delete DEPLOYMENT_NAME
 **The command may fail if you made any manual modifications to the resources created by the deployment, in which case you will need to clean up the offending items according to the error messages before trying the delete command again**
 
 ### Notes
-#### IAM and Google cloud storage
-SEURON deployed to Google cloud are created using Google cloud Compute Engine default service account. Because SEURON automatically creates instances to work on tasks, you have to make sure the default service account have enough permission to create and delete instance. It is also recommended to give it permission to read and write Google cloud storage, so you can access the cloud storage without tokens/credentials
+#### IAM and Google Cloud Storage
+SEURON deployed to Google Cloud are created using Google Cloud Compute Engine default service account. Because SEURON automatically creates instances to work on tasks, you have to make sure the default service account have enough permission to create and delete instance. It is also recommended to give it permission to read and write Google Cloud Storage, so you can access the cloud storage without tokens/credentials
 
 #### Add credentials
-If you need to write to cloud storages outside of your Google cloud project, most likely you will need to provide a token/credential. SEURON stores them using [airflow variables](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/variables.html). Then you can mount these secrets using `MOUNT_SECRETS` key in the parameters for inference and segmentation.
+If you need to write to cloud storages outside of your Google Cloud project, most likely you will need to provide a token/credential. SEURON stores them using [airflow variables](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/variables.html). Then you can mount these secrets using `MOUNT_SECRETS` key in the parameters for inference and segmentation.
