@@ -4,7 +4,7 @@ from seuronbot import SeuronBot
 from airflow_api import get_variable, set_variable, run_dag
 from bot_utils import replyto, download_json
 from bot_utils import extract_bbox, extract_point, bbox_and_center
-from bot_utils import generate_link
+from nglinks import generate_link
 
 
 @SeuronBot.on_message("update webknossos parameters",
