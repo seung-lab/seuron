@@ -13,7 +13,6 @@ from bot_utils import extract_bbox, extract_point, bbox_and_center
 from kombu_helper import put_message
 from airflow_api import get_variable, set_variable, run_dag
 from pipeline_commands import handle_batch, supply_default_param
-from warm_up_commands import warm_up
 
 
 @SeuronBot.on_message("update easy seg parameters",
@@ -177,8 +176,6 @@ def run_easy_seg(msg: dict) -> None:
     clear_queues()  # empties the seuronbot_payload batch queue
     put_message(broker_url, "seuronbot_payload", [inf_params, seg_params])
 
-    warm_up_clusters(defaults, msg)
-
     # sanity checking inference params (handle_batch skips the first sanity check)
     supply_default_param(inf_params)
     replyto(msg, "Running chunkflow setup_env")
@@ -276,16 +273,3 @@ def extract_model(msgtext: str) -> str:
 
 def tupstr(t: tuple[Any, ...]) -> str:
     return ", ".join(map(str, t))
-
-
-def warm_up_clusters(defaults: dict, msg: dict) -> None:
-    """Warms up the clusters that we'll need to reduce overall latency."""
-    if "chunkflow" in defaults:
-        warm_up("gpu", msg, run_cluster_management=False)
-
-    if "abiss" in defaults:
-        warm_up("atomic", msg, run_cluster_management=False)
-        warm_up("igneous", msg)
-
-    if "synaptor" in defaults:
-        warm_up("synaptor-cpu", msg)
