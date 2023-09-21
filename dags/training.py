@@ -96,6 +96,7 @@ def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
         mount_point=param.pop("MOUNT_PATH", default_mount_path),
         task_id="training",
         command=make_argstr(param),
+        use_gpus=True,
         environment=environment,
         force_pull=True,
         on_failure_callback=task_failure_alert,
