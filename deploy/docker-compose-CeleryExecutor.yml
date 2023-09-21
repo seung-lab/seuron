@@ -282,7 +282,7 @@ services:
                             proxy_set_header X-Forwarded-Proto \\$$scheme;\\n
                             proxy_buffering off;\\n
                         }\\n
-                        location ^~ \\/grafana\\/ {\\n
+                        location \\/grafana\\/ {\\n
                             proxy_pass \\$$grafana;\\n
                             proxy_set_header Host \\$$http_host;\\n
                             proxy_redirect off;\\n
