@@ -109,6 +109,7 @@ services:
             GF_SECURITY_ADMIN_USER: ${GRAFANA_USERNAME}
             GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
             GF_SERVER_ROOT_URL: https://localhost/grafana
+            GF_SERVER_SERVE_FROM_SUB_PATH: "true"
             GF_USERS_DEFAULT_THEME: light
             GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/dashboards/SeuronDashboard.json
             POSTGRES_USER:
