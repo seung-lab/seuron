@@ -428,6 +428,7 @@ def upload_json(path, filename, content):
 @mount_secrets
 def get_atomic_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
+    from io import BytesIO
     def filename_sequence():
         for c in v:
             if c.mip_level() != 0:
@@ -438,15 +439,23 @@ def get_atomic_files_job(v, param, prefix):
     cf = CloudFiles(param["SCRATCH_PATH"])
 
     data = cf.get(filename_sequence())
-    return b"".join(x["content"] for x in data)
+
+    with BytesIO() as buffer:
+        for x in data:
+            buffer.write(x["content"])
+        return buffer.getvalue()
 
 
 @mount_secrets
 def get_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
+    from io import BytesIO
     cf = CloudFiles(param["SCRATCH_PATH"])
     data = cf.get((prefix+"_"+str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])+".data" for c in v))
-    return b"".join(x["content"] for x in data)
+    with BytesIO() as buffer:
+        for x in data:
+            buffer.write(x["content"])
+        return buffer.getvalue()
 
 
 @mount_secrets
