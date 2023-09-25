@@ -1,3 +1,6 @@
+import random
+import base64
+
 COMPUTE_URL_BASE = 'https://www.googleapis.com/compute/v1/'
 
 INSTALL_DOCKER_CMD = '''
@@ -47,6 +50,10 @@ CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concu
 
 PARALLEL_CMD = 'parallel --retries 100 -j%(jobs)d -N0 %(cmd)s ::: {0..%(jobs)d} &'
 
+rng = random.SystemRandom()
+
+fernet_key = base64.urlsafe_b64encode(rng.randbytes(32)).decode()
+secret_key = base64.urlsafe_b64encode(rng.randbytes(16)).decode()
 
 def GlobalComputeUrl(project, collection, name):
     return ''.join([COMPUTE_URL_BASE, 'projects/', project,
@@ -66,10 +73,10 @@ def GenerateAirflowVar(context, hostname_manager):
     airflow_variable = {
         'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'google_metadata.gce_hostname',
         'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN': sqlalchemy_conn,
-        'AIRFLOW__CORE__FERNET_KEY': context.properties['airflow']['fernetKey'],
+        'AIRFLOW__CORE__FERNET_KEY': context.properties['airflow'].get('fernetKey', fernet_key),
         'AIRFLOW__CELERY__BROKER_URL': f'amqp://{hostname_manager}',
         'AIRFLOW__CELERY__CELERY_RESULT_BACKEND': f'db+{sqlalchemy_conn}',
-        'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['airflow']['secretKey'],
+        'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['airflow'].get('secretKey', secret_key),
         'AIRFLOW__LOGGING__REMOTE_LOGGING': 'True',
         'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID': 'GCSConn',
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',

@@ -23,9 +23,9 @@ resources:
             user: # nginx username
             password: # nginx password, set it to null if you do not want a password
           airflow:
-            fernetKey: FERNET_KEY
-            secretKey: SECRET_KEY
             remoteLogFolder: # GCS path to save airflow logs
+            # fernetKey: generated automatically if not given
+            # secretKey: generated automatically if not given
             user: # username for airflow services
             password: # password for airflow services
           postgres:
