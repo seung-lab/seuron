@@ -19,22 +19,22 @@ resources:
             botToken: # bot token for slack
             notificationChannel: seuron-alerts
           enableJupyterInterface: False
-          nginx:
-            user: # nginx username
-            password: # nginx password, set it to null if you do not want a password
           airflow:
             remoteLogFolder: # GCS path to save airflow logs
-            # fernetKey: generated automatically if not given
-            # secretKey: generated automatically if not given
-            user: # username for airflow services
-            password: # password for airflow services
-          postgres:
-            user: # postgres username
-            password: # postgres password
-            database: # postgres database for airflow
-          grafana:
-            user: # grafana username
-            password: # grafana password
+          #   fernetKey: generated automatically if not given
+          #   secretKey: generated automatically if not given
+          #   user: airflow
+          #   password: airflow
+          # nginx:
+          #   user: # nginx username
+          #   password: # nginx password, set it to null if you do not want a password
+          # postgres:
+          #   user: airflow
+          #   password: airflow
+          #   database: airflow
+          # grafana:
+          #   user: airflow
+          #   password: airflow
           workerInstanceGroups:
             - type: gpu
               zone: us-east1-c

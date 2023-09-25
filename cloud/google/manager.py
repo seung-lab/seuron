@@ -3,8 +3,28 @@ from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, Generate
 from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 def GenerateEnvironVar(context, hostname_manager):
-    basic_auth_username = context.properties['nginx'].get('user', '')
-    basic_auth_password = context.properties['nginx'].get('password', '')
+    if "postgres" in context.properties:
+        postgres_user = context.properties['postgres'].get('user', "airflow")
+        postgres_password = context.properties['postgres'].get('password', "airflow")
+        postgres_db = context.properties['postgres'].get('database', "airflow")
+    else:
+        postgres_user = "airflow"
+        postgres_password = "airflow"
+        postgres_db = "airflow"
+
+    if "nginx" in context.properties:
+        basic_auth_username = context.properties['nginx'].get('user', "")
+        basic_auth_password = context.properties['nginx'].get('password', "")
+    else:
+        basic_auth_username = ""
+        basic_auth_password = ""
+
+    if "grafana" in context.properties:
+        grafana_username = context.properties['grafana'].get('user', "airflow")
+        grafana_password = context.properties['grafana'].get('password', "airflow")
+    else:
+        grafana_username = "airflow"
+        grafana_password = "airflow"
 
     env_variables = {
         'VENDOR': 'Google',
@@ -13,15 +33,15 @@ def GenerateEnvironVar(context, hostname_manager):
         'DEPLOYMENT': context.env['deployment'],
         'ZONE': context.properties['zone'],
         'SEURON_TAG': context.properties['seuronImage'],
-        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflow']['user'],
-        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflow']['password'],
-        'POSTGRES_USER': context.properties['postgres']['user'],
-        'POSTGRES_PASSWORD': context.properties['postgres']['password'],
-        'POSTGRES_DB': context.properties['postgres']['database'],
+        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflow'].get('user', "airflow"),
+        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflow'].get('password', "airflow"),
+        'POSTGRES_USER': postgres_user,
+        'POSTGRES_PASSWORD': postgres_password,
+        'POSTGRES_DB': postgres_db,
         'POSTGRES_MEM_MB': """$(free -m|grep Mem|awk '{print int($2/4)}')""",
         'POSTGRES_MAX_CONN': """$(free -m|grep Mem|awk '{print int($2/32)}')""",
-        'GRAFANA_USERNAME': context.properties['grafana']['user'],
-        'GRAFANA_PASSWORD': context.properties['grafana']['password'],
+        'GRAFANA_USERNAME': grafana_username,
+        'GRAFANA_PASSWORD': grafana_password,
     }
 
     if basic_auth_username and basic_auth_password:

@@ -66,9 +66,15 @@ def ZonalComputeUrl(project, zone, collection, name):
 
 
 def GenerateAirflowVar(context, hostname_manager):
-    postgres_user = context.properties['postgres']['user']
-    postgres_password = context.properties['postgres']['password']
-    postgres_db = context.properties['postgres']['database']
+    if "postgres" in context.properties:
+        postgres_user = context.properties['postgres'].get('user', "airflow")
+        postgres_password = context.properties['postgres'].get('password', "airflow")
+        postgres_db = context.properties['postgres'].get('database', "airflow")
+    else:
+        postgres_user = "airflow"
+        postgres_password = "airflow"
+        postgres_db = "airflow"
+
     sqlalchemy_conn = f'''postgresql+psycopg2://{postgres_user}:{postgres_password}@{hostname_manager}/{postgres_db}'''
     airflow_variable = {
         'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'google_metadata.gce_hostname',
