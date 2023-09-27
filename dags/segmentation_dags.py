@@ -449,11 +449,12 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     high_mip = param.get("HIGH_MIP", 5)
 
     composite_workers = get_composite_worker_capacities()
+    missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
 
     if param.get("OVERLAP_MODE", False):
         overlap_mip = param.get("OVERLAP_MIP", batch_mip)
     local_batch_mip = batch_mip
-    aux_queue = "atomic" if top_mip < high_mip else "composite_"+str(top_mip)
+    aux_queue = "atomic" if top_mip < high_mip or missing_workers else "composite_"+str(top_mip)
 
 
     #data_bbox = [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
@@ -719,8 +720,9 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     if top_mip >= high_mip:
         for stage in ["ws", "agg", "cs"]:
-            scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0, "cluster")
-            scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
+            if not missing_workers:
+                scaling_ops[stage]["down"] = scale_down_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 0, "cluster")
+                scaling_ops[stage]["down"].set_upstream(slack_ops[stage][high_mip-1])
 
 
             cluster2_size = max(1, len(generate_chunks[stage][high_mip])//8)
