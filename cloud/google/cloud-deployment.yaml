@@ -20,11 +20,16 @@ resources:
             notificationChannel: seuron-alerts
           enableJupyterInterface: False
           airflow:
+# Please note that `remoteLogFolder` is a mandatory field, as tasks are executed
+# on separate instances and we store log files in a common GCS bucket for easy
+# inspection.
             remoteLogFolder: # GCS path to save airflow logs
           #   fernetKey: generated automatically if not given
           #   secretKey: generated automatically if not given
           #   user: airflow
           #   password: airflow
+# All web services are accessed through Nginx. If you want extra security, please
+# specify an Nginx username and password.
           # nginx:
           #   user: # nginx username
           #   password: # nginx password, set it to null if you do not want a password
