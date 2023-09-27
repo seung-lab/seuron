@@ -120,5 +120,6 @@ resources:
               machineType: n2d-highmem-32
               preemptible: False
               sizeLimit: 1
-          firewallAllowedIPRanges:
-              - 128.112.0.0/16
+# Allowlist of public ip addresses allowing to access the services, strongly recommended.
+          # firewallAllowedIPRanges:
+          #     - 128.112.0.0/16
