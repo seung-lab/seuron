@@ -53,9 +53,9 @@ def GenerateEnvironVar(context, hostname_manager):
 
     env_variables.update(GenerateAirflowVar(context, hostname_manager))
 
-    export_variables = "\n".join([f'''export {e}={env_variables[e]}''' for e in env_variables])
+    export_variables = "\n".join([f'''export {e}="{env_variables[e]}"''' for e in env_variables])
 
-    save_variables = "\n".join([f'''echo {e}=${e} >> /etc/environment''' for e in env_variables])
+    save_variables = "\n".join([f'''echo -e {e}=\\"${e}\\" >> /etc/environment''' for e in env_variables])
 
     return "\n".join([export_variables, save_variables])
 
