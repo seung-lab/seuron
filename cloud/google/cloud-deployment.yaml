@@ -19,22 +19,27 @@ resources:
             botToken: # bot token for slack
             notificationChannel: seuron-alerts
           enableJupyterInterface: False
-          nginx:
-            user: # nginx username
-            password: # nginx password, set it to null if you do not want a password
           airflow:
-            fernetKey: FERNET_KEY
-            secretKey: SECRET_KEY
+# Please note that `remoteLogFolder` is a mandatory field, as tasks are executed
+# on separate instances and we store log files in a common GCS bucket for easy
+# inspection.
             remoteLogFolder: # GCS path to save airflow logs
-            user: # username for airflow services
-            password: # password for airflow services
-          postgres:
-            user: # postgres username
-            password: # postgres password
-            database: # postgres database for airflow
-          grafana:
-            user: # grafana username
-            password: # grafana password
+          #   fernetKey: generated automatically if not given
+          #   secretKey: generated automatically if not given
+          #   user: airflow
+          #   password: airflow
+# All web services are accessed through Nginx. If you want extra security, please
+# specify an Nginx username and password.
+          # nginx:
+          #   user: # nginx username
+          #   password: # nginx password, set it to null if you do not want a password
+          # postgres:
+          #   user: airflow
+          #   password: airflow
+          #   database: airflow
+          # grafana:
+          #   user: airflow
+          #   password: airflow
           workerInstanceGroups:
             - type: gpu
               zone: us-east1-c
@@ -59,18 +64,21 @@ resources:
               preemptible: True
               reserveHugePages: True
               sizeLimit: 100
-            - type: composite
-              zone: us-east1-c
-              subnetwork: us-east1
-              machineType: e2-standard-32
-              preemptible: False
-              reserveHugePages: True
-              workerConcurrencies:
-                - layer: 5
-                  concurrency: 2
-                - layer: 6
-                  concurrency: 1
-              sizeLimit: 1
+# For very large dataset, tasks processing higher layer of the octree may
+# require longer time and more memory than atomic workers can provide, in
+# this case, we need to set up a dedicated composite cluster for them.
+           # - type: composite
+           #   zone: us-east1-c
+           #   subnetwork: us-east1
+           #   machineType: e2-standard-32
+           #   preemptible: True
+           #   reserveHugePages: True
+           #   workerConcurrencies:
+           #     - layer: 5
+           #       concurrency: 2
+           #     - layer: 6
+           #       concurrency: 1
+           #   sizeLimit: 1
             - type: igneous
               zone: us-east1-c
               subnetwork: us-east1
@@ -112,5 +120,6 @@ resources:
               machineType: n2d-highmem-32
               preemptible: False
               sizeLimit: 1
-          firewallAllowedIPRanges:
-              - 128.112.0.0/16
+# Allowlist of public ip addresses allowing to access the services, strongly recommended.
+          # firewallAllowedIPRanges:
+          #     - 128.112.0.0/16
