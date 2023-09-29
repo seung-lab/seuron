@@ -2,18 +2,16 @@ from datetime import datetime, timedelta
 
 
 def check_worker_image_labels(variable):
-    import docker
     from airflow.models import Variable
+    from docker_helper import pull_image
     if variable == "param":
         image_name = "WORKER_IMAGE"
         default_path = default_seg_workspace
     elif variable == "inference_param":
         image_name = "CHUNKFLOW_IMAGE"
         default_path = default_chunkflow_workspace
-
     param = Variable.get(variable, deserialize_json=True)
-    client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-    image = client.images.pull(param[image_name])
+    image = pull_image(param[image_name])
     param["WORKSPACE_PATH"] = image.labels.get("workspace_path", default_path)
     param["MOUNT_PATH"] = image.labels.get("mount_path", default_mount_path)
     Variable.set(variable, param, serialize_json=True)
