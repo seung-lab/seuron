@@ -1,7 +1,6 @@
 """Non-technical user segmentation commands ("easy seg")."""
 from __future__ import annotations
 
-import os
 import re
 from typing import Any
 from datetime import datetime
@@ -198,7 +197,7 @@ def populate_parameters(
     inf_params["ONNX_MODEL_PATH"] = model
     inf_params["BBOX"] = bbox
 
-    output_path = os.path.join(inf_params["OUTPUT_PREFIX"], inf_params["NAME"])
+    output_path = inf_params["OUTPUT_PREFIX"]+inf_params["NAME"]
 
     if "abiss" in defaults:
         seg_params = defaults["abiss"]
