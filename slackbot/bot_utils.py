@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import re
 import string
+import urllib
 import requests
 import json
 import json5
@@ -9,6 +13,7 @@ from collections import OrderedDict
 from secrets import token_hex
 from kombu_helper import put_message, visible_messages
 import slack_sdk as slack
+from typing import Optional
 from airflow.hooks.base_hook import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from airflow_api import update_slack_connection, set_variable
@@ -207,6 +212,8 @@ def guess_run_type(param):
         return "seg_run"
     elif "CHUNKFLOW_IMAGE" in param:
         return "inf_run"
+    elif "Workflow" in param and "synaptor_image" in param["Workflow"]:
+        return "syn_run"
     else:
         return None
 
@@ -222,3 +229,109 @@ def latest_param_type():
         return guess_run_type(param)
     else:
         return None
+
+
+def extract_bbox(msgtext: str) -> tuple[int, int, int, int, int, int]:
+    """Extracts a bounding box of coordinates from a message's text."""
+    regexp = re.compile(
+        ".* @ "
+        "\(?\[?"  # noqa
+        "([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+)"
+        "\)?\]?"  # noqa
+        "[ \n]*"
+    )
+    rematch = regexp.match(msgtext)
+    if rematch:
+        coords = tuple(map(int, rematch.groups()))
+    else:
+        raise ValueError("unable to match text")
+        return
+
+    return coords
+
+
+def extract_point(msgtext: str) -> tuple[int, int, int]:
+    """Extracts a point of coordinates from the end of a message's text."""
+    regexp = re.compile(
+        ".* @ "
+        "\(?\[?"  # noqa
+        "([0-9]+),?"
+        " ([0-9]+),?"
+        " ([0-9]+)"
+        "\)?\]?"  # noqa
+        "[ \n]*"
+    )
+    rematch = regexp.match(msgtext)
+    if rematch:
+        coords = tuple(map(int, rematch.groups()))
+    else:
+        raise ValueError("unable to match text")
+        return
+
+    return coords
+
+
+def bbox_and_center(
+    defaults: dict,
+    bbox: Optional[tuple[tuple[int, int, int], tuple[int, int, int]]] = None,
+    center_pt: Optional[tuple[int, int, int]] = None,
+    resample: bool = True,
+) -> tuple[tuple[int, int, int, int, int, int], tuple[int, int, int]]:
+    assert bbox is not None or center_pt is not None, (
+        "either bbox or center_pt needs to be filled in"
+    )
+
+    if center_pt is None:
+        bboxsz = (bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[2])
+
+        center_pt = (
+            bbox[0] + bboxsz[0] // 2,
+            bbox[1] + bboxsz[1] // 2,
+            bbox[2] + bboxsz[2] // 2,
+        )
+
+    if bbox is None:
+        assert "bbox_width" in defaults, "no bbox and default box width"
+        bbox_width = defaults["bbox_width"]
+        bboxsz = tuple(width * 2 for width in bbox_width)
+
+        bbox = (
+            center_pt[0] - bbox_width[0],
+            center_pt[1] - bbox_width[1],
+            center_pt[2] - bbox_width[2],
+            center_pt[0] + bbox_width[0],
+            center_pt[1] + bbox_width[1],
+            center_pt[2] + bbox_width[2],
+        )
+
+    maxsz = defaults.get("max_bbox_width", None)
+    if maxsz is not None and any(sz > mx for sz, mx in zip(bboxsz, maxsz)):
+        raise ValueError(f"bounding box is too large: max size = {maxsz}")
+
+    # resampling coordinates to data resolution
+    if resample and "index_resolution" in defaults and "data_resolution" in defaults:
+        assert isinstance(defaults["index_resolution"], list)
+        assert isinstance(defaults["data_resolution"], list)
+
+        center_pt = tuple(
+            int(c * ir / dr)
+            for c, ir, dr in zip(
+                center_pt, defaults["index_resolution"], defaults["data_resolution"]
+            )
+        )
+
+        bbox = tuple(
+            int(b * ir / dr)
+            for b, ir, dr in zip(
+                bbox,
+                defaults["index_resolution"] + defaults["index_resolution"],
+                defaults["data_resolution"] + defaults["data_resolution"],
+            )
+        )
+
+    return bbox, center_pt

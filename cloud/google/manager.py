@@ -87,6 +87,11 @@ fi
 
 docker stack deploy --with-registry-auth -c compose.yml {context.env["deployment"]}
 
+iptables -I INPUT -p tcp --dport 6379 -j DROP
+iptables -I INPUT -p tcp --dport 6379 -s 172.16.0.0/12 -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 6379 -j DROP
+iptables -I DOCKER-USER -p tcp --dport 6379 -s 172.16.0.0/12 -j ACCEPT
+
 while true
 do
     if [ $(curl "http://metadata/computeMetadata/v1/instance/attributes/redeploy" -H "Metadata-Flavor: Google") == "true"  ]; then

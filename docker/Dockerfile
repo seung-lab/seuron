@@ -34,16 +34,16 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && rm ~/miniconda.sh \
     && conda update conda \
     && conda install -y nomkl \
-    && conda install -y -c conda-forge numpy=1.24.4 scipy cryptography=41.0.3 redis-py boto3=1.28.17 botocore=1.31.17 boto=2.49.0 celery=5.3.1 networkx gevent pillow matplotlib-base kombu=5.3.1 pysimdjson zstandard \
+    && conda install -y -c conda-forge numpy=1.24.4 scipy cryptography=41.0.3 redis-py boto3=1.28.17 botocore=1.31.17 boto=2.49.0 celery=5.3.1 networkx gevent pillow matplotlib-base kombu=5.3.1 pysimdjson zstandard zfpy \
     && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
     && find ${MINICONDA_PATH} -follow -type f -name '*.js.map' -delete \
     && conda clean -yaf \
     && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && pip install --no-cache-dir -U pip \
-    && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
     && pip install --no-cache-dir --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install --no-cache-dir igneous-pipeline \
+    && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
     && mkdir -p ${AIRFLOW_HOME}/version \
     && groupadd -r docker \
     && groupadd -r ${AIRFLOW_USER} \

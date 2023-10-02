@@ -2,7 +2,7 @@ from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, Generate
 from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_GPU_MONITORING, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 
-GPU_TYPES = ['gpu', 'custom-gpu', 'synaptor-gpu']
+GPU_TYPES = ['gpu', 'custom-gpu', 'synaptor-gpu', 'deepem-gpu']
 SYNAPTOR_TYPES = ['synaptor-cpu', 'synaptor-gpu', 'synaptor-seggraph']
 
 def checkConsecutiveWorkers(concurrencies):
@@ -90,6 +90,8 @@ def GenerateWorkers(context, hostname_manager, worker):
         cmd = GenerateDockerCommand(docker_image, docker_env + ['--gpus all'] + ['-e CONDA_INSTALL_PYTORCH="true"']) + ' ' + f"custom/worker_gpu.sh {worker['concurrency']} >& /dev/null"
     elif worker['type'] in SYNAPTOR_TYPES:
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
+    elif worker['type'] == 'deepem-gpu':
+        cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     else:
         raise ValueError(f"unknown worker type: {worker['type']}")
 
@@ -134,8 +136,12 @@ def GenerateWorkers(context, hostname_manager, worker):
     }
 
     if worker['type'] in GPU_TYPES:
+        if worker['type'] == 'deepem-gpu':
+            accelerator_count = worker['gpuWorkerAcceleratorCount']
+        else:
+            accelerator_count = 1
         instance_template['guestAccelerators'] = [{
-                'acceleratorCount': 1,
+                'acceleratorCount': accelerator_count,
                 'acceleratorType': worker['gpuWorkerAcceleratorType'],
         }]
 

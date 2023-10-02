@@ -8,6 +8,7 @@ def worker_op(**kwargs):
         task_id=kwargs["task_id"],
         command=kwargs["command"],
         use_gpus=kwargs.get("use_gpus", False),
+        environment=kwargs.get("environment", None),
         xcom_all=kwargs.get('xcom_all', False),
         force_pull=kwargs.get("force_pull", False),
         default_args=default_args,
@@ -24,4 +25,5 @@ def worker_op(**kwargs):
         retries=kwargs.get("retries", default_args.get("retries", 0)),
         retry_delay=kwargs.get("retry_delay", default_args.get("retry_delay", 60)),
         retry_exponential_backoff=kwargs.get("retry_exponential_backoff", default_args.get("retry_exponential_backoff", False)),
+        shm_size=kwargs.get("shm_size", None),
     )
