@@ -357,3 +357,14 @@ def stop_instance(instance_name, zone):
     )
     response = request.execute()
     return response
+
+
+def toggle_easyseg_worker(on=False):
+    ig_conn = BaseHook.get_connection("EasysegWorker")
+    deployment = ig_conn.host
+    zone = ig_conn.login
+    easyseg_worker = f"{deployment}-easyseg-worker"
+    if on:
+        start_instance(easyseg_worker, zone)
+    else:
+        stop_instance(easyseg_worker, zone)
