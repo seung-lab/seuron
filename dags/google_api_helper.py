@@ -335,3 +335,25 @@ def collect_resource_metrics(start_time, end_time):
 
 
     return resources
+
+
+def start_instance(instance_name, zone):
+    service = discovery.build('compute', 'v1')
+    request = service.instances().start(
+        project=get_project_id(),
+        zone=zone,
+        instance=instance_name
+    )
+    response = request.execute()
+    return response
+
+
+def stop_instance(instance_name, zone):
+    service = discovery.build('compute', 'v1')
+    request = service.instances().stop(
+        project=get_project_id(),
+        zone=zone,
+        instance=instance_name
+    )
+    response = request.execute()
+    return response
