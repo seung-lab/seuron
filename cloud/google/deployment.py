@@ -1,6 +1,7 @@
 import json
 from workers import GenerateWorkers
 from manager import GenerateManager
+from easyseg_worker import GenerateEasysegWorker
 from networks import GenerateNetworks
 
 def GenerateConfig(context):
@@ -31,6 +32,9 @@ def GenerateConfig(context):
         'resources': worker_resource+manager_resource+network_resource
     }
 
+    if "easysegWorker" in context.properties:
+        hostname_easyseg_worker = f"{context.env['deployment']}-easyseg-worker.{common_ext}"
+        easyseg_worker_resource = GenerateEasysegWorker(context, hostname_manager, hostname_easyseg_worker)
+        resources['resources'] += easyseg_worker_resource
+
     return resources
-
-
