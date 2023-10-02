@@ -180,6 +180,7 @@ def run_easy_seg(msg: dict) -> None:
     replyto(msg, "Running chunkflow setup_env")
     set_variable("inference_param", inf_params, serialize_json=True)
     set_variable("easy_seg_param", [inf_params, seg_params], serialize_json=True)
+    run_dag("easyseg_dag")
     state = run_dag("chunkflow_generator", wait_for_completion=True).state
 
     if state != "success":
