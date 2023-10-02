@@ -1,7 +1,7 @@
 import pendulum
 from airflow.decorators import dag, task
 from slack_message import slack_message
-from google_api_helper import start_easyseg_worker
+from google_api_helper import toggle_easyseg_worker
 
 @dag(
     schedule=None,
@@ -13,7 +13,7 @@ def easyseg_dag():
     @task()
     def start_worker():
         slack_message(":exclamation:*Turn on easyseg worker*")
-        start_easyseg_worker()
+        toggle_easyseg_worker(on=True)
 
     start_worker()
 
