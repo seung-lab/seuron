@@ -144,6 +144,36 @@ def delete_dead_instances():
             cluster_api.ramp_up_cluster(key, 1, 1)
 
 
+def shutdown_easyseg_worker():
+    import os
+    import redis
+    from datetime import datetime
+    from airflow.models import Variable
+    from airflow.hooks.base_hook import BaseHook
+    if Variable.get("vendor") == "Google":
+        import google_api_helper as cluster_api
+    else:
+        cluster_api = None
+
+    if cluster_api is None:
+        return
+
+    redis_host = os.environ['REDIS_SERVER']
+    timestamp = datetime.now().timestamp()
+    r = redis.Redis(redis_host)
+
+    ig_conn = BaseHook.get_connection("InstanceGroups")
+    deployment = ig_conn.host
+    instance = f"{deployment}-easyseg-worker"
+    ts = r.get(instance)
+    if not ts:
+        r.set(instance, timestamp)
+    else:
+        delta = timestamp - float(ts)
+        if delta > 300:
+            cluster_api.toggle_easyseg_worker(on=False)
+
+
 latest = LatestOnlyOperator(
     task_id='latest_only',
     priority_weight=1000,
@@ -164,4 +194,11 @@ delete_dead_instances_task = PythonOperator(
     queue="cluster",
     dag=dag)
 
-latest >> queue_sizes_task >> delete_dead_instances_task
+shutdown_easyseg_worker_task = PythonOperator(
+    task_id="shutdown_easyseg_worker",
+    python_callable=shutdown_easyseg_worker,
+    priority_weight=1000,
+    queue="cluster",
+    dag=dag)
+
+latest >> queue_sizes_task >> delete_dead_instances_task >> shutdown_easyseg_worker_task
