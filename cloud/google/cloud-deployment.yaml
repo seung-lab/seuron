@@ -2,6 +2,7 @@ imports:
     - path: common.py
     - path: networks.py
     - path: workers.py
+    - path: easyseg_worker.py
     - path: manager.py
     - path: deployment.py
 
@@ -121,6 +122,11 @@ resources:
               preemptible: true
               sizeLimit: 10
               diskSizeGb: 30
+          easysegWorker:
+            zone: us-east1-c
+            subnetwork: us-east1
+            machineType: n1-standard-8
+            gpuWorkerAcceleratorType: nvidia-tesla-t4
 # Allowlist of public ip addresses allowing to access the services, strongly recommended.
           # firewallAllowedIPRanges:
           #     - 128.112.0.0/16
