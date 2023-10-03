@@ -125,6 +125,7 @@ def check_patch_parameters(param):
 @mount_secrets
 def supply_default_parameters():
     from docker_helper import health_check_info
+    from kombu_helper import drain_messages
     from airflow import configuration as conf
     param = Variable.get("inference_param", deserialize_json=True)
 
@@ -137,6 +138,8 @@ def supply_default_parameters():
     if not param.get("STATSD_PORT", ""):
         param["STATSD_PORT"] = statsd_port
 
+    broker_url = conf.get("celery", "broker_url")
+    drain_messages(broker_url, "chunkflow")
 
     def check_matching_mip(path1, path2):
         vol1 = CloudVolume(path1, mip=0)
@@ -300,30 +303,6 @@ def supply_default_parameters():
 
     health_check_info(param["CHUNKFLOW_IMAGE"])
 
-
-def drain_tasks_op(dag, param, queue):
-    from airflow import configuration as conf
-    broker_url = conf.get('celery', 'broker_url')
-    workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
-    cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/drain_tasks.sh")} {broker_url}"'
-
-    cm = ['inference_param']
-    if "MOUNT_SECRETS" in param:
-        cm += param["MOUNT_SECRETS"]
-
-    return worker_op(
-        variables=cm,
-        mount_point=param.get("MOUNT_PATH", default_mount_path),
-        task_id='drain_tasks',
-        command=cmdlist,
-        force_pull=True,
-        on_failure_callback=task_failure_alert,
-        image=param["CHUNKFLOW_IMAGE"],
-        priority_weight=100000,
-        weight_rule=WeightRule.ABSOLUTE,
-        queue=queue,
-        dag=dag
-    )
 
 def setup_env_op(dag, param, queue):
     from airflow import configuration as conf
@@ -538,7 +517,6 @@ update_mount_secrets_op = PythonOperator(
 setup_redis_task = setup_redis_op(dag_generator, "inference_param", "CHUNKFLOW")
 
 set_env_task = setup_env_op(dag_generator, param, "manager")
-drain_tasks = drain_tasks_op(dag_generator, param, "manager")
 
 workers = []
 queue = 'gpu'
@@ -548,6 +526,6 @@ for i in range(min(param.get("TASK_NUM", 1), total_workers)):
 
 collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down_cluster_task
 
-[setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> drain_tasks >> set_env_task >> process_output_task
+[setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> set_env_task >> process_output_task
 
 scale_up_cluster_task >> wait_for_chunkflow_task >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
