@@ -8,7 +8,7 @@ import time
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
 from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
-from airflow_api import check_running
+from airflow_api import check_running, set_variable
 from kombu_helper import get_message
 
 
@@ -22,8 +22,17 @@ def help_listener(context):
     return False
 
 
+def reset_run_metadata():
+    default_run_metadata = {
+            "track_resources": True,
+            "manage_clusters": True,
+    }
+    set_variable("run_metadata", default_run_metadata, serialize_json=True)
+
+
 def run_cmd(func, context, exclusive=False, cancelable=False):
     if exclusive:
+        reset_run_metadata()
         if check_running():
             replyto(context, "Busy right now")
             return

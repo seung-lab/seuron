@@ -74,6 +74,9 @@ def get_cluster_size(project_id, instance_groups):
     return total_size
 
 def reset_cluster(key, initial_size):
+    run_metadata = Variable.get("run_metadata", deserialize_json=True)
+    if not run_metadata["manage_clusters"]:
+        return
     try:
         project_id = get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
@@ -145,6 +148,9 @@ def resize_instance_group(instance_group, size):
 
 
 def ramp_up_cluster(key, initial_size, total_size):
+    run_metadata = Variable.get("run_metadata", deserialize_json=True)
+    if not run_metadata["manage_clusters"]:
+        return
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         target_sizes[key] = total_size
@@ -156,6 +162,9 @@ def ramp_up_cluster(key, initial_size, total_size):
 
 
 def ramp_down_cluster(key, total_size):
+    run_metadata = Variable.get("run_metadata", deserialize_json=True)
+    if not run_metadata["manage_clusters"]:
+        return
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         target_sizes[key] = total_size

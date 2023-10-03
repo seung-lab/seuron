@@ -34,6 +34,11 @@ with DAG("compute_metrics",
             slack_message("Seuron only support compute metric collection for GCE")
             return
 
+        run_metadata = Variable.get("run_metadata", deserialize_json=True)
+
+        if not run_metadata["track_resources"]:
+            return
+
         from google_api_helper import collect_resource_metrics
         conf = dag_run.conf
         target_dag_id = conf["dag_id"]
