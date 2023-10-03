@@ -121,7 +121,7 @@ def wait(process):
         if cond == "yes":
             return
         else:
-            sleep(30)
+            sleep(5)
 
 
 def wait_op(dag, process):
