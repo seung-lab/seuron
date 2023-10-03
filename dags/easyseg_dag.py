@@ -13,7 +13,10 @@ def easyseg_dag():
     @task(queue="cluster", priority_weight=1000)
     def start_worker():
         slack_message(":exclamation:*Turn on easyseg worker*")
-        toggle_easyseg_worker(on=True)
+        try:
+            toggle_easyseg_worker(on=True)
+        except Exception:
+            pass
 
     start_worker()
 

@@ -171,7 +171,10 @@ def shutdown_easyseg_worker():
     else:
         delta = timestamp - float(ts)
         if delta > 300:
-            cluster_api.toggle_easyseg_worker(on=False)
+            try:
+                cluster_api.toggle_easyseg_worker(on=False)
+            except Exception:
+                pass
 
 
 latest = LatestOnlyOperator(
