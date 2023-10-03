@@ -16,7 +16,7 @@ from pipeline_commands import handle_batch, supply_default_param
 
 @SeuronBot.on_message("update easy seg parameters",
                       description="Update the default parameters for easy-seg",
-                      exclusive=True,
+                      exclusive=False,
                       file_inputs=True)
 def update_easy_seg(msg: dict) -> None:
     json_obj = download_json(msg)
