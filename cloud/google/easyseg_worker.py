@@ -33,7 +33,7 @@ fi
     oom_canary_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python utils/memory_monitor.py ${AIRFLOW__CELERY__BROKER_URL} bot-message-queue >& /dev/null"
     chunkflow_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue="gpu", concurrency=2)
     abiss_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env, queue="atomic", concurrency=1)
-    igneous_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python custom/task_execution.py --queue igneous --concurrency 0 >& /dev/null"
+    igneous_cmd = GenerateDockerCommand(docker_image, docker_env + ["--restart on-failure",]) + ' ' + "python custom/task_execution.py --queue igneous --concurrency 0 >& /dev/null"
     cmd += " & \n".join([oom_canary_cmd, chunkflow_cmd, abiss_cmd, igneous_cmd])
 
     easyseg_param = context.properties["easysegWorker"]
