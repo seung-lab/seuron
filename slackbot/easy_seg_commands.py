@@ -186,6 +186,11 @@ def run_easy_seg(msg: dict) -> None:
     if state != "success":
         replyto(msg, "chunkflow check failed")
         return
+    run_metadata = {
+            "track_resources": False,
+            "manage_clusters": False,
+    }
+    set_variable("run_metadata", run_metadata, serialize_json=True)
 
     handle_batch("inf_run", msg)
 
