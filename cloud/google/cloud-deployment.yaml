@@ -123,10 +123,10 @@ resources:
               sizeLimit: 10
               diskSizeGb: 30
           easysegWorker:
-            zone: us-east1-b
+            zone: us-east1-c
             subnetwork: us-east1
-            machineType: g2-standard-8
-            gpuWorkerAcceleratorType: nvidia-l4
+            machineType: n1-standard-8
+            gpuWorkerAcceleratorType: nvidia-tesla-t4
 # Allowlist of public ip addresses allowing to access the services, strongly recommended.
           # firewallAllowedIPRanges:
           #     - 128.112.0.0/16
