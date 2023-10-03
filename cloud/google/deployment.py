@@ -24,6 +24,13 @@ def GenerateConfig(context):
         'value': json.dumps(clusters)
     }]
 
+    if "easysegWorker" in context.properties:
+        worker_subnetworks.add(context.properties['subnetwork'])
+        worker_metadata.append({
+            'key': 'easyseg-worker',
+            'value': context.properties['easysegWorker']
+        })
+
     manager_resource = GenerateManager(context, hostname_manager, worker_metadata)
 
     network_resource = GenerateNetworks(context, list(worker_subnetworks))

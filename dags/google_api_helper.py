@@ -360,7 +360,7 @@ def stop_instance(instance_name, zone):
 
 
 def toggle_easyseg_worker(on=False):
-    ig_conn = BaseHook.get_connection("InstanceGroups")
+    ig_conn = BaseHook.get_connection("EasysegWorker")
     deployment = ig_conn.host
     zone = ig_conn.login
     easyseg_worker = f"{deployment}-easyseg-worker"

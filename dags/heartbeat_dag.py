@@ -162,7 +162,7 @@ def shutdown_easyseg_worker():
     timestamp = datetime.now().timestamp()
     r = redis.Redis(redis_host)
 
-    ig_conn = BaseHook.get_connection("InstanceGroups")
+    ig_conn = BaseHook.get_connection("EasysegWorker")
     deployment = ig_conn.host
     instance = f"{deployment}-easyseg-worker"
     ts = r.get(instance)
