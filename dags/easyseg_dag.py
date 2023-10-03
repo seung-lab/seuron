@@ -10,7 +10,7 @@ from google_api_helper import toggle_easyseg_worker
     tags=["example"],
 )
 def easyseg_dag():
-    @task()
+    @task(queue="cluster", priority_weight=1000)
     def start_worker():
         slack_message(":exclamation:*Turn on easyseg worker*")
         toggle_easyseg_worker(on=True)
