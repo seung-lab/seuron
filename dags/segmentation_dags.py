@@ -318,6 +318,9 @@ def contact_surfaces(param):
     ('minx', np.int64),('miny', np.int64),('minz', np.int64),('maxx', np.int64),('maxy', np.int64),('maxz', np.int64)]
 
     data = np.frombuffer(content, dtype=cs_type)
+    if len(data) == 0:
+        slack_message(f":u7981:*ERROR: No contact surfaces between segments in `{param['SEG_PATH']}`")
+        return
 
     title = "Distribution of the contact sizes"
     xlabel = "Number of voxels in the contact surface"
@@ -412,6 +415,9 @@ def process_infos(param):
     prefix = "agg/info/seg_size"
     content = get_files(param, prefix)
     data = np.frombuffer(content, dtype=dt_count)
+    if len(data) == 0:
+        slack_message(f":u7981:*ERROR: Segmenting `{param['AFF_PATH']}` with current parameter produced zero segment")
+        return
     vol_data = np.copy(data['count']) * voxel_size(param)
     title = "Distribution of the segment sizes"
     xlabel = f"Size of segments (nm^3)"
