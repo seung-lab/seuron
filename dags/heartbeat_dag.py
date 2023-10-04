@@ -123,7 +123,7 @@ def delete_dead_instances():
                     delta = timestamp - float(ts)
                     if delta > 300:
                         try:
-                            creationTimestamp = datetime.fromisoformat(cluster_api.get_instance_property(ig, instance, "creationTimestamp"))
+                            creationTimestamp = datetime.fromisoformat(cluster_api.get_instance_property(ig["zone"], instance, "creationTimestamp"))
                             delta2 = timestamp - creationTimestamp.timestamp()
                         except:
                             continue
