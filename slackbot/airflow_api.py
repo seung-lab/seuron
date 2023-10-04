@@ -91,6 +91,7 @@ def check_running():
 def __run_dag(dag_id):
     dbag = DagBag()
     dbag.sync_to_db()
+    time.sleep(11)
     return trigger_dag(dag_id)
 
 
