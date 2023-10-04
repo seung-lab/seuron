@@ -11,10 +11,18 @@ def easyseg_dag():
     @task(queue="cluster", priority_weight=1000)
     def start_worker():
         from slack_message import slack_message
-        from google_api_helper import toggle_easyseg_worker
+
+        if Variable.get("vendor") == "Google":
+            import google_api_helper as cluster_api
+        else:
+            cluster_api = None
+
+        if cluster_api is None:
+            return
+
         slack_message(":exclamation:*Turn on easyseg worker*")
         try:
-            toggle_easyseg_worker(on=True)
+            cluster_api.toggle_easyseg_worker(on=True)
         except Exception:
             pass
 
