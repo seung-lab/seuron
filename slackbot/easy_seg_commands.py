@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from typing import Any
 from datetime import datetime
+import time
 
 from seuronbot import SeuronBot
 from bot_info import broker_url
@@ -129,6 +130,7 @@ def sanity_check_synaptor(json_obj, bbox_width):
                       extra_parameters=True,
                       cancelable=True)
 def run_easy_seg(msg: dict) -> None:
+    s = time.time()
     try:
         model = extract_model(msg["text"])
     except Exception as e:
@@ -193,6 +195,7 @@ def run_easy_seg(msg: dict) -> None:
     set_variable("run_metadata", run_metadata, serialize_json=True)
 
     handle_batch("inf_run", msg)
+    replyto(msg, f"Easy seg finished in {time.time()-s}s")
 
 
 def populate_parameters(
