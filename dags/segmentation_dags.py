@@ -581,14 +581,17 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
-    triggers["pp"] = TriggerDagRunOperator(
-        task_id="trigger_pp",
-        trigger_dag_id="postprocess",
-        queue="manager",
-        dag=dag_manager
-    )
-
-    wait["pp"] = wait_op(dag_manager, "pp_done")
+    if param.get("SKIP_PP", False):
+        triggers["pp"] = slack_message_op(dag_manager, "skip_pp", ":exclamation: Skip postprocess")
+        wait["pp"] = placeholder_op(dag_manager, "pp_done")
+    else:
+        triggers["pp"] = TriggerDagRunOperator(
+            task_id="trigger_pp",
+            trigger_dag_id="postprocess",
+            queue="manager",
+            dag=dag_manager
+        )
+        wait["pp"] = wait_op(dag_manager, "pp_done")
 
     mark_done["pp"] = mark_done_op(dag["pp"], "pp_done")
 
