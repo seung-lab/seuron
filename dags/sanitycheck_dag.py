@@ -79,7 +79,6 @@ def check_cv_data():
             if "AFF_MIP" in param:
                 slack_message(":exclamation:*AFF_RESOLUTION and AFF_MIP are both specified, Perfer AFF_RESOLUTION*")
             param["AFF_MIP"] = vol.mip
-            Variable.set("param", param, serialize_json=True)
 
         if "AFF_MIP" not in param:
             try:
@@ -87,7 +86,6 @@ def check_cv_data():
             except:
                 slack_message(":u7981:*ERROR: Cannot access the affinity map in* `{}`".format(param["AFF_PATH"]))
                 raise ValueError("No data")
-            Variable.set("param", param, serialize_json=True)
             slack_message("*Use affinity map at resolution {} by default*".format(param["AFF_RESOLUTION"]))
 
         try:
@@ -104,11 +102,9 @@ def check_cv_data():
         aff_bbox = vol.bounds
         if "AFF_RESOLUTION" not in param:
             param["AFF_RESOLUTION"] = vol.resolution.tolist()
-            Variable.set("param", param, serialize_json=True)
 
         if "BBOX" not in param:
             param["BBOX"] = [int(x) for x in aff_bbox.to_list()]
-            Variable.set("param", param, serialize_json=True)
             slack_message("*Segment the whole affinity map by default* {}".format(param["BBOX"]))
 
         target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
@@ -169,11 +165,9 @@ def check_cv_data():
                 param["WS_PATH"] = "N/A" if "WS_PATH" not in param else param["WS_PATH"]
             param["AFF_MIP"] = 0
             param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
-            Variable.set("param", param, serialize_json=True)
             if "BBOX" not in param:
                 seg_bbox = vol_seg.bounds
                 param["BBOX"] = [int(x) for x in seg_bbox.to_list()]
-                Variable.set("param", param, serialize_json=True)
                 slack_message("*Process the whole segmentation by default* {}".format(param["BBOX"]))
 
     else:
@@ -197,7 +191,6 @@ def check_cv_data():
 
             if "CHUNKMAP_INPUT" not in param:
                 param['CHUNKMAP_INPUT'] = ws_chunkmap_path
-                Variable.set("param", param, serialize_json=True)
                 slack_message("*Use chunkmap path derived from the watershed layer* `{}`".format(ws_chunkmap_path))
 
             if any(i != j for i, j in zip(param["BBOX"], ws_param["BBOX"])):
@@ -207,7 +200,6 @@ def check_cv_data():
 
             if "CHUNK_SIZE" not in param:
                 param["CHUNK_SIZE"] = ws_chunk_size
-                Variable.set("param", param, serialize_json=True)
                 slack_message("*Use chunk size* `{}` *to match the watershed layer*".format(ws_chunk_size))
             else:
                 if any(i != j for i, j in zip(param["CHUNK_SIZE"], ws_chunk_size)):
@@ -216,19 +208,19 @@ def check_cv_data():
 
             if "CV_CHUNK_SIZE" in ws_param and "CV_CHUNK_SIZE" not in param:
                 param["CV_CHUNK_SIZE"] = ws_param["CV_CHUNK_SIZE"]
-                Variable.set("param", param, serialize_json=True)
                 slack_message("*Use cloudvolume chunk size* `{}` *to match the watershed layer*".format(ws_param["CV_CHUNK_SIZE"]))
 
 #        else:
     if "CHUNK_SIZE" not in param:
         param["CHUNK_SIZE"] = [512,512,256]
-        Variable.set("param", param, serialize_json=True)
         slack_message(":exclamation:*Process dataset in 512x512x256 chunks by default*")
 
     cv_chunk_size = param.get("CV_CHUNK_SIZE", [256,256,64])
     if any( x%y != 0 for x, y in zip(param["CHUNK_SIZE"], cv_chunk_size) ):
         slack_message(":u7981:*ERROR: CHUNK_SIZE must be multiples of CV_CHUNK_SIZE in each dimension: {} vs {}*".format(param["CHUNK_SIZE"], cv_chunk_size))
         raise ValueError('CHUNK_SIZE must be multiples of CV_CHUNK_SIZE')
+
+    Variable.set("param", param, serialize_json=True)
 
 
 def check_worker_image_op(dag):
