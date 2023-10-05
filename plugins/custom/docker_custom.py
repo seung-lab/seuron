@@ -346,7 +346,8 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
         else:
             self.mount_point=self.DEFAULT_MOUNT_POINT,
 
-        if use_gpus:
+        have_gpus = os.environ.get("HAVE_GPUS", "False")
+        if use_gpus and have_gpus == "True":
             device_requests = [docker.types.DeviceRequest(driver="nvidia", count=-1, capabilities=[['gpu']])]
             super().__init__(device_requests=device_requests, *args, **kwargs)
         else:
