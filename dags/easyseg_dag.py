@@ -1,3 +1,4 @@
+import time
 import pendulum
 from airflow.decorators import dag, task
 
@@ -25,20 +26,35 @@ def easyseg_dag():
         if cluster_api is None:
             return
 
-        slack_message(":exclamation:*Turn on easyseg worker*")
         try:
-            cluster_api.toggle_easyseg_worker(on=True)
+            ew_conn = BaseHook.get_connection("EasysegWorker")
         except Exception:
-            pass
+            return
 
-        ig_conn = BaseHook.get_connection("EasysegWorker")
-        deployment = ig_conn.host
+        deployment = ew_conn.host
+        zone = ew_conn.zone
         instance = f"{deployment}-easyseg-worker"
 
         redis_host = os.environ['REDIS_SERVER']
         timestamp = datetime.now().timestamp()
         r = redis.Redis(redis_host)
         r.set(instance, timestamp)
+
+        slack_message(":exclamation:*Turn on easyseg worker*")
+        retries = 0
+        while True:
+            try:
+                cluster_api.toggle_easyseg_worker(on=True)
+            except Exception:
+                pass
+            time.sleep(60)
+            status = cluster_api.get_instance_property(zone, instance, "status")
+            if status == "RUNNING":
+                break
+            retries += 1
+            if retries > 5:
+                slack_message(f":u7981:*ERROR: Failed to turn on {instance} for 5 minutes")
+                break
 
     start_worker()
 
