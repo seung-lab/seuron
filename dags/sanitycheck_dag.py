@@ -439,4 +439,4 @@ summary = PythonOperator(
     queue="manager",
     dag=dag)
 
-[setup_redis_db, update_mount_secrets_op] >> image_parameters >> image_check >> path_checks >> affinity_check >> summary
+[setup_redis_db, update_mount_secrets_op] >> affinity_check >> image_parameters >> image_check >> path_checks >> summary
