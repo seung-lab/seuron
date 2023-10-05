@@ -67,6 +67,15 @@ def GenerateCeleryWorkerCommand(image, docker_env, queue, concurrency):
 def GenerateWorkers(context, hostname_manager, worker):
     env_variables = GenerateAirflowVar(context, hostname_manager)
 
+    use_gpu = worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']
+    use_hugepages = worker.get('reserveHugePages', False)
+
+    if use_gpu:
+        env_variables["HAVE_GPUS"] = "True"
+    else:
+        env_variables["HAVE_GPUS"] = "False"
+
+
     docker_env = [f'-e {k}' for k in env_variables]
 
     docker_image = worker.get('workerImage', context.properties['seuronImage'])
@@ -94,9 +103,6 @@ def GenerateWorkers(context, hostname_manager, worker):
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
     else:
         raise ValueError(f"unknown worker type: {worker['type']}")
-
-    use_gpu = worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']
-    use_hugepages = worker.get('reserveHugePages', False)
 
     startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, use_gpu=use_gpu, use_hugepages=use_hugepages)
 
