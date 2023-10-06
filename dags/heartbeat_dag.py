@@ -17,6 +17,7 @@ from airflow.operators.latest_only import LatestOnlyOperator
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
 from airflow import models
+from dags.segmentation_dags import humanize_volume
 
 from slack_message import slack_message
 
@@ -147,6 +148,7 @@ def delete_dead_instances():
 def shutdown_easyseg_worker():
     import os
     import redis
+    import humanize
     from datetime import datetime
     from airflow.models import Variable
     from airflow.hooks.base_hook import BaseHook
@@ -171,6 +173,7 @@ def shutdown_easyseg_worker():
     else:
         delta = timestamp - float(ts)
         if delta > 300:
+            slack_message(f"Shutdown easyseg worker idling for {humanize.naturaldelta(delta)}", notification=True)
             try:
                 cluster_api.toggle_easyseg_worker(on=False)
             except Exception:
