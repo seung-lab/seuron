@@ -6,10 +6,19 @@ from workers import GenerateCeleryWorkerCommand, GenerateEnvironVar, GenerateDoc
 
 
 def GenerateEasysegWorker(context, hostname_manager, hostname_easyseg_worker):
+    easyseg_param = context.properties["easysegWorker"]
+
     env_variables = GenerateAirflowVar(context, hostname_manager)
+
+    if "gpuWorkerAcceleratorType" in easyseg_param:
+        env_variables["HAVE_GPUS"] = "True"
+    else:
+        env_variables["HAVE_GPUS"] = "False"
+
 
     docker_env = [f'-e {k}' for k in env_variables]
     docker_image = context.properties['seuronImage']
+
 
     cmd = f"""
 #!/bin/bash
@@ -22,8 +31,8 @@ mkdir -p /share
 chmod 777 /share
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 {INSTALL_DOCKER_CMD}
-{INSTALL_NVIDIA_DOCKER_CMD}
-{INSTALL_GPU_MONITORING}
+{INSTALL_NVIDIA_DOCKER_CMD if "gpuWorkerAcceleratorType" in easyseg_param else ""}
+{INSTALL_GPU_MONITORING if "gpuWorkerAcceleratorType" in easyseg_param else ""}
 touch /etc/bootstrap_done
 sleep 60
 shutdown -h now
@@ -36,8 +45,6 @@ fi
     igneous_cmd = GenerateDockerCommand(docker_image, docker_env + ["--restart on-failure",]) + ' ' + "python custom/task_execution.py --queue igneous --concurrency 0 >& /dev/null"
     cmd += " & \n".join([oom_canary_cmd, chunkflow_cmd, abiss_cmd, igneous_cmd])
 
-    easyseg_param = context.properties["easysegWorker"]
-
     instance_resource = {
         'zone': easyseg_param['zone'],
         'machineType': ZonalComputeUrl(
@@ -47,15 +54,6 @@ fi
         'disks': [
                   GenerateBootDisk(diskSizeGb=100),
                   ],
-        'guestAccelerators': [
-            {
-                'acceleratorCount': 1,
-                'acceleratorType': ZonalComputeUrl(
-                      context.env['project'], easyseg_param['zone'],
-                      'acceleratorTypes', easyseg_param['gpuWorkerAcceleratorType'],
-                ),
-            }
-        ],
         "scheduling": {
             "automaticRestart": True,
             "onHostMaintenance": "TERMINATE",
@@ -86,6 +84,18 @@ fi
             ],
         }],
     }
+
+    if "gpuWorkerAcceleratorType" in easyseg_param:
+        instance_resource["guestAccelerators"] = [
+            {
+                'acceleratorCount': 1,
+                'acceleratorType': ZonalComputeUrl(
+                      context.env['project'], easyseg_param['zone'],
+                      'acceleratorTypes', easyseg_param['gpuWorkerAcceleratorType'],
+                ),
+            }
+        ]
+
 
     easyseg_worker_resource = {
         'name': hostname_easyseg_worker.split('.')[0],
