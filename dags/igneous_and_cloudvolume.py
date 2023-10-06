@@ -48,7 +48,7 @@ def check_queue(queue, agg=None, refill_threshold=0):
     import traceback
 
     broker = configuration.get('celery', 'BROKER_URL')
-    totalTries = 5
+    totalTries = 2
     nTries = totalTries
     count = 0
     with Connection(broker) as conn:
