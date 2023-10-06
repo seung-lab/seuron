@@ -32,7 +32,7 @@ def easyseg_dag():
             return
 
         deployment = ew_conn.host
-        zone = ew_conn.zone
+        zone = ew_conn.login
         instance = f"{deployment}-easyseg-worker"
 
         redis_host = os.environ['REDIS_SERVER']
