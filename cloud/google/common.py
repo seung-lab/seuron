@@ -96,19 +96,26 @@ def GenerateAirflowVar(context, hostname_manager):
     return airflow_variable
 
 
-def GenerateBootDisk(diskSizeGb):
-    ubuntu_release = 'family/ubuntu-2204-lts'
-    return {
-            'type': 'PERSISTENT',
+def GenerateBootDisk(diskSizeGb, diskType=None):
+    boot_disk = GenerateDisk(diskSizeGb=diskSizeGb, diskType=diskType)
+    boot_disk["boot"] = True
+    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2204-lts")
+    return boot_disk
+
+
+def GenerateDisk(diskSizeGb, diskType=None):
+    disk = {
+            'type': "PERSISTENT",
             'autoDelete': True,
-            'boot': True,
             'initializeParams': {
-                'sourceImage': GlobalComputeUrl(
-                    'ubuntu-os-cloud', 'images', ubuntu_release
-                    ),
                 'diskSizeGb': diskSizeGb,
             },
         }
+
+    if diskType:
+        disk["initializeParams"]["diskType"] = diskType
+
+    return disk
 
 
 def GenerateNetworkInterface(context, subnetwork, ipAddr=None):
