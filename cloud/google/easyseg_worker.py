@@ -45,6 +45,11 @@ fi
     igneous_cmd = GenerateDockerCommand(docker_image, docker_env + ["--restart on-failure",]) + ' ' + "python custom/task_execution.py --queue igneous --concurrency 0 >& /dev/null"
     cmd += " & \n".join([oom_canary_cmd, chunkflow_cmd, abiss_cmd, igneous_cmd])
 
+    diskType = ZonalComputeUrl(
+        context.env['project'],
+        easyseg_param['zone'],
+        'diskTypes', 'pd-ssd')
+
     instance_resource = {
         'zone': easyseg_param['zone'],
         'machineType': ZonalComputeUrl(
@@ -52,7 +57,7 @@ fi
                       'machineTypes', easyseg_param['machineType']
         ),
         'disks': [
-                  GenerateBootDisk(diskSizeGb=100),
+                  GenerateBootDisk(diskSizeGb=50, diskType=diskType),
                   ],
         "scheduling": {
             "automaticRestart": True,
