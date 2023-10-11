@@ -6,17 +6,19 @@ from workers import GenerateCeleryWorkerCommand, GenerateEnvironVar, GenerateDoc
 
 
 def GenerateEasysegWorker(context, hostname_manager, hostname_easyseg_worker):
-    env_variables = GenerateAirflowVar(context, hostname_manager)
-
-    docker_env = [f'-e {k}' for k in env_variables]
-    docker_image = context.properties['seuronImage']
-
     easyseg_param = context.properties["easysegWorker"]
+
+    env_variables = GenerateAirflowVar(context, hostname_manager)
 
     if "gpuWorkerAcceleratorType" in easyseg_param:
         env_variables["HAVE_GPUS"] = "True"
     else:
         env_variables["HAVE_GPUS"] = "False"
+
+
+    docker_env = [f'-e {k}' for k in env_variables]
+    docker_image = context.properties['seuronImage']
+
 
     cmd = f"""
 #!/bin/bash
