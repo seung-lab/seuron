@@ -25,7 +25,7 @@ def GenerateConfig(context):
     }]
 
     if "easysegWorker" in context.properties:
-        worker_subnetworks.add(context.properties['subnetwork'])
+        worker_subnetworks.add(context.properties['easysegWorker']['subnetwork'])
         worker_metadata.append({
             'key': 'easyseg-worker',
             'value': json.dumps(context.properties['easysegWorker'])
