@@ -77,7 +77,7 @@ if os.environ.get("VENDOR", None) == "Google":
         db_utils.merge_conn(
                 models.Connection(
                     conn_id='EasysegWorker', conn_type='http',
-                    host=deployment, login=zone, extra=json.dumps(metadata["easyseg-worker"], indent=4)))
+                    host=deployment, login=metadata["easyseg-worker"]["zone"], extra=json.dumps(metadata["easyseg-worker"], indent=4)))
 else:
     db_utils.merge_conn(
             models.Connection(
