@@ -4,6 +4,8 @@ from __future__ import annotations
 import re
 from typing import Any
 from datetime import datetime
+import time
+import humanize
 
 from seuronbot import SeuronBot
 from bot_info import broker_url
@@ -16,7 +18,7 @@ from pipeline_commands import handle_batch, supply_default_param
 
 @SeuronBot.on_message("update easy seg parameters",
                       description="Update the default parameters for easy-seg",
-                      exclusive=True,
+                      exclusive=False,
                       file_inputs=True)
 def update_easy_seg(msg: dict) -> None:
     json_obj = download_json(msg)
@@ -129,6 +131,7 @@ def sanity_check_synaptor(json_obj, bbox_width):
                       extra_parameters=True,
                       cancelable=True)
 def run_easy_seg(msg: dict) -> None:
+    s = time.time()
     try:
         model = extract_model(msg["text"])
     except Exception as e:
@@ -180,13 +183,20 @@ def run_easy_seg(msg: dict) -> None:
     replyto(msg, "Running chunkflow setup_env")
     set_variable("inference_param", inf_params, serialize_json=True)
     set_variable("easy_seg_param", [inf_params, seg_params], serialize_json=True)
+    run_dag("easyseg_dag")
     state = run_dag("chunkflow_generator", wait_for_completion=True).state
 
     if state != "success":
         replyto(msg, "chunkflow check failed")
         return
+    run_metadata = {
+            "track_resources": False,
+            "manage_clusters": False,
+    }
+    set_variable("run_metadata", run_metadata, serialize_json=True)
 
     handle_batch("inf_run", msg)
+    replyto(msg, f"*Easy seg finished in {humanize.naturaldelta(time.time()-s)}*")
 
 
 def populate_parameters(

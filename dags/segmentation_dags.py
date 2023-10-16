@@ -106,8 +106,9 @@ def generate_link(param, broadcast):
     payload = generate_ng_payload(param)
 
     if not param.get("SKIP_AGG", False):
-        seglist = Variable.get("topsegs")
-        payload["layers"]["seg"]["hiddenSegments"] = seglist.split(' ')
+        seglist = Variable.get("topsegs", default_var=None)
+        if seglist:
+            payload["layers"]["seg"]["hiddenSegments"] = seglist.split(' ')
 
     url = "<https://{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,
@@ -318,6 +319,9 @@ def contact_surfaces(param):
     ('minx', np.int64),('miny', np.int64),('minz', np.int64),('maxx', np.int64),('maxy', np.int64),('maxz', np.int64)]
 
     data = np.frombuffer(content, dtype=cs_type)
+    if len(data) == 0:
+        slack_message(f":u7981:*ERROR: No contact surfaces between segments in `{param['SEG_PATH']}`")
+        return
 
     title = "Distribution of the contact sizes"
     xlabel = "Number of voxels in the contact surface"
@@ -412,6 +416,9 @@ def process_infos(param):
     prefix = "agg/info/seg_size"
     content = get_files(param, prefix)
     data = np.frombuffer(content, dtype=dt_count)
+    if len(data) == 0:
+        slack_message(f":u7981:*ERROR: Segmenting `{param['AFF_PATH']}` with current parameter produced zero segment")
+        return
     vol_data = np.copy(data['count']) * voxel_size(param)
     title = "Distribution of the segment sizes"
     xlabel = f"Size of segments (nm^3)"
@@ -575,14 +582,17 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     mark_done["agg"] = mark_done_op(dag["agg"], "agg_done")
 
-    triggers["pp"] = TriggerDagRunOperator(
-        task_id="trigger_pp",
-        trigger_dag_id="postprocess",
-        queue="manager",
-        dag=dag_manager
-    )
-
-    wait["pp"] = wait_op(dag_manager, "pp_done")
+    if param.get("SKIP_PP", False):
+        triggers["pp"] = slack_message_op(dag_manager, "skip_pp", ":exclamation: Skip postprocess")
+        wait["pp"] = placeholder_op(dag_manager, "pp_done")
+    else:
+        triggers["pp"] = TriggerDagRunOperator(
+            task_id="trigger_pp",
+            trigger_dag_id="postprocess",
+            queue="manager",
+            dag=dag_manager
+        )
+        wait["pp"] = wait_op(dag_manager, "pp_done")
 
     mark_done["pp"] = mark_done_op(dag["pp"], "pp_done")
 

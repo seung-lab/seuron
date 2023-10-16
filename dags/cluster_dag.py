@@ -74,6 +74,10 @@ def cluster_control():
     if cluster_api is None:
         return
 
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    if not run_metadata.get("manage_clusters", True):
+        return
+
     try:
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)

@@ -44,7 +44,7 @@ systemctl daemon-reload
 systemctl --no-reload --now enable /lib/systemd/system/google_gpu_monitoring_agent_venv.service
 '''
 
-DOCKER_CMD = 'docker run -v /var/run/docker.sock:/var/run/docker.sock -v /share:/share -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'
+DOCKER_CMD = 'docker run --pull always -v /var/run/docker.sock:/var/run/docker.sock -v /share:/share -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'
 
 CELERY_CMD = 'airflow celery worker --without-gossip --without-mingle -c %(concurrency)s -q %(queue)s'
 
@@ -96,19 +96,26 @@ def GenerateAirflowVar(context, hostname_manager):
     return airflow_variable
 
 
-def GenerateBootDisk(diskSizeGb):
-    ubuntu_release = 'family/ubuntu-2204-lts'
-    return {
-            'type': 'PERSISTENT',
+def GenerateBootDisk(diskSizeGb, diskType=None):
+    boot_disk = GenerateDisk(diskSizeGb=diskSizeGb, diskType=diskType)
+    boot_disk["boot"] = True
+    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2204-lts")
+    return boot_disk
+
+
+def GenerateDisk(diskSizeGb, diskType=None):
+    disk = {
+            'type': "PERSISTENT",
             'autoDelete': True,
-            'boot': True,
             'initializeParams': {
-                'sourceImage': GlobalComputeUrl(
-                    'ubuntu-os-cloud', 'images', ubuntu_release
-                    ),
                 'diskSizeGb': diskSizeGb,
             },
         }
+
+    if diskType:
+        disk["initializeParams"]["diskType"] = diskType
+
+    return disk
 
 
 def GenerateNetworkInterface(context, subnetwork, ipAddr=None):

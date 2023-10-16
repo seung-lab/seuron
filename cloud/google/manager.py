@@ -112,12 +112,17 @@ def GenerateManager(context, hostname_manager, worker_metadata):
 
     startup_script = GenerateManagerStartupScript(context, hostname_manager)
 
+    diskType = ZonalComputeUrl(
+        context.env['project'],
+        context.properties['zone'],
+        'diskTypes', 'pd-ssd')
+
     instance_resource= {
         'zone': context.properties['zone'],
         'machineType': ZonalComputeUrl(
                       context.env['project'], context.properties['zone'], 'machineTypes', context.properties['managerMachineType']
         ),
-        'disks': [GenerateBootDisk(diskSizeGb=100)],
+        'disks': [GenerateBootDisk(diskSizeGb=50, diskType=diskType)],
         'labels': {
             'vmrole': 'manager',
             'location': context.properties['zone'],

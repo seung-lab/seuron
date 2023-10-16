@@ -8,12 +8,13 @@ import requests
 import json
 from collections import defaultdict
 
-def get_clusters():
+def parse_metadata():
     project_id = get_project_data("project-id")
     vm_name = get_instance_data("name")
     vm_zone = get_instance_data("zone").split('/')[-1]
     data = get_instance_metadata(project_id, vm_zone, vm_name)
     instance_groups = defaultdict(list)
+    metadata = {}
     for item in data['items']:
         if item['key'] == "cluster-info":
             clusters = json.loads(item['value'])
@@ -28,8 +29,14 @@ def get_clusters():
                 else:
                     worker_setting['concurrency'] = c.get('concurrency', 1)
                 instance_groups[c['type']].append(worker_setting)
+        elif item["key"] == "easyseg-worker":
+            worker = json.loads(item["value"])
+            metadata["easyseg-worker"] = {
+                    'zone': worker['zone'],
+            }
 
-    return instance_groups
+        metadata['cluster-info'] = instance_groups
+    return metadata
 
 
 
@@ -56,6 +63,7 @@ db_utils.merge_conn(
 if os.environ.get("VENDOR", None) == "Google":
     deployment = os.environ.get("DEPLOYMENT", None)
     zone = os.environ.get("ZONE", None)
+    metadata = parse_metadata()
     db_utils.merge_conn(
             models.Connection(
                 conn_id='GCSConn', conn_type='google_cloud_platform',
@@ -64,7 +72,12 @@ if os.environ.get("VENDOR", None) == "Google":
     db_utils.merge_conn(
             models.Connection(
                 conn_id='InstanceGroups', conn_type='http',
-                host=deployment, login=zone, extra=json.dumps(get_clusters(), indent=4)))
+                host=deployment, login=zone, extra=json.dumps(metadata["cluster-info"], indent=4)))
+    if "easyseg-worker" in metadata:
+        db_utils.merge_conn(
+                models.Connection(
+                    conn_id='EasysegWorker', conn_type='http',
+                    host=deployment, login=metadata["easyseg-worker"]["zone"], extra=json.dumps(metadata["easyseg-worker"], indent=4)))
 else:
     db_utils.merge_conn(
             models.Connection(

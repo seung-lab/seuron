@@ -17,6 +17,7 @@ from airflow.operators.latest_only import LatestOnlyOperator
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
 from airflow import models
+from dags.segmentation_dags import humanize_volume
 
 from slack_message import slack_message
 
@@ -123,7 +124,7 @@ def delete_dead_instances():
                     delta = timestamp - float(ts)
                     if delta > 300:
                         try:
-                            creationTimestamp = datetime.fromisoformat(cluster_api.get_instance_property(ig, instance, "creationTimestamp"))
+                            creationTimestamp = datetime.fromisoformat(cluster_api.get_instance_property(ig["zone"], instance, "creationTimestamp"))
                             delta2 = timestamp - creationTimestamp.timestamp()
                         except:
                             continue
@@ -142,6 +143,46 @@ def delete_dead_instances():
         if not cluster_alive:
             slack_message(f"All instances in {key} are dead, add one instance back", notification=True)
             cluster_api.ramp_up_cluster(key, 1, 1)
+
+
+def shutdown_easyseg_worker():
+    import os
+    import redis
+    import humanize
+    from datetime import datetime
+    from airflow.models import Variable
+    from airflow.hooks.base_hook import BaseHook
+    if Variable.get("vendor") == "Google":
+        import google_api_helper as cluster_api
+    else:
+        cluster_api = None
+
+    if cluster_api is None:
+        return
+
+    redis_host = os.environ['REDIS_SERVER']
+    timestamp = datetime.now().timestamp()
+    r = redis.Redis(redis_host)
+
+    ig_conn = BaseHook.get_connection("EasysegWorker")
+    deployment = ig_conn.host
+    zone = ig_conn.login
+    instance = f"{deployment}-easyseg-worker"
+    status = cluster_api.get_instance_property(zone, instance, "status")
+    if status != "RUNNING":
+        return
+
+    ts = r.get(instance)
+    if not ts:
+        r.set(instance, timestamp)
+    else:
+        delta = timestamp - float(ts)
+        if delta > 300:
+            slack_message(f"Shutdown easyseg worker idling for {humanize.naturaldelta(delta)}", notification=True)
+            try:
+                cluster_api.toggle_easyseg_worker(on=False)
+            except Exception:
+                pass
 
 
 latest = LatestOnlyOperator(
@@ -164,4 +205,11 @@ delete_dead_instances_task = PythonOperator(
     queue="cluster",
     dag=dag)
 
-latest >> queue_sizes_task >> delete_dead_instances_task
+shutdown_easyseg_worker_task = PythonOperator(
+    task_id="shutdown_easyseg_worker",
+    python_callable=shutdown_easyseg_worker,
+    priority_weight=1000,
+    queue="cluster",
+    dag=dag)
+
+latest >> queue_sizes_task >> delete_dead_instances_task >> shutdown_easyseg_worker_task

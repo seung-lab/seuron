@@ -41,10 +41,10 @@ def list_managed_instances(instance_group):
 
     return instances
 
-def get_instance_property(instance_group, instance, key):
+def get_instance_property(instance_zone, instance, key):
     project_id = get_project_id()
     service = discovery.build("compute", "v1")
-    request = service.instances().get(project=project_id, zone=instance_group['zone'], instance=instance)
+    request = service.instances().get(project=project_id, zone=instance_zone, instance=instance)
     ret = request.execute()
     return ret[key]
 
@@ -74,6 +74,9 @@ def get_cluster_size(project_id, instance_groups):
     return total_size
 
 def reset_cluster(key, initial_size):
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    if not run_metadata.get("manage_clusters", True):
+        return
     try:
         project_id = get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
@@ -145,6 +148,9 @@ def resize_instance_group(instance_group, size):
 
 
 def ramp_up_cluster(key, initial_size, total_size):
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    if not run_metadata.get("manage_clusters", True):
+        return
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         target_sizes[key] = total_size
@@ -156,6 +162,9 @@ def ramp_up_cluster(key, initial_size, total_size):
 
 
 def ramp_down_cluster(key, total_size):
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    if not run_metadata.get("manage_clusters", True):
+        return
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
         target_sizes[key] = total_size
@@ -335,3 +344,36 @@ def collect_resource_metrics(start_time, end_time):
 
 
     return resources
+
+
+def start_instance(instance_name, zone):
+    service = discovery.build('compute', 'v1')
+    request = service.instances().start(
+        project=get_project_id(),
+        zone=zone,
+        instance=instance_name
+    )
+    response = request.execute()
+    return response
+
+
+def stop_instance(instance_name, zone):
+    service = discovery.build('compute', 'v1')
+    request = service.instances().stop(
+        project=get_project_id(),
+        zone=zone,
+        instance=instance_name
+    )
+    response = request.execute()
+    return response
+
+
+def toggle_easyseg_worker(on=False):
+    ig_conn = BaseHook.get_connection("EasysegWorker")
+    deployment = ig_conn.host
+    zone = ig_conn.login
+    easyseg_worker = f"{deployment}-easyseg-worker"
+    if on:
+        start_instance(easyseg_worker, zone)
+    else:
+        stop_instance(easyseg_worker, zone)

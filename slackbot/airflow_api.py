@@ -89,8 +89,6 @@ def check_running():
 
 
 def __run_dag(dag_id):
-    dbag = DagBag()
-    dbag.sync_to_db()
     return trigger_dag(dag_id)
 
 
@@ -98,12 +96,18 @@ def run_dag(dag_id, wait_for_completion=False):
     dagrun = run_in_executor(__run_dag, dag_id)
     if wait_for_completion:
         while True:
-            time.sleep(60)
+            time.sleep(5)
             dagrun.refresh_from_db()
             state = dagrun.state
             print(f"waiting for dag {dagrun.dag_id}, {dagrun.run_id} state : {state}")
             if state == DagRunState.SUCCESS or state == DagRunState.FAILED:
-                break
+                ntasks = len(dagrun.get_task_instances(state=State.task_states))
+                print(dagrun.start_date, dagrun.end_date, ntasks)
+                if state == DagRunState.SUCCESS and ntasks == 0:
+                    print("0 task in the dagrun, retrigger")
+                    dagrun = run_in_executor(__run_dag, dag_id)
+                else:
+                    break
     return dagrun
 
 
