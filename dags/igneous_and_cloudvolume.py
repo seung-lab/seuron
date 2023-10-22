@@ -559,6 +559,7 @@ def merge_mesh_fragments(run_name, seg_cloudpath, concurrency, frag_path=None):
     tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath,
                                                   num_lod=8,
                                                   frag_path=frag_path,
+                                                  cache=True,
                                                   max_labels_per_shard=10000)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
@@ -671,6 +672,7 @@ def merge_skeleton_fragments(run_name, seg_cloudpath, frag_path=None):
                 tick_threshold=3500,
                 minishard_index_encoding='gzip', # or None
                 frag_path=frag_path,
+                cache=True,
                 data_encoding='gzip', # or None
                 max_labels_per_shard=10000,
             )
