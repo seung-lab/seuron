@@ -3,6 +3,7 @@ from airflow.utils.weight_rule import WeightRule
 from slack_message import task_retry_alert
 from igneous_and_cloudvolume import downsample, downsample_for_meshing, mesh, mesh_manifest, merge_mesh_fragments, create_skeleton_fragments, merge_skeleton_fragments
 from helper_ops import placeholder_op
+from dag_utils import get_connection
 
 def create_igneous_ops(param, dag):
     import os
@@ -10,6 +11,11 @@ def create_igneous_ops(param, dag):
     ws_cloudpath = param["WS_PATH"]
     ops = [placeholder_op(dag, "start_igneous_tasks")]
     run_name = f'{param["NAME"]}.segmentation'
+
+    if get_connection("NFSServer"):
+        nfs_kwargs = {"frag_path": f"file:///share/{run_name}"}
+    else:
+        nfs_kwargs = {"frag_path": None}
 
     if not param.get("SKIP_DOWNSAMPLE", False):
         if not param.get("SKIP_MESHING", False):
@@ -30,6 +36,7 @@ def create_igneous_ops(param, dag):
             task_id="mesh",
             python_callable=mesh,
             op_args = [run_name, seg_cloudpath, param.get("MESH_QUALITY", "NORMAL"), param.get("SHARDED_MESH", True), ],
+            op_kwargs=nfs_kwargs,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
             queue="manager",
@@ -44,6 +51,7 @@ def create_igneous_ops(param, dag):
                 task_id="merge_mesh_fragments",
                 python_callable=merge_mesh_fragments,
                 op_args = [run_name, seg_cloudpath, param.get("SHARDED_MESH_WORKER_CONCURRENCY", None)],
+                op_kwargs=nfs_kwargs,
                 on_retry_callback=task_retry_alert,
                 weight_rule=WeightRule.ABSOLUTE,
                 queue="manager",
@@ -54,6 +62,7 @@ def create_igneous_ops(param, dag):
                 task_id="mesh_manifest",
                 python_callable=mesh_manifest,
                 op_args = [run_name, seg_cloudpath, param["BBOX"], param["CHUNK_SIZE"], ],
+                op_kwargs=nfs_kwargs,
                 on_retry_callback=task_retry_alert,
                 weight_rule=WeightRule.ABSOLUTE,
                 queue="manager",
@@ -86,6 +95,7 @@ def create_igneous_ops(param, dag):
             task_id="skeleton_fragment",
             python_callable=create_skeleton_fragments,
             op_args = [run_name, seg_cloudpath, param.get("TEASAR_PARAMS", {'scale':10, 'const': 10}), ],
+            op_kwargs=nfs_kwargs,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
             queue="manager",
@@ -99,6 +109,7 @@ def create_igneous_ops(param, dag):
             task_id="merge_skeleton",
             python_callable=merge_skeleton_fragments,
             op_args = [run_name, seg_cloudpath, ],
+            op_kwargs=nfs_kwargs,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
             queue="manager",

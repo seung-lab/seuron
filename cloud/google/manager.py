@@ -60,7 +60,7 @@ def GenerateEnvironVar(context, hostname_manager):
     return "\n".join([export_variables, save_variables])
 
 
-def GenerateManagerStartupScript(context, hostname_manager):
+def GenerateManagerStartupScript(context, hostname_manager, hostname_nfs_server):
     startup_script = f'''
 #!/bin/bash
 set -e
@@ -70,6 +70,9 @@ set -e
 if [ ! -f "/etc/bootstrap_done" ]; then
 
 {INSTALL_DOCKER_CMD}
+
+mkdir -p /share
+apt-get install nfs-common -y
 
 systemctl enable cron.service
 systemctl start cron.service
@@ -83,8 +86,13 @@ echo "[rabbitmq_management,rabbitmq_prometheus]." > /enabled_plugins
 
 touch /etc/bootstrap_done
 
-fi
+fi'''
 
+    if hostname_nfs_server:
+        startup_script+=f'''
+until mount {hostname_nfs_server}:/share /share; do sleep 60; done'''
+
+    startup_script +=f'''
 docker stack deploy --with-registry-auth -c compose.yml {context.env["deployment"]}
 
 iptables -I INPUT -p tcp --dport 6379 -j DROP
@@ -107,10 +115,10 @@ done
     return startup_script
 
 
-def GenerateManager(context, hostname_manager, worker_metadata):
+def GenerateManager(context, hostname_manager, hostname_nfs_server, worker_metadata):
     """Generate configuration."""
 
-    startup_script = GenerateManagerStartupScript(context, hostname_manager)
+    startup_script = GenerateManagerStartupScript(context, hostname_manager, hostname_nfs_server)
 
     diskType = ZonalComputeUrl(
         context.env['project'],

@@ -22,7 +22,7 @@ def GenerateEnvironVar(context, env_variables):
     return "\n".join([export_variables, save_variables])
 
 
-def GenerateWorkerStartupScript(context, env_variables, cmd, use_gpu=False, use_hugepages=False):
+def GenerateWorkerStartupScript(context, hostname_nfs_server, env_variables, cmd, use_gpu=False, use_hugepages=False, use_shared_volume=False):
     startup_script = f'''
 #!/bin/bash
 set -e
@@ -33,6 +33,11 @@ DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -
 {INSTALL_DOCKER_CMD}
 mkdir -p /share
 chmod 777 /share
+'''
+    if use_shared_volume and hostname_nfs_server != None:
+        startup_script += f'''
+apt-get install nfs-common -y
+until mount -o nfsvers=4.2,rsize=262144,wsize=1048576,async {hostname_nfs_server}:/share /share; do sleep 60; done
 '''
 
     if use_hugepages:
@@ -64,11 +69,12 @@ def GenerateCeleryWorkerCommand(image, docker_env, queue, concurrency):
     }
 
 
-def GenerateWorkers(context, hostname_manager, worker):
+def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
     env_variables = GenerateAirflowVar(context, hostname_manager)
 
     use_gpu = worker['type'] in GPU_TYPES and worker['gpuWorkerAcceleratorType']
     use_hugepages = worker.get('reserveHugePages', False)
+    use_shared_volume = worker['type'] == 'igneous' and hostname_nfs_server != None
 
     if use_gpu:
         env_variables["HAVE_GPUS"] = "True"
@@ -104,7 +110,7 @@ def GenerateWorkers(context, hostname_manager, worker):
     else:
         raise ValueError(f"unknown worker type: {worker['type']}")
 
-    startup_script = GenerateWorkerStartupScript(context, env_variables, oom_canary_cmd + "& \n" + cmd, use_gpu=use_gpu, use_hugepages=use_hugepages)
+    startup_script = GenerateWorkerStartupScript(context, hostname_nfs_server, env_variables, oom_canary_cmd + "& \n" + cmd, use_gpu=use_gpu, use_hugepages=use_hugepages, use_shared_volume=use_shared_volume)
 
     provisioning_model = 'SPOT' if worker.get('preemptible', False) else 'STANDARD'
 

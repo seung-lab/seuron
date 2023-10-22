@@ -200,3 +200,19 @@ def collect_metrics_op(dag):
         dag=dag,
         queue="manager"
     )
+
+
+def toggle_nfs_server_op(dag, on=False):
+    if cluster_api:
+        return PythonOperator(
+            task_id=f'toggle_nfs_server_{"on" if on else "off"}',
+            python_callable=cluster_api.toggle_nfs_server,
+            op_kwargs={"on": on},
+            default_args=default_args,
+            weight_rule=WeightRule.ABSOLUTE,
+            priority_weight=1000,
+            queue='manager',
+            dag=dag
+        )
+    else:
+        return placeholder_op(dag, f'dummy_toggle_nfs_server_{"on" if on else "off"}')
