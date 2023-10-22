@@ -49,3 +49,14 @@ def estimate_worker_instances(tasks, cluster_info):
         return 1
 
     return workers
+
+
+def get_connection(conn, default_var=None):
+    from airflow.hooks.base_hook import BaseHook
+    from airflow.exceptions import AirflowNotFoundException
+    try:
+        ig_conn = BaseHook.get_connection(conn)
+    except AirflowNotFoundException:
+        return default_var
+
+    return ig_conn

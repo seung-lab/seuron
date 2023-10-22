@@ -369,7 +369,10 @@ def stop_instance(instance_name, zone):
 
 
 def toggle_easyseg_worker(on=False):
-    ig_conn = BaseHook.get_connection("EasysegWorker")
+    from dag_utils import get_connection
+    ig_conn = get_connection("EasysegWorker")
+    if not ig_conn:
+        return
     deployment = ig_conn.host
     zone = ig_conn.login
     easyseg_worker = f"{deployment}-easyseg-worker"
