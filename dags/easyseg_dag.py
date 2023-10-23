@@ -15,8 +15,8 @@ def easyseg_dag():
         import redis
         from datetime import datetime
         from slack_message import slack_message
+        from dag_utils import get_connection
         from airflow.models import Variable
-        from airflow.hooks.base_hook import BaseHook
 
         if Variable.get("vendor") == "Google":
             import google_api_helper as cluster_api
@@ -26,9 +26,8 @@ def easyseg_dag():
         if cluster_api is None:
             return
 
-        try:
-            ew_conn = BaseHook.get_connection("EasysegWorker")
-        except Exception:
+        ew_conn = get_connection("EasysegWorker")
+        if not ew_conn:
             return
 
         deployment = ew_conn.host

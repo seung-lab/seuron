@@ -34,6 +34,11 @@ def parse_metadata():
             metadata["easyseg-worker"] = {
                     'zone': worker['zone'],
             }
+        elif item["key"] == "nfs-server":
+            worker = json.loads(item["value"])
+            metadata["nfs-server"] = {
+                    'zone': worker['zone'],
+            }
 
         metadata['cluster-info'] = instance_groups
     return metadata
@@ -78,6 +83,11 @@ if os.environ.get("VENDOR", None) == "Google":
                 models.Connection(
                     conn_id='EasysegWorker', conn_type='http',
                     host=deployment, login=metadata["easyseg-worker"]["zone"], extra=json.dumps(metadata["easyseg-worker"], indent=4)))
+    if "nfs-server" in metadata:
+        db_utils.merge_conn(
+                models.Connection(
+                    conn_id='NFSServer', conn_type='http',
+                    host=deployment, login=metadata["nfs-server"]["zone"], extra=json.dumps(metadata["nfs-server"], indent=4)))
 else:
     db_utils.merge_conn(
             models.Connection(

@@ -509,7 +509,7 @@ def downsample(run_name, cloudpaths):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8)
-def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
+def mesh(run_name, seg_cloudpath, mesh_quality, sharded, frag_path=None):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
     from cloudvolume import CloudVolume
@@ -538,6 +538,7 @@ def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
                                     mip=mesh_mip,
                                     simplification=simplification,
                                     max_simplification_error=max_simplification_error,
+                                    frag_path=frag_path,
                                     cdn_cache=False,
                                     fill_missing=False,
                                     encoding='precomputed',
@@ -552,11 +553,13 @@ def mesh(run_name, seg_cloudpath, mesh_quality, sharded):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8)
-def merge_mesh_fragments(run_name, seg_cloudpath, concurrency=None):
+def merge_mesh_fragments(run_name, seg_cloudpath, concurrency, frag_path=None):
     import igneous.task_creation as tc
     from slack_message import slack_message
     tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath,
                                                   num_lod=8,
+                                                  frag_path=frag_path,
+                                                  cache=True,
                                                   max_labels_per_shard=10000)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
 
@@ -632,7 +635,7 @@ def mesh_manifest(run_name, seg_cloudpath, bbox, chunk_size):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8)
-def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param):
+def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param, frag_path=None):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
     from slack_message import slack_message
@@ -645,6 +648,7 @@ def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param):
                 fill_missing=True, # Use zeros if part of the image is missing instead of raising an error
                 # see Kimimaro's documentation for the below parameters
                 teasar_params=teasar_param,
+                frag_path=frag_path,
                 object_ids=None, # Only skeletonize these ids
                 mask_ids=None, # Mask out these ids
                 fix_branching=True, # (True) higher quality branches at speed cost
@@ -660,13 +664,15 @@ def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4)
-def merge_skeleton_fragments(run_name, seg_cloudpath):
+def merge_skeleton_fragments(run_name, seg_cloudpath, frag_path=None):
     import igneous.task_creation as tc
     from slack_message import slack_message
     tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
                 dust_threshold=1000,
                 tick_threshold=3500,
                 minishard_index_encoding='gzip', # or None
+                frag_path=frag_path,
+                cache=True,
                 data_encoding='gzip', # or None
                 max_labels_per_shard=10000,
             )

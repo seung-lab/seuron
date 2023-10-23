@@ -151,7 +151,7 @@ def shutdown_easyseg_worker():
     import humanize
     from datetime import datetime
     from airflow.models import Variable
-    from airflow.hooks.base_hook import BaseHook
+    from dag_utils import get_connection
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api
     else:
@@ -164,7 +164,11 @@ def shutdown_easyseg_worker():
     timestamp = datetime.now().timestamp()
     r = redis.Redis(redis_host)
 
-    ig_conn = BaseHook.get_connection("EasysegWorker")
+    ig_conn = get_connection("EasysegWorker")
+
+    if not ig_conn:
+        return
+
     deployment = ig_conn.host
     zone = ig_conn.login
     instance = f"{deployment}-easyseg-worker"

@@ -369,7 +369,10 @@ def stop_instance(instance_name, zone):
 
 
 def toggle_easyseg_worker(on=False):
-    ig_conn = BaseHook.get_connection("EasysegWorker")
+    from dag_utils import get_connection
+    ig_conn = get_connection("EasysegWorker")
+    if not ig_conn:
+        return
     deployment = ig_conn.host
     zone = ig_conn.login
     easyseg_worker = f"{deployment}-easyseg-worker"
@@ -377,3 +380,17 @@ def toggle_easyseg_worker(on=False):
         start_instance(easyseg_worker, zone)
     else:
         stop_instance(easyseg_worker, zone)
+
+
+def toggle_nfs_server(on=False):
+    from dag_utils import get_connection
+    nfs_conn = get_connection("NFSServer")
+    if not nfs_conn:
+        return
+    deployment = nfs_conn.host
+    zone = nfs_conn.login
+    nfs_server = f"{deployment}-nfs-server"
+    if on:
+        start_instance(nfs_server, zone)
+    else:
+        stop_instance(nfs_server, zone)
