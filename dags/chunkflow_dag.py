@@ -414,7 +414,7 @@ def process_output(**kwargs):
     Variable.set("inference_param", param, serialize_json=True)
 
     gcs_buckets = set()
-    for path in [param["IMAGE_PATH"], param["OUTPUT_PATH"], param.get("IMAGE_MASK_PATH", None), param.get("OUTPUT_MASK_MIP", None)]:
+    for path in [param["IMAGE_PATH"], param["OUTPUT_PATH"], param.get("IMAGE_MASK_PATH", None), param.get("OUTPUT_MASK_PATH", None)]:
         if path:
             components = extract(path)
             if components.protocol == "gs":
