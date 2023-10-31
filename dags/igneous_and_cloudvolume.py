@@ -21,7 +21,6 @@ def process_worker_messages(ret_queue, agg):
 def process_worker_errors(err_queue):
     from slack_message import slack_message
     from kombu.simple import SimpleQueue
-    import json
     import base64
     err_msg = None
     msg_count = 0
@@ -334,7 +333,6 @@ def check_cloud_paths_empty(paths):
 @mount_secrets
 def commit_info(path, info, provenance):
     from cloudvolume import CloudVolume
-    from slack_message import slack_userinfo
     vol = CloudVolume(path, mip=0, info=info)
     vol.provenance.processing.append(provenance)
 

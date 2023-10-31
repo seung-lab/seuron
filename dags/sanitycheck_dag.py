@@ -11,7 +11,7 @@ from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_sca
 import os
 
 from chunkiterator import ChunkIterator
-from helper_ops import slack_message_op, placeholder_op, setup_redis_op
+from helper_ops import slack_message_op, setup_redis_op
 from slack_message import slack_message, task_failure_alert
 
 param = Variable.get("param", deserialize_json=True)
