@@ -496,7 +496,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     init["ws"] = PythonOperator(
         task_id = "Init_Watershed",
         python_callable=create_info,
-        op_args = ["ws", param, top_mip],
+        op_args=["ws", param, top_mip],
         default_args=default_args,
         on_success_callback=task_start_alert,
         on_retry_callback=task_retry_alert,
@@ -510,7 +510,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     init["agg"] = PythonOperator(
         task_id = "Init_Agglomeration",
         python_callable=create_info,
-        op_args = ["agg", param, top_mip],
+        op_args=["agg", param, top_mip],
         default_args=default_args,
         on_success_callback=task_start_alert,
         on_retry_callback=task_retry_alert,
@@ -710,7 +710,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         task_id = "Generate_neuroglancer_link",
         provide_context=True,
         python_callable=generate_link,
-        op_args = [param, True],
+        op_args=[param, True],
         default_args=default_args,
         dag=dag_manager,
         queue = "manager"
@@ -722,7 +722,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             task_id = "Evaluate_Segmentation",
             provide_context=True,
             python_callable=evaluate_results,
-            op_args = [param,],
+            op_args=[param,],
             default_args=default_args,
             dag=dag_manager,
             queue = "manager"

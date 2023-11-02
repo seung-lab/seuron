@@ -449,7 +449,7 @@ dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interva
 image_parameters = PythonOperator(
     task_id="setup_image_parameters",
     python_callable=check_worker_image_labels,
-    op_args = ("inference_param",),
+    op_args=("inference_param",),
     on_failure_callback=task_failure_alert,
     weight_rule=WeightRule.ABSOLUTE,
     queue="manager",

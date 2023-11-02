@@ -81,8 +81,8 @@ def check_queue(queue, agg=None, refill_threshold=0):
                 return
 
 def chunk_tasks(tasks, chunk_size):
-     for i in range(0, len(tasks), chunk_size):
-         yield tasks[i:i + chunk_size]
+    for i in range(0, len(tasks), chunk_size):
+        yield tasks[i:i + chunk_size]
 
 def tasks_with_metadata(metadata, tasks):
     return {
@@ -96,7 +96,7 @@ def mount_secrets(func):
         import os
         from airflow.models import Variable
         from slack_message import slack_message
-        cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+        cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
         secrets_lock = os.path.join(cv_secrets_path, ".secrets_mounted")
         if os.path.exists(secrets_lock):
             slack_message(f"secrets already mounted, skip")
