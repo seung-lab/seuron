@@ -120,4 +120,3 @@ def create_igneous_ops(param, dag):
         ops.append(current_op)
 
     return ops
-

@@ -755,4 +755,3 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         for stage in ["ws", "agg"]:
             scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
             scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
-
