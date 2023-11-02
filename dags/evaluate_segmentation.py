@@ -10,17 +10,17 @@ def read_chunks(f, s_i, t_j, p_ji):
         else:
             return
 
-        for i in range(count):
+        for _ in range(count):
             seg, vx = unpack_seg(f.read(16))
             s_i[int(seg)] += vx
 
         count, = unpack_count(f.read(8))
-        for i in range(count):
+        for _ in range(count):
             seg, vx = unpack_seg(f.read(16))
             t_j[int(seg)] += vx
 
         count, = unpack_count(f.read(8))
-        for i in range(count):
+        for _ in range(count):
             s1, s2, vx = unpack_seg_pair(f.read(24))
             p_ji[int(s1)][int(s2)] += vx
 
