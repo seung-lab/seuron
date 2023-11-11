@@ -1,6 +1,5 @@
 from googleapiclient import discovery
 import requests
-import json
 
 def get_project_data(key):
     apiurl = f"http://metadata/computeMetadata/v1/project/{key}"

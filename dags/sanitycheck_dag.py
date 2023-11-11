@@ -11,7 +11,7 @@ from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_sca
 import os
 
 from chunkiterator import ChunkIterator
-from helper_ops import slack_message_op, placeholder_op, setup_redis_op
+from helper_ops import slack_message_op, setup_redis_op
 from slack_message import slack_message, task_failure_alert
 
 param = Variable.get("param", deserialize_json=True)
@@ -400,7 +400,7 @@ for p in [("WS","WS"), ("AGG","SEG")]:
 path_checks = PythonOperator(
     task_id='check_paths',
     python_callable=check_cloud_paths_empty,
-    op_args = (paths_to_check,),
+    op_args=(paths_to_check,),
     weight_rule=WeightRule.ABSOLUTE,
     queue="manager",
     dag=dag
@@ -411,7 +411,7 @@ setup_redis_db = setup_redis_op(dag, "param", "ABISS")
 image_parameters = PythonOperator(
     task_id="setup_image_parameters",
     python_callable=check_worker_image_labels,
-    op_args = ("param",),
+    op_args=("param",),
     on_failure_callback=task_failure_alert,
     queue="manager",
     dag=dag)

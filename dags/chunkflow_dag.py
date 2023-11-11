@@ -10,7 +10,7 @@ from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
-from helper_ops import placeholder_op, slack_message_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
+from helper_ops import placeholder_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
 
 from dag_utils import estimate_worker_instances
 
@@ -387,19 +387,19 @@ def process_output(**kwargs):
     output = ti.xcom_pull(task_ids="setup_env")
     for l in output:
         if l.startswith("patch number:"):
-            m = re.search("\((\d+),\s*(\d+),\s*(\d+)\)", l)
+            m = re.search(r"\((\d+),\s*(\d+),\s*(\d+)\)", l)
             patch_number = list(m.group(1,2,3))
             param["PATCH_NUM"] = " ".join(patch_number)
             slack_message("Suggested patch number: [{}]".format(",".join(patch_number[::-1])))
 
         if l.startswith("cutout expand margin size:"):
-            m = re.search("\((\d+),\s*(\d+),\s*(\d+)\)", l)
+            m = re.search(r"\((\d+),\s*(\d+),\s*(\d+)\)", l)
             expand_margin_size = list(m.group(1,2,3))
             param["EXPAND_MARGIN_SIZE"] = " ".join(expand_margin_size)
             slack_message("Suggested expand margin size: [{}]".format(",".join(expand_margin_size[::-1])))
 
         if l.startswith("total number of tasks:"):
-            m = re.search("\d+", l)
+            m = re.search(r"\d+", l)
             task_number = int(m.group(0))
             param["TASK_NUM"] = task_number
 
@@ -449,7 +449,7 @@ dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interva
 image_parameters = PythonOperator(
     task_id="setup_image_parameters",
     python_callable=check_worker_image_labels,
-    op_args = ("inference_param",),
+    op_args=("inference_param",),
     on_failure_callback=task_failure_alert,
     weight_rule=WeightRule.ABSOLUTE,
     queue="manager",

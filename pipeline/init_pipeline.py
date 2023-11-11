@@ -4,7 +4,6 @@ from airflow import models
 from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 from param_default import param_default, inference_param_default, synaptor_param_default
 import os
-import requests
 import json
 from collections import defaultdict
 

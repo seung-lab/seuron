@@ -21,7 +21,6 @@ def process_worker_messages(ret_queue, agg):
 def process_worker_errors(err_queue):
     from slack_message import slack_message
     from kombu.simple import SimpleQueue
-    import json
     import base64
     err_msg = None
     msg_count = 0
@@ -82,8 +81,8 @@ def check_queue(queue, agg=None, refill_threshold=0):
                 return
 
 def chunk_tasks(tasks, chunk_size):
-     for i in range(0, len(tasks), chunk_size):
-         yield tasks[i:i + chunk_size]
+    for i in range(0, len(tasks), chunk_size):
+        yield tasks[i:i + chunk_size]
 
 def tasks_with_metadata(metadata, tasks):
     return {
@@ -97,7 +96,7 @@ def mount_secrets(func):
         import os
         from airflow.models import Variable
         from slack_message import slack_message
-        cv_secrets_path = os.path.join(os.path.expanduser('~'),".cloudvolume/secrets")
+        cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
         secrets_lock = os.path.join(cv_secrets_path, ".secrets_mounted")
         if os.path.exists(secrets_lock):
             slack_message(f"secrets already mounted, skip")
@@ -334,7 +333,6 @@ def check_cloud_paths_empty(paths):
 @mount_secrets
 def commit_info(path, info, provenance):
     from cloudvolume import CloudVolume
-    from slack_message import slack_userinfo
     vol = CloudVolume(path, mip=0, info=info)
     vol.provenance.processing.append(provenance)
 

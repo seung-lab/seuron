@@ -17,7 +17,6 @@ from airflow.operators.latest_only import LatestOnlyOperator
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
 from airflow import models
-from dags.segmentation_dags import humanize_volume
 
 from slack_message import slack_message
 

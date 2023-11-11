@@ -1,7 +1,7 @@
 from worker_op import worker_op
 from airflow.utils.weight_rule import WeightRule
 from datetime import timedelta
-from param_default import default_args, cmd_proto, default_mount_path, default_seg_workspace, check_worker_image_labels
+from param_default import default_args, cmd_proto, default_mount_path, default_seg_workspace
 from slack_message import task_retry_alert
 import os
 

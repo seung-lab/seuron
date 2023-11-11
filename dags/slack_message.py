@@ -65,7 +65,7 @@ def task_retry_alert(context):
             "&task_id={ti.task_id}"
             "&execution_date={iso}"
         ).format(**locals())
-        slack_alert(":exclamation: Task up for retry {} times already, check the latest error log: `{}`".format(last_try, log_url), context)
+        slack_alert(f":exclamation: Task up for retry {last_try} times already, <{log_url}|check the latest error log>", context)
 
 def task_failure_alert(context):
     from airflow.models import Variable
@@ -79,7 +79,7 @@ def task_failure_alert(context):
         "&task_id={ti.task_id}"
         "&execution_date={iso}"
     ).format(**locals())
-    slack_alert(":exclamation: Task failed, check the latest error log: `{}`".format(log_url), context)
+    slack_alert(f":exclamation: Task failed, <{log_url}|check the latest error log>", context)
 
 
 def task_done_alert(context):

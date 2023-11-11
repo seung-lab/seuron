@@ -130,4 +130,3 @@ queue_sizes_task = PythonOperator(
     dag=dag)
 
 latest.set_downstream(queue_sizes_task)
-

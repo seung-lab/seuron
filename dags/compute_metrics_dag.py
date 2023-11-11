@@ -18,9 +18,9 @@ def format_uptime(dt):
 
 
 with DAG("compute_metrics",
-        default_args=metrics_default_args,
-        schedule_interval=None,
-        tags=['maintenance']) as dag:
+         default_args=metrics_default_args,
+         schedule_interval=None,
+         tags=['maintenance']) as dag:
 
     def resource_summary(dag_run):
         import humanize

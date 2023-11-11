@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from seuronbot import SeuronBot
 from airflow_api import set_variable, run_dag
-from bot_utils import replyto, extract_command, download_file
+from bot_utils import replyto, download_file
 
 
 @SeuronBot.on_message("update synaptor parameters",

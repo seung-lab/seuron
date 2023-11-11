@@ -1,4 +1,3 @@
-import json
 from copy import deepcopy
 from datetime import datetime
 from seuronbot import SeuronBot

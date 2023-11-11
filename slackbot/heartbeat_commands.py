@@ -1,5 +1,5 @@
 from seuronbot import SeuronBot
-from bot_utils import replyto, extract_command, clear_queues
+from bot_utils import replyto, extract_command
 from airflow_api import set_is_paused
 
 

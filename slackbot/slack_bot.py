@@ -1,6 +1,5 @@
-import slack_sdk as slack
 from airflow_api import set_variable
-from bot_info import slack_token, workerid, slack_notification_channel
+from bot_info import slack_token
 from seuronbot import SeuronBot
 
 import os

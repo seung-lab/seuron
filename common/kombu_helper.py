@@ -1,6 +1,4 @@
 from kombu import Connection
-from kombu.simple import SimpleQueue
-from time import sleep
 import requests
 
 def check_queue(queue):
