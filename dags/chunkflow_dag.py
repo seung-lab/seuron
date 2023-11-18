@@ -222,9 +222,11 @@ def supply_default_parameters():
 
 
     if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["IMAGE_MASK_PATH"])):
+        slack_message(":u7981:*ERROR: MIP levels does not match between IMAGE and IMAGE_MASK*")
         raise ValueError('Resolution mismatch')
 
     if param.get("OUTPUT_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["OUTPUT_MASK_PATH"])):
+        slack_message(":u7981:*ERROR: MIP levels does not match between IMAGE and OUTPUT_MASK*")
         raise ValueError('Resolution mismatch')
 
     print("check image done")
