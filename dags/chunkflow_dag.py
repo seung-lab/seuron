@@ -163,14 +163,6 @@ def supply_default_parameters():
         raise ValueError('chunkflow image missing')
 
 
-    if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["IMAGE_MASK_PATH"])):
-        raise ValueError('Resolution mismatch')
-
-
-    if param.get("OUTPUT_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["OUTPUT_MASK_PATH"])):
-        raise ValueError('Resolution mismatch')
-
-
     if "IMAGE_RESOLUTION" in param:
         try:
             vol = CloudVolume(param["IMAGE_PATH"], mip=param["IMAGE_RESOLUTION"])
@@ -217,7 +209,6 @@ def supply_default_parameters():
         slack_message("*Use images at resolution {}*".format(param["IMAGE_RESOLUTION"]))
         Variable.set("inference_param", param, serialize_json=True)
 
-    print("check image done")
     try:
         vol = CloudVolume(param["IMAGE_PATH"],mip=param["IMAGE_MIP"])
     except:
@@ -229,6 +220,14 @@ def supply_default_parameters():
         slack_message(":u7981:*ERROR: No data in* `{}`  *at resolution {} (mip {})*".format(param["IMAGE_PATH"], resolution, param["IMAGE_MIP"]))
         raise ValueError('No data available')
 
+
+    if param.get("IMAGE_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["IMAGE_MASK_PATH"])):
+        raise ValueError('Resolution mismatch')
+
+    if param.get("OUTPUT_MASK_PATH", "N/A") != "N/A" and (not check_matching_mip(param["IMAGE_PATH"], param["OUTPUT_MASK_PATH"])):
+        raise ValueError('Resolution mismatch')
+
+    print("check image done")
 
     image_bbox = vol.bounds
     if "IMAGE_RESOLUTION" not in param:
