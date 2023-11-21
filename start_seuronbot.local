@@ -105,6 +105,7 @@ POSTGRES_MAX_CONN=100
 # Grafana username/password
 GRAFANA_USERNAME=airflow
 GRAFANA_PASSWORD=airflow
+HAVE_GPUS=True
 
 # No need to change the variables below
 VENDOR=LocalDockerCompose
