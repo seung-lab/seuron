@@ -234,8 +234,15 @@ class DockerConfigurableOperator(DockerOperator):
                 continue
             if os.environ.get("VENDOR", None) != "LocalDockerCompose" and m['Source'] == '/tmp':
                 continue
-            self.log.info(f"mount {m['Source']} to {m['Destination']}")
-            self.mounts.append(Mount(source=m['Source'], target=m['Destination'], type=m['Type']))
+            if m["Type"] == "volume":
+                source = m["Name"]
+            elif m["Type"] == "bind":
+                source = m["Source"]
+            else:
+                self.log.info(f"Do not know how to mount volume: {m}")
+                continue
+            self.log.info(f"mount {source} to {m['Destination']}")
+            self.mounts.append(Mount(source=source, target=m['Destination'], type=m['Type']))
 
         network_id = None
         if os.environ.get("VENDOR", None) == "LocalDockerCompose":
