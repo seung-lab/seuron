@@ -232,6 +232,8 @@ class DockerConfigurableOperator(DockerOperator):
         for m in mounts:
             if m['Source'] == '/var/run/docker.sock':
                 continue
+            if m["Destination"] == os.environ.get("AIRFLOW__LOGGING__BASE_LOG_FOLDER", None):
+                continue
             if os.environ.get("VENDOR", None) != "LocalDockerCompose" and m['Source'] == '/tmp':
                 continue
             if m["Type"] == "volume":
