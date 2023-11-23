@@ -10,6 +10,10 @@ echo "start script with group $DOCKER_GROUP"
 
 if [[ -z "${_AIRFLOW_DB_UPGRADE=}" ]] ; then
     python scripts/install_packages.py
+else
+    if [ ! -f .sudo.disabled  ]; then
+        sudo chown -R $AIRFLOW_USER $AIRFLOW__LOGGING__BASE_LOG_FOLDER
+    fi
 fi
 
 if [[ -n "${CONDA_INSTALL_PYTORCH=}" ]] ; then

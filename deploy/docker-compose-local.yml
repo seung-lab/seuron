@@ -16,6 +16,7 @@ x-airflow-common:
         AIRFLOW__CELERY__CELERY_RESULT_BACKEND:
         AIRFLOW__WEBSERVER__SECRET_KEY:
         AIRFLOW__LOGGING__BASE_LOG_FOLDER:
+        AIRFLOW__LOGGING__REMOTE_LOGGING:
         AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER:
         AIRFLOW__METRICS__STATSD_ON:
         AIRFLOW__METRICS__STATSD_HOST:
@@ -26,6 +27,7 @@ x-airflow-common:
         # - /my/local/data:/path/to/mount
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp:/tmp
+        - airflow-log-storage:${AIRFLOW__LOGGING__BASE_LOG_FOLDER}
     deploy:
         restart_policy:
             condition: any
