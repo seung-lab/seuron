@@ -106,6 +106,12 @@ def check_cv_data():
         if "BBOX" not in param:
             param["BBOX"] = [int(x) for x in aff_bbox.to_list()]
             slack_message("*Segment the whole affinity map by default* {}".format(param["BBOX"]))
+        else:
+            try:
+                param["BBOX"] = [int(x) for x in param["BBOX"]]
+            except Exception:
+                slack_message(f":u7981:*ERROR: Cannot parse BBOX: {param['BBOX']}")
+                raise ValueError("BBOX Error")
 
         target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
         if not aff_bbox.contains_bbox(target_bbox):

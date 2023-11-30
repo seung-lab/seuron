@@ -237,6 +237,12 @@ def supply_default_parameters():
     if "BBOX" not in param:
         param["BBOX"] = [int(x) for x in image_bbox.to_list()]
         slack_message("*inference the whole image by default* {}".format(param["BBOX"]))
+    else:
+        try:
+            param["BBOX"] = [int(x) for x in param["BBOX"]]
+        except Exception:
+            slack_message(f":u7981:*ERROR: Cannot parse BBOX: {param['BBOX']}")
+            raise ValueError("BBOX Error")
 
     if "OUTPUT_PATH" not in param:
         if "OUTPUT_PREFIX" in param:
