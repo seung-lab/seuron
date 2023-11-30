@@ -207,7 +207,6 @@ def supply_default_parameters():
             raise ValueError("No data")
 
         slack_message("*Use images at resolution {}*".format(param["IMAGE_RESOLUTION"]))
-        Variable.set("inference_param", param, serialize_json=True)
 
     try:
         vol = CloudVolume(param["IMAGE_PATH"],mip=param["IMAGE_MIP"])
@@ -234,11 +233,9 @@ def supply_default_parameters():
     image_bbox = vol.bounds
     if "IMAGE_RESOLUTION" not in param:
         param["IMAGE_RESOLUTION"] = vol.resolution.tolist()
-        Variable.set("inference_param", param, serialize_json=True)
 
     if "BBOX" not in param:
         param["BBOX"] = [int(x) for x in image_bbox.to_list()]
-        Variable.set("inference_param", param, serialize_json=True)
         slack_message("*inference the whole image by default* {}".format(param["BBOX"]))
 
     if "OUTPUT_PATH" not in param:
@@ -250,7 +247,6 @@ def supply_default_parameters():
 
     if "OUTPUT_MIP" not in param:
         param["OUTPUT_MIP"] = param["IMAGE_MIP"]
-        Variable.set("inference_param", param, serialize_json=True)
         slack_message("*Assume output resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
     if param.get("IMAGE_HISTOGRAM_PATH", "N/A") != "N/A":
