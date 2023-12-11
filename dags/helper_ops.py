@@ -211,6 +211,7 @@ def toggle_nfs_server_op(dag, on=False):
             default_args=default_args,
             weight_rule=WeightRule.ABSOLUTE,
             priority_weight=1000,
+            trigger_rule="all_done",
             queue='manager',
             dag=dag
         )
