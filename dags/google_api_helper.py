@@ -390,6 +390,7 @@ def toggle_nfs_server(on=False):
     deployment = nfs_conn.host
     zone = nfs_conn.login
     nfs_server = f"{deployment}-nfs-server"
+    slack_message(f'*Turning {"on" if on else "off"} the nfs server*')
     if on:
         start_instance(nfs_server, zone)
     else:
