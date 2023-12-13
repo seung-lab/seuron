@@ -392,5 +392,20 @@ def toggle_nfs_server(on=False):
     nfs_server = f"{deployment}-nfs-server"
     if on:
         start_instance(nfs_server, zone)
+        wait_for_instance(nfs_server, zone, "RUNNING")
     else:
         stop_instance(nfs_server, zone)
+        wait_for_instance(nfs_server, zone, "TERMINATED")
+
+    slack_message(f'*Turning {"on" if on else "off"} the nfs server*')
+
+
+def wait_for_instance(instance, zone, target, retries=5):
+    for _ in range(retries):
+        status = get_instance_property(zone, instance, "status")
+        if status == target:
+            return
+        sleep(60)
+
+    slack_message(f'*Timeout while waiting {instance}*')
+    raise RuntimeError(f"Timeout waiting {instance}")
