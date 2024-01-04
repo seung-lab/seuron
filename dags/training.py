@@ -1,6 +1,7 @@
 """Training DAGs."""
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 
@@ -67,12 +68,7 @@ def make_argstr(param: dict) -> str:
         elif isinstance(v, list):
             return f"--{k} " + " ".join(f"{elem}" for elem in v)
         elif isinstance(v, dict):
-            return (
-                f"--{k}"
-                + " '{"
-                + ", ".join(f"\"{vk}\":\"{vv}\"" for vk, vv in v.items())
-                + "}'"
-            )
+            return f"--{k} '{json.dumps(v)}'"
         else:
             return f"--{k} {v}"
 
