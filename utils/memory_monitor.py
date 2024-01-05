@@ -11,33 +11,44 @@ from kombu_helper import put_message
 from google_metadata import gce_hostname
 
 
+# Algorithm similar to earlyoom
+def sleep_time(mem_avail):
+    max_mem_fill_rate = 6_000_000_000  # 6000MB/s
+    min_sleep = 0.1
+    sleep_time = mem_avail / max_mem_fill_rate
+    return max(min_sleep, sleep_time)
+
+
 def run_oom_canary():
     ALERT_THRESHOLD = 0.95
 
-    SleepCondition = namedtuple("SleepCondition", "threshold duration")
-
-    SLEEP_CONDITIONS = [
-            SleepCondition(0.5, 300),
-            SleepCondition(0.8, 60),
-            SleepCondition(0.9, 5),
-            SleepCondition(0.95, 1),
-    ]
+    loop_counter = 0
     while True:
-        cpu_usage = sum(psutil.cpu_percent(interval=1, percpu=True))
-        if cpu_usage > 20:
-            redis_conn.set(hostname, datetime.now().timestamp())
-        mem_used = psutil.virtual_memory().percent
-        logging.info(f"{mem_used}% memory used")
+        loop_counter += 1
+        mem = psutil.virtual_memory()
+        mem_used = mem.percent
+
+        if loop_counter % 300 == 0:
+            logging.info(f"{mem_used}% memory used")
+
         mem_used /= 100
         if mem_used < 0 or mem_used > 1:
             sleep(1)
             continue
         if mem_used > ALERT_THRESHOLD:
             return
-        for s in SLEEP_CONDITIONS:
-            if mem_used < s.threshold:
-                sleep(s.duration)
-                break
+
+        t = sleep_time(mem.available)
+        if t > 1:
+            if loop_counter % 60 == 0:
+                cpu_usage = sum(psutil.cpu_percent(interval=1, percpu=True))
+                if cpu_usage > 20:
+                    logging.info(f"{cpu_usage}% cpu used, heartbeat")
+                    redis_conn.set(hostname, datetime.now().timestamp())
+            sleep(1)
+        else:
+            sleep(t)
+
 
 
 if __name__ == "__main__":
