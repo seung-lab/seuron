@@ -5,7 +5,17 @@ from google_metadata import get_project_data, get_instance_data, get_instance_me
 from param_default import param_default, inference_param_default, synaptor_param_default
 import os
 import json
+import docker
+import socket
 from collections import defaultdict
+
+
+def get_image_info():
+    client = docker.APIClient(base_url='unix://var/run/docker.sock')
+    container_id = socket.gethostname()
+    info = client.inspect_container(container=container_id)
+    return info['Config']['Image'].split("@")
+
 
 def parse_metadata():
     project_id = get_project_data("project-id")
@@ -77,6 +87,16 @@ if os.environ.get("VENDOR", None) == "Google":
             models.Connection(
                 conn_id='InstanceGroups', conn_type='http',
                 host=deployment, login=zone, extra=json.dumps(metadata["cluster-info"], indent=4)))
+
+    image_info = get_image_info()
+
+    if len(image_info) == 2:
+        Variable.set("image_info",
+                            {
+                                "name": image_info[0],
+                                "checksum": image_info[1]
+                            }, serialize_json=True)
+
     if "easyseg-worker" in metadata:
         db_utils.merge_conn(
                 models.Connection(
