@@ -1,3 +1,4 @@
+import os
 import re
 import functools
 import json
@@ -8,8 +9,9 @@ import time
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
 from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
-from airflow_api import check_running, set_variable
+from airflow_api import check_running, set_variable, get_variable
 from kombu_helper import get_message
+from docker_helper import get_registry_data
 
 
 _help_trigger = ["help"]
@@ -28,6 +30,15 @@ def reset_run_metadata():
             "manage_clusters": True,
     }
     set_variable("run_metadata", default_run_metadata, serialize_json=True)
+
+
+def check_image_updates(context):
+    if os.environ.get("VENDOR", None) != "Google":
+        return
+    image_info = get_variable("image_info", deserialize_json=True)
+    registry_data = get_registry_data(image_info["name"])
+    if image_info["checksum"] != registry_data.attrs["Descriptor"]["digest"]:
+        replyto(context, f":u7981:*WARNING*: Local image `{image_info['name']}` is outdated, your tasks may not run correctly, upgrade the bot ASAP!")
 
 
 def run_cmd(func, context, exclusive=False, cancelable=False):
@@ -125,6 +136,7 @@ class SeuronBot:
     def process_message(self, client: RTMClient, event: dict):
         if self.filter_msg(event) or event.get("from_jupyter", False):
             handled = False
+            check_image_updates(event)
             for listener in self.message_listeners:
                 handled |= listener["command"](event)
 
