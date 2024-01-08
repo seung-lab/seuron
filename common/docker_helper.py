@@ -26,3 +26,9 @@ def pull_image(image_name):
         raise e
 
     return image
+
+
+def get_registry_data(image_name):
+    import docker
+    client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+    return client.images.get_registry_data(image_name)
