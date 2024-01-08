@@ -197,6 +197,8 @@ services:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py
         volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /tmp:/tmp
             - jupyterlab-storage:/usr/local/airflow/jupyterlab
 
     oom-detector:
