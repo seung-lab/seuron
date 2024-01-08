@@ -35,10 +35,11 @@ def reset_run_metadata():
 def check_image_updates(context):
     if os.environ.get("VENDOR", None) != "Google":
         return
-    image_info = get_variable("image_info", deserialize_json=True)
-    registry_data = get_registry_data(image_info["name"])
-    if image_info["checksum"] != registry_data.attrs["Descriptor"]["digest"]:
-        replyto(context, f":u7981:*WARNING*: Local image `{image_info['name']}` is outdated, your tasks may not run correctly, upgrade the bot ASAP!")
+    image_info = get_variable("image_info", deserialize_json=True, default_var=None)
+    if image_info:
+        registry_data = get_registry_data(image_info["name"])
+        if image_info["checksum"] != registry_data.attrs["Descriptor"]["digest"]:
+            replyto(context, f":u7981:*WARNING*: Local image `{image_info['name']}` is outdated, your tasks may not run correctly, upgrade the bot ASAP!")
 
 
 def run_cmd(func, context, exclusive=False, cancelable=False):
