@@ -297,6 +297,16 @@ def cv_scale_with_data(path):
             slack_message("CloudVolume does not support has_data for layer `{}`. You need to explicitly specify the input resolution".format(path))
 
 
+@mount_secrets
+def cv_cleanup_info(path):
+    from cloudvolume import CloudVolume
+    vol = CloudVolume(path)
+    mips = [vol.image.has_data(mip) for mip in range(len(vol.info['scales']))]
+    scales_with_data = [scale for scale, has_data in zip(vol.info["scales"], mips) if has_data]
+    vol.info["scales"] = scales_with_data
+    vol.commit_info()
+
+
 def isotropic_mip(path):
     from math import log2
     from cloudvolume import CloudVolume

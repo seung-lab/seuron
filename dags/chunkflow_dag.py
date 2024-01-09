@@ -6,7 +6,7 @@ from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels, update_mount_secrets
 from datetime import datetime
-from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data, mount_secrets
+from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data, cv_cleanup_info, mount_secrets
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
@@ -36,6 +36,11 @@ def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
     ng_host = param.get("NG_HOST", "spelunker.cave-explorer.org")
     ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
+
+    try:
+        cv_cleanup_info(param["OUTPUT_PATH"])
+    except Exception:
+        pass
 
     layers = OrderedDict()
 
