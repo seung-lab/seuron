@@ -143,7 +143,15 @@ def download_file(msg):
     if "files" in msg:
         # only use the first file:
         file_info = msg["files"][0]
+
+        if file_info.get("file_access", None) == "check_file_info":
+            if "url_private_download" not in file_info:
+                sc = slack.WebClient(slack_token, timeout=300)
+                ret = sc.files_info(file=file_info["id"])
+                file_info = ret.data["file"]
+
         private_url = file_info["url_private_download"]
+
         filetype = file_info["pretty_type"]
         response = requests.get(private_url, headers={'Authorization': 'Bearer {}'.format(slack_token)})
 
