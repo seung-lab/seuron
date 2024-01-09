@@ -37,7 +37,10 @@ def generate_ng_payload(param):
         if "IMAGE_SHADER" in param:
             layers["img"]["shader"] = param["IMAGE_SHADER"]
 
-        ng_resolution = dataset_resolution(param["IMAGE_PATH"])
+        try:
+            ng_resolution = dataset_resolution(param["IMAGE_PATH"])
+        except Exception:
+            pass
 
     layers["aff"] = {
         "source": "precomputed://"+param["AFF_PATH"],
