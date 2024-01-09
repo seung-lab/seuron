@@ -735,7 +735,12 @@ def submit_igneous_tasks():
         slack_message(f"Track GCS api call to buckets: {','.join(f'`{x}`' for x in gcs_buckets)}")
         Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
-    tasks = list(globals()["submit_tasks"]())
+    ret = globals()["submit_tasks"]()
+    if isinstance(ret, dict):
+        tasks = list(ret["task_list"])
+        ret["task_list"] = tasks
+    else:
+        tasks = list(ret)
 
     if not tasks:
         return
@@ -745,7 +750,8 @@ def submit_igneous_tasks():
         raise
 
     slack_message(":arrow_forward: submitting {} igneous tasks".format(len(tasks)))
-    return tasks
+
+    return ret
 
 
 @mount_secrets
