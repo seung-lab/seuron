@@ -110,8 +110,8 @@ def run_dag(dag_id, wait_for_completion=False):
     return dagrun
 
 
-def get_variable(key, deserialize_json=False):
-    return Variable.get(key, deserialize_json=deserialize_json)
+def get_variable(key, deserialize_json=False, **kwargs):
+    return Variable.get(key, deserialize_json=deserialize_json, **kwargs)
 
 
 def set_variable(key, value, serialize_json=False):
