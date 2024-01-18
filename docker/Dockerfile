@@ -4,7 +4,7 @@ WORKDIR /usr/src/myapp
 
 SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
-RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v2.1.0/docker-credential-gcr_linux_amd64-2.1.0.tar.gz" && \
+RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v2.1.21/docker-credential-gcr_linux_amd64-2.1.21.tar.gz" && \
     curl -L "${URL}" | tar -zx
 
 
