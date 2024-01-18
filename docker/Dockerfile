@@ -95,7 +95,7 @@ RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
 
 
 USER ${AIRFLOW_USER}
-RUN docker-credential-gcr configure-docker
+RUN docker-credential-gcr configure-docker --include-artifact-registry
 ENV NVIDIA_VISIBLE_DEVICES all
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["scripts/entrypoint-dood.sh"]
