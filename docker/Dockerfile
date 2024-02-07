@@ -4,7 +4,7 @@ WORKDIR /usr/src/myapp
 
 SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
-RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v2.1.0/docker-credential-gcr_linux_amd64-2.1.0.tar.gz" && \
+RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v2.1.21/docker-credential-gcr_linux_amd64-2.1.21.tar.gz" && \
     curl -L "${URL}" | tar -zx
 
 
@@ -95,7 +95,7 @@ RUN chown -R ${AIRFLOW_USER} ${AIRFLOW_HOME}/.cloudvolume
 
 
 USER ${AIRFLOW_USER}
-RUN docker-credential-gcr configure-docker
+RUN docker-credential-gcr configure-docker --include-artifact-registry
 ENV NVIDIA_VISIBLE_DEVICES all
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["scripts/entrypoint-dood.sh"]
