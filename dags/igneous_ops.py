@@ -14,8 +14,10 @@ def create_igneous_ops(param, dag):
 
     if get_connection("NFSServer"):
         nfs_kwargs = {"frag_path": f"file:///share/{run_name}"}
+        queue = "nfs"
     else:
         nfs_kwargs = {"frag_path": None}
+        queue = "manager"
 
     if not param.get("SKIP_DOWNSAMPLE", False):
         if not param.get("SKIP_MESHING", False):
@@ -25,7 +27,7 @@ def create_igneous_ops(param, dag):
                 op_args=[run_name, seg_cloudpath, param.get("SIZE_THRESHOLDED_MESH", False), ],
                 on_retry_callback=task_retry_alert,
                 weight_rule=WeightRule.ABSOLUTE,
-                queue="manager",
+                queue=queue,
                 dag=dag
             )
             ops[-1] >> current_op
@@ -39,7 +41,7 @@ def create_igneous_ops(param, dag):
             op_kwargs=nfs_kwargs,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
-            queue="manager",
+            queue=queue,
             dag=dag
         )
 
@@ -54,7 +56,7 @@ def create_igneous_ops(param, dag):
                 op_kwargs=nfs_kwargs,
                 on_retry_callback=task_retry_alert,
                 weight_rule=WeightRule.ABSOLUTE,
-                queue="manager",
+                queue=queue,
                 dag=dag
             )
         else:
@@ -65,7 +67,7 @@ def create_igneous_ops(param, dag):
                 op_kwargs=nfs_kwargs,
                 on_retry_callback=task_retry_alert,
                 weight_rule=WeightRule.ABSOLUTE,
-                queue="manager",
+                queue=queue,
                 dag=dag
             )
 
@@ -83,7 +85,7 @@ def create_igneous_ops(param, dag):
             op_args=[run_name, downsample_target],
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
-            queue="manager",
+            queue=queue,
             dag=dag
         )
 
@@ -98,7 +100,7 @@ def create_igneous_ops(param, dag):
             op_kwargs=nfs_kwargs,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
-            queue="manager",
+            queue=queue,
             dag=dag
         )
 
@@ -112,7 +114,7 @@ def create_igneous_ops(param, dag):
             op_kwargs=nfs_kwargs,
             on_retry_callback=task_retry_alert,
             weight_rule=WeightRule.ABSOLUTE,
-            queue="manager",
+            queue=queue,
             dag=dag
         )
 
