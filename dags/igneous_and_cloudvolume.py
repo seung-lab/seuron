@@ -740,13 +740,14 @@ def submit_igneous_tasks():
 
     ret = globals()["submit_tasks"]()
     if isinstance(ret, dict):
-        tasks = list(ret["task_list"])
-        ret["task_list"] = tasks
+        tasks = list(ret.get("task_list", []))
+        if tasks:
+            ret["task_list"] = tasks
     else:
         tasks = list(ret)
 
     if not tasks:
-        return
+        return ret
 
     if len(tasks) > 1000000:
         slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))
