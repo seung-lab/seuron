@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+import requests
 
 from airflow import DAG
 from airflow.utils.weight_rule import WeightRule
@@ -16,6 +17,61 @@ from slack_message import slack_message, task_failure_alert, task_done_alert
 
 PARAM = Variable.get("webknossos_param", {}, deserialize_json=True)
 WKT_IMAGE = PARAM.get("wkt_image", "zettaai/wktools")
+
+
+def wk_rest_api(wk_url, endpoint, headers):
+    try:
+        ret = requests.get(f"{wk_url}/api/{endpoint}", headers=headers)
+        return ret
+    except requests.exceptions.Timeout:
+        slack_message(f"Timeout error. The request to {wk_url} took too long to complete.")
+        raise RuntimeError("webknossos setup error")
+    except requests.exceptions.RequestException as e:
+        slack_message(f"Request error: {e}")
+        raise RuntimeError("webknossos setup error")
+
+
+def validate_wk_param():
+    wk_url = PARAM["wk_url"].rstrip('/')
+    auth_token = PARAM["auth_token"]
+    headers = {"X-Auth-Token": auth_token}
+
+    healthinfo = wk_rest_api(wk_url, "health", headers)
+    if healthinfo.status_code != 200 or healthinfo.text != 'Ok':
+        slack_message(f"*WARNING*: Webknossos server {wk_url} health check failed")
+        raise RuntimeError("Webknossos health check error")
+
+    organization = wk_rest_api(wk_url, "organizations/default", headers)
+    if organization.status_code != 200:
+        slack_message(f"*Error*: Cannot find default organization: {organization.text}")
+        raise RuntimeError("Organization error")
+    else:
+        slack_message(f"Default organization: ```{json.dumps(organization.json(), indent=2)}```")
+
+    organization_name = organization.json()["name"]
+    wk_dset_name = PARAM["wk_dset_name"]
+
+    dataset = wk_rest_api(wk_url, f"datasets/{organization_name}/{wk_dset_name}", headers)
+    if dataset.status_code != 200:
+        slack_message(f"*Error*: Cannot find dataset: {dataset.text}")
+        raise RuntimeError("Dataset error")
+    else:
+        slack_message(f"Dataset details: ```{json.dumps(dataset.json(), indent=2)}```")
+
+    task_type_id = PARAM["task_type_id"]
+    task_type_details = wk_rest_api(wk_url, f"taskTypes/{task_type_id}", headers)
+    if task_type_details.status_code != 200:
+        slack_message(f"*Error*: Task type error: {task_type_details.text}")
+        raise RuntimeError("Task type error")
+    else:
+        slack_message(f"Selected task type: ```{json.dumps(task_type_details.json(), indent=2)}```")
+
+    project_name = PARAM["project_name"]
+    project_details = wk_rest_api(wk_url, f"projects/byName/{project_name}", headers)
+    if project_details.status_code != 200:
+        slack_message(f"*WARNING*: Project name error: {project_details.text}")
+    else:
+        slack_message(f"Selected project: ```{json.dumps(project_details.json(), indent=2)}```")
 
 
 # Op functions
@@ -135,10 +191,20 @@ sanity_check_dag = DAG(
     tags=["webknossos"],
 )
 
+validate_wk_param_op = PythonOperator(
+    task_id="validate_webknossos_parameters",
+    python_callable=validate_wk_param,
+    priority_weight=100000,
+    on_failure_callback=task_failure_alert,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=sanity_check_dag,
+)
+
 # Individual ops test whether the current params are enough for
 # the webknossos tools tasks
-sanity_check_op(sanity_check_dag, "cv2wk")
-sanity_check_op(sanity_check_dag, "wk2cv")
+validate_wk_param_op >> sanity_check_op(sanity_check_dag, "cv2wk")
+validate_wk_param_op >> sanity_check_op(sanity_check_dag, "wk2cv")
 
 
 # Cutouts
