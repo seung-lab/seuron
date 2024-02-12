@@ -44,6 +44,7 @@ function start_bot()
     important "${DOCKER_COMPOSE_CMD} --env-file .env.local -f deploy/docker-compose-CeleryExecutor.yml -f deploy/docker-compose-local.yml down"
     important "Modify deploy/docker-compose-local.yml to mount extra volume or add cloud vendor credentials"
     important "For more details checkout https://github.com/seung-lab/seuron"
+    xdg-open "https://localhost/jupyter/lab?token=${token}&file-browser-path=/jupyterlab" || true
 }
 
 function generate_env() {
