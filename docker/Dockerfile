@@ -44,6 +44,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && pip install --no-cache-dir --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install --no-cache-dir igneous-pipeline \
     && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
+    && pip install --no-cache-dir pendulum==2.1.2 \
     && mkdir -p ${AIRFLOW_HOME}/version \
     && groupadd -r docker \
     && groupadd -r ${AIRFLOW_USER} \
