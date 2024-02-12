@@ -58,7 +58,7 @@ def GenerateConfig(context):
         resources['resources'] += easyseg_worker_resource
 
     if "nfsServer" in context.properties:
-        nfs_server_resource = GenerateNFSServer(context, hostname_nfs_server)
+        nfs_server_resource = GenerateNFSServer(context, hostname_manager, hostname_nfs_server)
         resources['resources'] += nfs_server_resource
 
     return resources

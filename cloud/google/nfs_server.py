@@ -1,16 +1,28 @@
-from common import ZonalComputeUrl, GenerateDisk, GenerateBootDisk, GenerateNetworkInterface
+from common import ZonalComputeUrl, GenerateDisk, GenerateBootDisk, GenerateNetworkInterface, INSTALL_DOCKER_CMD, GenerateAirflowVar
+from workers import GenerateDockerCommand, GenerateCeleryWorkerCommand, GenerateEnvironVar
 
 
-def GenerateNFSServerStartupScript():
-    startup_script = '''
+def GenerateNFSServerStartupScript(context, hostname_manager):
+    env_variables = GenerateAirflowVar(context, hostname_manager)
+
+    docker_env = [f'-e {k}' for k in env_variables]
+    docker_image = context.properties['seuronImage']
+
+    oom_canary_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python utils/memory_monitor.py ${AIRFLOW__CELERY__BROKER_URL} bot-message-queue >& /dev/null"
+    worker_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue="nfs", concurrency=1)
+
+    startup_script = f'''
 #!/bin/bash
 set -e
 
 mkdir -p /share
-#DRIVES=($(lsblk | grep -oE 'nvme[a-z0-9A-Z]*' | cut -d' ' -f1 | awk '{ print "/dev/"$1 }'))
-#mdadm --create /dev/md0 --level=0 --raid-devices=${#DRIVES[@]} ${DRIVES[@]}
-#mkfs.ext4 -F /dev/md0
-#mount /dev/md0 /share
+mkdir -p /var/log/airflow/logs
+chmod 777 /var/log/airflow/logs
+
+DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
+{INSTALL_DOCKER_CMD}
+
+{GenerateEnvironVar(context, env_variables)}
 
 if [ ! -f "/etc/bootstrap_done" ]; then
 
@@ -35,14 +47,17 @@ fi
 mount /dev/sdb /share
 chmod 777 /share
 systemctl restart nfs-kernel-server.service
+{oom_canary_cmd} &
+{worker_cmd}
+
 '''
     return startup_script
 
 
-def GenerateNFSServer(context, hostname_nfs_server):
+def GenerateNFSServer(context, hostname_manager, hostname_nfs_server):
     nfs_server_param = context.properties["nfsServer"]
 
-    startup_script = GenerateNFSServerStartupScript()
+    startup_script = GenerateNFSServerStartupScript(context, hostname_manager)
 
     diskType = ZonalComputeUrl(
         context.env['project'],
@@ -78,8 +93,10 @@ def GenerateNFSServer(context, hostname_nfs_server):
         'networkInterfaces': [GenerateNetworkInterface(context, nfs_server_param['subnetwork'])],
         'serviceAccounts': [{
             'scopes': [
+                'https://www.googleapis.com/auth/compute',
                 'https://www.googleapis.com/auth/logging.write',
                 'https://www.googleapis.com/auth/monitoring.write',
+                'https://www.googleapis.com/auth/devstorage.read_write',
             ],
         }],
     }

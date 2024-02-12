@@ -43,6 +43,7 @@ def check_queue(queue, agg=None, refill_threshold=0):
     import requests
     from time import sleep
     from slack_message import slack_message
+    from urllib.parse import urlparse
     from kombu import Connection
     import traceback
 
@@ -50,13 +51,15 @@ def check_queue(queue, agg=None, refill_threshold=0):
     totalTries = 2
     nTries = totalTries
     count = 0
+    parsed_uri = urlparse(broker)
+    rq_host = parsed_uri.hostname
     with Connection(broker) as conn:
         ret_queue = conn.SimpleQueue(queue+"_ret")
         err_queue = conn.SimpleQueue(queue+"_err")
         while True:
             sleep(5)
             try:
-                ret = requests.get("http://rabbitmq:15672/api/queues/%2f/{}".format(queue), auth=('guest', 'guest'))
+                ret = requests.get(f"http://{rq_host}:15672/api/queues/%2f/{queue}", auth=('guest', 'guest'))
                 queue_status = ret.json()
                 nTasks = queue_status["messages"]
             except Exception as e:
@@ -737,13 +740,14 @@ def submit_igneous_tasks():
 
     ret = globals()["submit_tasks"]()
     if isinstance(ret, dict):
-        tasks = list(ret["task_list"])
-        ret["task_list"] = tasks
+        tasks = list(ret.get("task_list", []))
+        if tasks:
+            ret["task_list"] = tasks
     else:
         tasks = list(ret)
 
     if not tasks:
-        return
+        return ret
 
     if len(tasks) > 1000000:
         slack_message(":exclamation:*Error* too many ({}) tasks, bail".format(len(tasks)))

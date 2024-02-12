@@ -4,7 +4,8 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from datetime import datetime
 from slack_message import task_failure_alert
-from helper_ops import scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op
+from helper_ops import scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op, placeholder_op
+from dag_utils import get_connection
 
 igneous_default_args = {
     'owner': 'seuronbot',
@@ -17,8 +18,14 @@ igneous_default_args = {
 dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule_interval=None, tags=['igneous tasks'])
 scaling_igneous_finish = scale_down_cluster_op(dag_igneous, "igneous_finish", "igneous", 0, "cluster")
 
-start_nfs_server = toggle_nfs_server_op(dag_igneous, on=True)
-stop_nfs_server = toggle_nfs_server_op(dag_igneous, on=False)
+if get_connection("NFSServer"):
+    start_nfs_server = toggle_nfs_server_op(dag_igneous, on=True)
+    stop_nfs_server = toggle_nfs_server_op(dag_igneous, on=False)
+    queue = "nfs"
+else:
+    start_nfs_server = placeholder_op(dag_igneous, on=True)
+    stop_nfs_server = placeholder_op(dag_igneous, on=False)
+    queue = "manager"
 
 submit_igneous_tasks = PythonOperator(
     task_id="submit_igneous_tasks",
@@ -26,7 +33,7 @@ submit_igneous_tasks = PythonOperator(
     priority_weight=100000,
     on_failure_callback=task_failure_alert,
     weight_rule=WeightRule.ABSOLUTE,
-    queue="manager",
+    queue=queue,
     dag=dag_igneous
 )
 
