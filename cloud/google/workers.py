@@ -81,8 +81,8 @@ def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
     else:
         env_variables["HAVE_GPUS"] = "False"
 
-    if use_shared_volume:
-        env_variables["CLOUD_VOLUME_CACHE_DIR"] = "/share/.cloudvolume"
+#    if use_shared_volume:
+#        env_variables["CLOUD_VOLUME_CACHE_DIR"] = "/share/.cloudvolume"
 
     docker_env = [f'-e {k}' for k in env_variables]
 
