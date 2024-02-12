@@ -102,7 +102,7 @@ iptables -I DOCKER-USER -p tcp --dport 6379 -s 172.16.0.0/12 -j ACCEPT
 
 while true
 do
-    if [ $(curl "http://metadata/computeMetadata/v1/instance/attributes/redeploy" -H "Metadata-Flavor: Google") == "true"  ]; then
+    if [ $(curl -s "http://metadata/computeMetadata/v1/instance/attributes/redeploy" -H "Metadata-Flavor: Google") == "true" ]; then
         docker stack rm {context.env["deployment"]}
         sleep 120
         docker stack deploy --with-registry-auth -c compose.yml {context.env["deployment"]}
