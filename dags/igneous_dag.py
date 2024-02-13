@@ -23,8 +23,8 @@ if get_connection("NFSServer"):
     stop_nfs_server = toggle_nfs_server_op(dag_igneous, on=False)
     queue = "nfs"
 else:
-    start_nfs_server = placeholder_op(dag_igneous, on=True)
-    stop_nfs_server = placeholder_op(dag_igneous, on=False)
+    start_nfs_server = placeholder_op(dag_igneous, "dummy_start_nfs")
+    stop_nfs_server = placeholder_op(dag_igneous, "dummy_stop_nfs")
     queue = "manager"
 
 submit_igneous_tasks = PythonOperator(
