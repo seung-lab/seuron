@@ -27,7 +27,7 @@ def generate_nglink(
     seg_path: str,
     workflowtype: str,
     storagedir: str,
-    add_synapse_points: str,
+    add_synapse_points: bool | int | str,
     img_path: Optional[str] = None,
     voxelres: Optional[tuple[int, int, int]] = None,
 ) -> None:
@@ -50,9 +50,12 @@ def generate_nglink(
     slack_message(wrap_payload(os.path.join(storagedir, "ng.json")), broadcast=True)
 
 
-def getboolean(rawvalue: str) -> bool:
+def getboolean(rawvalue: bool | int | str) -> bool:
     """Simulating configparser.getboolean"""
-    value = rawvalue.lower()
+    if isinstance(rawvalue, str):
+        value = rawvalue.lower()
+    else:
+        value = rawvalue
     if value in [True, 1, "yes", "y", "true", "t", "on"]:
         return True
     elif value in [False, 0, "no", "n", "false", "f", "off"]:
@@ -139,7 +142,7 @@ def nglink_op(
     seg_path: str,
     workflowtype: str,
     storagedir: str,
-    add_synapse_points: str,
+    add_synapse_points: bool | int | str,
     img_path: str,
     voxelres: tuple[int, int, int],
 ) -> PythonOperator:
