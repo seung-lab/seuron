@@ -78,7 +78,7 @@ def generate_ng_payload(
 
 def generate_link(
     layers: dict[str, Layer],
-    host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com",
+    host: str = "spelunker.cave-explorer.org",
 ) -> str:
     payload = generate_ng_payload(layers)
 
@@ -87,7 +87,7 @@ def generate_link(
 
 def wrap_payload(
     payload: Union[OrderedDict, str],
-    host: str = "state-share-dot-neuroglancer-dot-seung-lab.appspot.com",
+    host: str = "spelunker.cave-explorer.org",
     link_text: str = "neuroglancer link"
 ) -> str:
     if isinstance(payload, OrderedDict):
