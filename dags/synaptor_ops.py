@@ -46,6 +46,8 @@ def generate_nglink(
             layer.cloudpath = layer.cloudpath.replace(ng_subs["old"], ng_subs["new"])
 
     payload = generate_ng_payload(layers)
+    if storagedir.startswith("/") and (not (":" in storagedir)):
+        storagedir = "file://" + storagedir
 
     if "Assignment" in workflowtype and getboolean(add_synapse_points):
         presyn_pts, postsyn_pts = read_pts(storagedir)
