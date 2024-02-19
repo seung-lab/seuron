@@ -97,7 +97,8 @@ def on_run_pipeline(msg):
     elif param_updated == 'seg_run':
         on_run_segmentations(msg)
     elif param_updated == 'syn_run':
-        run_synaptor(msg)
+        replyto(msg, "Start synaptor")
+        handle_batch("syn_run", msg)
     else:
         replyto(msg, "Do not understand the parameters, please upload them again")
 
