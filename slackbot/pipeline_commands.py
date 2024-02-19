@@ -5,6 +5,7 @@ from bot_info import broker_url
 from bot_utils import replyto, extract_command, clear_queues, download_json, guess_run_type, latest_param_type, upload_param
 from kombu_helper import drain_messages, visible_messages, get_message, put_message
 from airflow_api import get_variable, set_variable, latest_dagrun_state, run_dag
+from synaptor_commands import update_synaptor_params, run_synaptor
 
 
 @SeuronBot.on_message("show segmentation parameters",
@@ -32,6 +33,8 @@ def on_update_parameters(msg):
             on_update_segmentation_parameters(msg)
         elif run_type == "inf_run":
             on_update_inference_parameters(msg)
+        elif run_type == "syn_run":
+            update_synaptor_params(msg)
         else:
             replyto(msg, "Cannot guess run type from input parameters, please be more specific")
 
@@ -93,6 +96,9 @@ def on_run_pipeline(msg):
         on_run_inferences(msg)
     elif param_updated == 'seg_run':
         on_run_segmentations(msg)
+    elif param_updated == 'syn_run':
+        replyto(msg, "Start synaptor")
+        handle_batch("syn_run", msg)
     else:
         replyto(msg, "Do not understand the parameters, please upload them again")
 

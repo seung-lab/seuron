@@ -131,6 +131,8 @@ def change_cluster_if_required(
         guess_tag = f"{next_task.cluster_key}{guess_i}"
         if dag.has_task(f"resize_{guess_tag}_0"):
             guess_i += 1
+        elif dag.has_task(f"dummy_resize_{guess_tag}_0"):
+            guess_i += 1
         else:
             break
     new_tag = guess_tag

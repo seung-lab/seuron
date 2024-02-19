@@ -43,7 +43,9 @@ fi
     chunkflow_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue="gpu", concurrency=2)
     abiss_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env, queue="atomic", concurrency=1)
     igneous_cmd = GenerateDockerCommand(docker_image, docker_env + ["--restart on-failure",]) + ' ' + "python custom/task_execution.py --queue igneous --concurrency 0 >& /dev/null"
-    cmd += " & \n".join([oom_canary_cmd, chunkflow_cmd, abiss_cmd, igneous_cmd])
+    synaptor_cpu_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env, queue="synaptor-cpu", concurrency=1)
+    synaptor_gpu_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env, queue="synaptor-gpu", concurrency=1)
+    cmd += " & \n".join([oom_canary_cmd, chunkflow_cmd, abiss_cmd, igneous_cmd, synaptor_cpu_cmd, synaptor_gpu_cmd])
 
     diskType = ZonalComputeUrl(
         context.env['project'],

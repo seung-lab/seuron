@@ -66,6 +66,20 @@ services:
             <<: *airflow-common-env
         command: custom/worker_cpu.sh 4
 
+    worker-synaptor-cpu:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
+        command: airflow celery worker --without-gossip --without-mingle -q synaptor-cpu
+
+    worker-synaptor-gpu:
+        <<: *airflow-common
+        environment:
+            <<: *airflow-common-env
+            AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
+        command: airflow celery worker --without-gossip --without-mingle -q synaptor-gpu
+
     cv-viewer:
         <<: *airflow-common
         environment:

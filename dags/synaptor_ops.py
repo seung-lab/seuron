@@ -27,11 +27,12 @@ def generate_nglink(
     seg_path: str,
     workflowtype: str,
     storagedir: str,
-    add_synapse_points: str,
+    add_synapse_points: bool | int | str,
     img_path: Optional[str] = None,
     voxelres: Optional[tuple[int, int, int]] = None,
 ) -> None:
     """Generates a neuroglancer link to view the results."""
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
     layers = [
         ImageLayer("network output", net_output_path),
         SegLayer("synaptor segmentation", seg_path),
@@ -40,19 +41,31 @@ def generate_nglink(
     if img_path:
         layers = [ImageLayer("image", img_path)] + layers
 
+    if ng_subs:
+        for layer in layers:
+            layer.cloudpath = layer.cloudpath.replace(ng_subs["old"], ng_subs["new"])
+
     payload = generate_ng_payload(layers)
+    if storagedir.startswith("/") and (not (":" in storagedir)):
+        storagedir = "file://" + storagedir
 
     if "Assignment" in workflowtype and getboolean(add_synapse_points):
         presyn_pts, postsyn_pts = read_pts(storagedir)
         payload = add_annotation_layer(payload, presyn_pts, postsyn_pts, voxelres)
 
-    upload_json(storagedir, "ng.json", payload)
-    slack_message(wrap_payload(os.path.join(storagedir, "ng.json")), broadcast=True)
+    if storagedir.startswith("file://"):
+        slack_message(wrap_payload(payload), broadcast=True)
+    else:
+        upload_json(storagedir, "ng.json", payload)
+        slack_message(wrap_payload(os.path.join(storagedir, "ng.json")), broadcast=True)
 
 
-def getboolean(rawvalue: str) -> bool:
+def getboolean(rawvalue: bool | int | str) -> bool:
     """Simulating configparser.getboolean"""
-    value = rawvalue.lower()
+    if isinstance(rawvalue, str):
+        value = rawvalue.lower()
+    else:
+        value = rawvalue
     if value in [True, 1, "yes", "y", "true", "t", "on"]:
         return True
     elif value in [False, 0, "no", "n", "false", "f", "off"]:
@@ -139,7 +152,7 @@ def nglink_op(
     seg_path: str,
     workflowtype: str,
     storagedir: str,
-    add_synapse_points: str,
+    add_synapse_points: bool | int | str,
     img_path: str,
     voxelres: tuple[int, int, int],
 ) -> PythonOperator:
