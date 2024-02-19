@@ -53,8 +53,11 @@ def generate_nglink(
         presyn_pts, postsyn_pts = read_pts(storagedir)
         payload = add_annotation_layer(payload, presyn_pts, postsyn_pts, voxelres)
 
-    upload_json(storagedir, "ng.json", payload)
-    slack_message(wrap_payload(os.path.join(storagedir, "ng.json")), broadcast=True)
+    if storagedir.startswith("file://"):
+        slack_message(wrap_payload(payload), broadcast=True)
+    else:
+        upload_json(storagedir, "ng.json", payload)
+        slack_message(wrap_payload(os.path.join(storagedir, "ng.json")), broadcast=True)
 
 
 def getboolean(rawvalue: bool | int | str) -> bool:
