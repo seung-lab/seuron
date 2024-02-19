@@ -32,6 +32,7 @@ def generate_nglink(
     voxelres: Optional[tuple[int, int, int]] = None,
 ) -> None:
     """Generates a neuroglancer link to view the results."""
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
     layers = [
         ImageLayer("network output", net_output_path),
         SegLayer("synaptor segmentation", seg_path),
@@ -39,6 +40,10 @@ def generate_nglink(
 
     if img_path:
         layers = [ImageLayer("image", img_path)] + layers
+
+    if ng_subs:
+        for layer in layers:
+            layer.cloudpath = layer.cloudpath.replace(ng_subs["old"], ng_subs["new"])
 
     payload = generate_ng_payload(layers)
 
