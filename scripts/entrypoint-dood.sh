@@ -30,6 +30,9 @@ if [[ "${ENABLE_JUPYTER_INTERFACE=}" == "True" ]] ; then
     if [ ! -f $AIRFLOW_HOME/jupyterlab/local_pipeline_tutorial.ipynb ]; then
         cp $AIRFLOW_HOME/examples/local_pipeline_tutorial.ipynb $AIRFLOW_HOME/jupyterlab/local_pipeline_tutorial.ipynb
     fi
+    if [ ! -f $AIRFLOW_HOME/jupyterlab/minnie65_local_pipeline.ipynb ]; then
+        cp $AIRFLOW_HOME/examples/minnie65_local_pipeline.ipynb $AIRFLOW_HOME/jupyterlab/minnie65_local_pipeline.ipynb
+    fi
 fi
 
 if [ ! -f .sudo.disabled  ]; then
