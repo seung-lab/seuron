@@ -1,7 +1,9 @@
 from configparser import ConfigParser
 from seuronbot import SeuronBot
 from airflow_api import set_variable, run_dag
-from bot_utils import replyto, download_file
+from bot_info import broker_url
+from bot_utils import replyto, download_file, download_json
+from kombu_helper import put_message
 
 
 @SeuronBot.on_message("update synaptor parameters",
@@ -15,7 +17,6 @@ from bot_utils import replyto, download_file
 def update_synaptor_params(msg):
     """Parses the synaptor configuration file to check for simple errors."""
     # Current file format is ini/toml, not json
-    _, content = download_file(msg)
 
     def config_to_json(content):
         cp = ConfigParser()
@@ -28,11 +29,17 @@ def update_synaptor_params(msg):
             for section in cp
         }
 
-    if content is not None:  # download_file returns None if there's a problem
-        replyto(msg, "Running synaptor sanity check. Please wait.")
+    content = download_json(msg)
+    if content:
+        param = content
+    else:
+        _, content = download_file(msg)
         param = config_to_json(content)
 
+    if param is not None:  # download_file returns None if there's a problem
+        replyto(msg, "Running synaptor sanity check. Please wait.")
         set_variable("synaptor_param.json", param, serialize_json=True)
+        put_message(broker_url, "seuronbot_payload", param)
         run_dag("synaptor_sanity_check")
 
     else:
