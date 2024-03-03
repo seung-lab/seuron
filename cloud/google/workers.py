@@ -158,6 +158,8 @@ def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
                 'acceleratorCount': accelerator_count,
                 'acceleratorType': worker['gpuWorkerAcceleratorType'],
         }]
+        if not worker.get('preemptible', False):
+            instance_template['scheduling']['onHostMaintenance'] = 'TERMINATE'
 
     if worker['type'] == "atomic":
         instance_template['advancedMachineFeatures'] = {
