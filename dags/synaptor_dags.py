@@ -246,10 +246,9 @@ file_assignment = [
 db_assignment = [
     CPUTask("chunk_ccs"),
     CPUTask("match_contins"),
-    CPUTask("seg_graph_ccs"),
+    GraphTask("seg_graph_ccs"),
     CPUTask("chunk_seg_map"),
     CPUTask("merge_seginfo"),
-    GraphTask("seg_graph_ccs"),
     GPUTask("chunk_edges"),
     CPUTask("pick_edge"),
     CPUTask("merge_dups"),
