@@ -178,8 +178,9 @@ def scale_down_cluster(
     # cluster sub-dag
     cluster_key = cluster_key_from_tag(prev_cluster_tag)
     scale_down = scale_down_cluster_op(dag, prev_cluster_tag, cluster_key, 0, "cluster")
+    cluster_size = 1 if prev_cluster_tag.startswith("synaptor-seggraph") else MAX_CLUSTER_SIZE
     prev_workers = [
-        dag.get_task(f"worker_{prev_cluster_tag}_{i}") for i in range(MAX_CLUSTER_SIZE)
+        dag.get_task(f"worker_{prev_cluster_tag}_{i}") for i in range(cluster_size)
     ]
 
     prev_workers >> scale_down
