@@ -334,9 +334,9 @@ def check_cloud_paths_empty(paths):
         for path in paths:
             cf = CloudFiles(path)
             obj = next(cf.list(), None)
-        if obj is not None:
-            slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
-            raise RuntimeError('Path already exist')
+            if obj is not None:
+                slack_message(""":exclamation:*Error*: `{}` is not empty""".format(path))
+                raise RuntimeError('Path already exist')
     except:
         slack_message(""":exclamation:*Error*: Check cloud path failed:
 ```{}``` """.format(traceback.format_exc()))
