@@ -86,6 +86,10 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
 
     drain >> init_cloudvols
 
+    if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
+        init_db = manager_op(dag, "init_db", image=SYNAPTOR_IMAGE)
+        init_cloudvols >> init_db
+
     if collect_metrics:
         metrics = collect_metrics_op(dag)
         metrics >> drain
