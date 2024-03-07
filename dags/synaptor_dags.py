@@ -1,6 +1,6 @@
 """DAG definition for synaptor workflows."""
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from airflow import DAG
@@ -28,6 +28,9 @@ default_args = {
     "start_date": datetime(2022, 2, 22),
     "catchup": False,
     "retries": 0,
+    'retry_delay': timedelta(seconds=10),
+    'retry_exponential_backoff': True,
+    'max_retry_delay': timedelta(seconds=600),
 }
 
 
