@@ -242,6 +242,8 @@ def generate_op(
         f" --queueurl {broker_url}"
         f" --queuename {task_queue_name}"
     )
+    if taskname == "self_destruct":
+        command += f" --clusterkey {tag}"
 
     # these variables will be mounted in the containers
     variables = add_secrets_if_defined(["synaptor_param.json"])
