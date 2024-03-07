@@ -149,7 +149,7 @@ def change_cluster_if_required(
         MAX_CLUSTER_SIZE if next_task.cluster_key != "synaptor-seggraph" else 1
     )
     scale_up = scale_up_cluster_op(
-        dag, new_tag, next_task.cluster_key, 1, cluster_size, "cluster"
+        dag, new_tag, next_task.cluster_key, min(10, cluster_size), cluster_size, "cluster"
     )
 
     workers = [
