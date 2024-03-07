@@ -11,7 +11,7 @@ from airflow.models import Variable, BaseOperator
 from worker_op import worker_op
 from param_default import default_synaptor_image
 from igneous_and_cloudvolume import check_queue, upload_json, read_single_file
-from slack_message import task_failure_alert, task_done_alert, slack_message
+from slack_message import task_failure_alert, task_retry_alert, task_done_alert, slack_message
 from nglinks import ImageLayer, SegLayer, generate_ng_payload, wrap_payload
 from kombu_helper import drain_messages
 
@@ -301,6 +301,7 @@ def synaptor_op(
         image=image,
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
+        on_retry_callback=task_retry_alert,
         queue=op_queue_name,
         dag=dag,
         # qos='quality of service'
