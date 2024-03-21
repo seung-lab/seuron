@@ -91,7 +91,24 @@ def __run_dag(dag_id):
     return trigger_dag(dag_id)
 
 
+def wait_for_dag_refresh(dag_id):
+    last_parsed_time = None
+    for _ in range(10):
+        dag = DagModel.get_dagmodel(dag_id)
+        if not last_parsed_time:
+            last_parsed_time = dag.last_parsed_time
+        else:
+            if dag.last_parsed_time > last_parsed_time:
+                print(dag.last_parsed_time)
+                print(last_parsed_time)
+                return
+        time.sleep(5)
+
+
 def run_dag(dag_id, wait_for_completion=False):
+    dags_need_refresh = ["segmentation", "chunkflow_worker"]
+    if dag_id in dags_need_refresh:
+        wait_for_dag_refresh(dag_id)
     dagrun = run_in_executor(__run_dag, dag_id)
     if wait_for_completion:
         while True:
