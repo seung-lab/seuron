@@ -264,6 +264,19 @@ db_assignment = [
     CPUTask("remap"),
 ]
 
+file_onlyassignment = [
+    GPUTask("chunk_edges"),
+    CPUTask("merge_edges"),
+    CPUTask("remap"),
+]
+
+db_onlyassignment = [
+    GPUTask("chunk_edges"),
+    CPUTask("pick_edge"),
+    CPUTask("merge_dups"),
+    CPUTask("merge_dup_maps"),
+    CPUTask("remap"),
+    ]
 # =========================================
 # DAG definition
 dag = DAG(
@@ -276,6 +289,7 @@ dag = DAG(
 workflows = {
     "Segmentation": {"File": file_segmentation, "Database": db_segmentation},
     "Segmentation+Assignment": {"File": file_assignment, "Database": db_assignment},
+    "Assignment": {"File": file_onlyassignment, "Database": db_onlyassignment}
 }
 
 fill_dag(

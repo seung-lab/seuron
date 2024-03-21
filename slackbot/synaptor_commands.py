@@ -55,3 +55,13 @@ def run_synaptor(msg):
     """Runs the file segmentation DAG."""
     replyto(msg, "Running synaptor. Please wait.")
     run_dag("synaptor")
+
+@SeuronBot.on_message("run synaptor assignment",
+                      description="Runs a synaptor assignment",
+                      exclusive=True,
+                      cancelable=True,
+                      )
+def synaptor_assignment(msg):
+    """Runs the synapse assignment DAG."""
+    replyto(msg, "Running synaptor synapse assignment. Please wait.")
+    run_dag("synaptor_assignment")
