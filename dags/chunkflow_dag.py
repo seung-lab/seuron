@@ -127,6 +127,42 @@ def check_patch_parameters(param):
     return param
 
 
+def check_onnx_model(param):
+    from cloudfiles import dl
+    import onnx
+    onnx_path = param.get("ONNX_MODEL_PATH", None)
+    if onnx_path:
+        onnx_file = dl(onnx_path)
+        onnx_model = onnx.load_model_from_string(onnx_file["content"])
+        inputs = onnx_model.graph.input
+        outputs = onnx_model.graph.output
+        if len(inputs) > 1:
+            slack_message(":u7981:*ERROR: Chunkflow does not support models with multiple inputs!*")
+            raise ValueError('Onnx model with multiple inputs')
+        if len(outputs) > 1:
+            slack_message(":u7981:*WARNING: Model produces multiple output, chunkflow only collects the first one*")
+        input_shape = [dim.dim_value for dim in inputs[0].type.tensor_type.shape.dim]
+        output_shape = [dim.dim_value for dim in outputs[0].type.tensor_type.shape.dim]
+
+        if "INFERENCE_OUTPUT_CHANNELS" not in param:
+            slack_message(f"Set `INFERENCE_OUTPUT_CHANNELS` to `{output_shape[1]}`")
+            param["INFERENCE_OUTPUT_CHANNELS"] = output_shape[1]
+        elif param["INFERENCE_OUTPUT_CHANNELS"] != output_shape[1]:
+            slack_message(f":u7981:*ERROR: Specified `INFERENCE_OUTPUT_CHANNELS = {param['INFERENCE_OUTPUT_CHANNELS']}`, does not match ONNX output shape `{output_shape}`*")
+            raise ValueError('Inference output channel error')
+
+        if any(x != y for x, y in zip(input_shape[-3:], output_shape[-3:])):
+            slack_message(f":u7981:*ERROR: The input shape `{input_shape[-3:][::-1]}` does not match the output shape `{output_shape[-3:][::-1]}`*")
+            raise ValueError('Input shape does not match the output shape')
+
+        if "INPUT_PATCH_SIZE" not in param:
+            slack_message(f"Set `INPUT_PATH_SIZE` to `{input_shape[-3:][::-1]}`")
+            param["INPUT_PATCH_SIZE"] = output_shape[-3:][::-1]
+        elif any(x != y for x, y in zip(param["INPUT_PATCH_SIZE"], input_shape[-3:][::-1])):
+            slack_message(f":u7981:*ERROR: Specified `INPUT_PATCH_SIZE = {param['INPUT_PATCH_SIZE']}`, does not match ONNX input shape `{input_shape[-3:][::-1]}`*")
+            raise ValueError('Input patch size error')
+
+
 @mount_secrets
 def supply_default_parameters():
     from docker_helper import health_check_info
@@ -159,6 +195,13 @@ def supply_default_parameters():
     if "ONNX_MODEL_PATH" in param and "PYTORCH_MODEL_PATH" in param:
         slack_message(":u7981:*ERROR: Cannot specify pytorch model and onnx model at the same time*")
         raise ValueError('Can only use one backend')
+
+    if "ONNX_MODEL_PATH" in param:
+        try:
+            check_onnx_model(param)
+        except Exception:
+            slack_message(":u7981:*ERROR: Failed to check the ONNX model*")
+            raise ValueError('Check ONNX model failed')
 
     if param.get("ENABLE_FP16", False):
         slack_message(":exclamation:*Enable FP16 inference for TensorRT*")
