@@ -106,7 +106,7 @@ def wait_for_dag_refresh(dag_id):
 
 
 def run_dag(dag_id, wait_for_completion=False):
-    dags_need_refresh = ["segmentation", "chunkflow_worker"]
+    dags_need_refresh = ["segmentation", "chunkflow_worker", "synaptor"]
     if dag_id in dags_need_refresh:
         wait_for_dag_refresh(dag_id)
     dagrun = run_in_executor(__run_dag, dag_id)
