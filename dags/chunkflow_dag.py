@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from worker_op import worker_op
-from airflow.operators.python import PythonOperator, ShortCircuitOperator
+from airflow.operators.python import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels, update_mount_secrets
 from datetime import datetime
@@ -338,23 +338,6 @@ def setup_env_op(dag, param, queue):
         dag=dag
     )
 
-def chunkflow_running():
-    cf_done = Variable.get("chunkflow_done")
-    if (cf_done == "yes"):
-        return False
-    else:
-        return True
-
-
-def skip_worker_op(dag, queue, wid):
-    return ShortCircuitOperator(
-        task_id="skip_worker_{}".format(wid),
-        python_callable=chunkflow_running,
-        priority_weight=1,
-        weight_rule=WeightRule.ABSOLUTE,
-        queue=queue,
-        dag=dag
-    )
 
 
 def inference_op(dag, param, queue, wid):
