@@ -1,6 +1,6 @@
 """DAG definition for synaptor workflows."""
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from airflow import DAG
@@ -28,6 +28,9 @@ default_args = {
     "start_date": datetime(2022, 2, 22),
     "catchup": False,
     "retries": 0,
+    'retry_delay': timedelta(seconds=10),
+    'retry_exponential_backoff': True,
+    'max_retry_delay': timedelta(seconds=600),
 }
 
 
@@ -86,6 +89,10 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
 
     drain >> init_cloudvols
 
+    if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
+        init_db = manager_op(dag, "init_db", image=SYNAPTOR_IMAGE)
+        init_cloudvols >> init_db
+
     if collect_metrics:
         metrics = collect_metrics_op(dag)
         metrics >> drain
@@ -142,7 +149,7 @@ def change_cluster_if_required(
         MAX_CLUSTER_SIZE if next_task.cluster_key != "synaptor-seggraph" else 1
     )
     scale_up = scale_up_cluster_op(
-        dag, new_tag, next_task.cluster_key, 1, cluster_size, "cluster"
+        dag, new_tag, next_task.cluster_key, min(10, cluster_size), cluster_size, "cluster"
     )
 
     workers = [
@@ -178,8 +185,9 @@ def scale_down_cluster(
     # cluster sub-dag
     cluster_key = cluster_key_from_tag(prev_cluster_tag)
     scale_down = scale_down_cluster_op(dag, prev_cluster_tag, cluster_key, 0, "cluster")
+    cluster_size = 1 if prev_cluster_tag.startswith("synaptor-seggraph") else MAX_CLUSTER_SIZE
     prev_workers = [
-        dag.get_task(f"worker_{prev_cluster_tag}_{i}") for i in range(MAX_CLUSTER_SIZE)
+        dag.get_task(f"worker_{prev_cluster_tag}_{i}") for i in range(cluster_size)
     ]
 
     prev_workers >> scale_down
@@ -246,10 +254,9 @@ file_assignment = [
 db_assignment = [
     CPUTask("chunk_ccs"),
     CPUTask("match_contins"),
-    CPUTask("seg_graph_ccs"),
+    GraphTask("seg_graph_ccs"),
     CPUTask("chunk_seg_map"),
     CPUTask("merge_seginfo"),
-    GraphTask("seg_graph_ccs"),
     GPUTask("chunk_edges"),
     CPUTask("pick_edge"),
     CPUTask("merge_dups"),
