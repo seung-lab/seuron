@@ -5,7 +5,7 @@ def check_manager_node(ntasks):
     available_mem = psutil.virtual_memory().available
     expected_mem = 2*ntasks*1024*1024*10 # 10MB for each postgresql connection
     if available_mem < expected_mem:
-        slack_message(f":u7981:*ERROR: You need {humanize.naturalsize(expected_mem)} RAM to handle {ntasks} tasks, the manager node only have {humanize.naturalsize(total_mem)} RAM*")
+        slack_message(f":u7981:*ERROR: You need {humanize.naturalsize(expected_mem)} RAM to handle {ntasks} tasks, the manager node only have {humanize.naturalsize(available_mem)} RAM*")
         return False
 
     return True
