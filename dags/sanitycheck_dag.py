@@ -295,7 +295,8 @@ def print_summary():
     for p in ["SCRATCH", "WS", "SEG"]:
         path = "{}_PATH".format(p)
         if path not in param:
-            paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
+            if f"{p}_PREFIX" in param:
+                paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
         else:
             paths[path] = param["{}_PATH".format(p)]
 
