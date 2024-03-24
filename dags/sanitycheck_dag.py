@@ -156,7 +156,7 @@ def check_cv_data():
             slack_message("""*Use semantic labels in* `{}`""".format(param["SEM_PATH"]))
 
     if param.get("SKIP_AGG", False):
-        if not all((param.get("SKIP_DOWNSAMPLE", False), param.get("SKIP_MESHING", False), param.get("SKIP_SKELETON", False))):
+        if param.get("SKIP_WS", False) or not (param.get("SKIP_DOWNSAMPLE", False) and param.get("SKIP_MESHING", False) and param.get("SKIP_SKELETON", False)):
             if "SEG_PATH" not in param:
                 slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
                 raise ValueError('Must specify path for a existing segmentation when SKIP_AGG is used')
