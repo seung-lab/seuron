@@ -300,7 +300,7 @@ def print_summary():
             paths[path] = param["{}_PATH".format(p)]
 
     gcs_buckets = set()
-    for path in list(paths.values()) + [param['AFF_PATH'], param.get("SEM_PATH", None), param.get("GT_PATH", None)]:
+    for path in list(paths.values()) + [param.get('AFF_PATH', None), param.get("SEM_PATH", None), param.get("GT_PATH", None)]:
         if path:
             components = extract(path)
             if components.protocol == "gs":
