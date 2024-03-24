@@ -166,9 +166,6 @@ def check_cv_data():
                 slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
                 raise
 
-            if param.get("SKIP_WS", False):
-                param["AFF_PATH"] = "N/A" if "AFF_PATH" not in param else param["AFF_PATH"]
-                param["WS_PATH"] = "N/A" if "WS_PATH" not in param else param["WS_PATH"]
             param["AFF_MIP"] = 0
             param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
             if "BBOX" not in param:
@@ -319,13 +316,13 @@ Watershed: `{ws}`
 Segmentation: `{seg}`
 Region graph and friends: `{scratch}`
 '''.format(
-        aff = param["AFF_PATH"],
+        aff = param.get("AFF_PATH", "N/A"),
         resolution = ", ".join(str(x) for x in param["AFF_RESOLUTION"]),
         bbox = ", ".join(str(x) for x in data_bbox),
         size = ", ".join(str(data_bbox[i+3] - data_bbox[i]) for i in range(3)),
-        ws = paths["WS_PATH"],
-        seg = paths["SEG_PATH"],
-        scratch = paths["SCRATCH_PATH"],
+        ws = paths.get("WS_PATH", "N/A"),
+        seg = paths.get("SEG_PATH", "N/A"),
+        scratch = paths.get("SCRATCH_PATH", "N/A"),
     )
 
     if param.get("SEM_PATH", None):
