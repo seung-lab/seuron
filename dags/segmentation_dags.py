@@ -473,7 +473,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     Affinity mip level: {mip}
     Bounding box: [{bbox}]'''.format(
         name = param["NAME"],
-        aff = param["AFF_PATH"],
+        aff = param.get("AFF_PATH", "N/A"),
         bbox = ", ".join(str(x) for x in param["BBOX"]),
         mip = param.get("AFF_MIP",0)
     )
@@ -482,8 +482,8 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     Watershed layer: `{ws}`
     Segmentation Layer: `{seg}`'''.format(
         name = param["NAME"],
-        ws = param["WS_PATH"],
-        seg = param["SEG_PATH"]
+        ws = param.get("WS_PATH", "N/A"),
+        seg = param.get("SEG_PATH", "N/A")
     )
 
     no_rescale_msg = ":exclamation: Cannot rescale cluster"

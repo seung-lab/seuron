@@ -156,7 +156,7 @@ def check_cv_data():
             slack_message("""*Use semantic labels in* `{}`""".format(param["SEM_PATH"]))
 
     if param.get("SKIP_AGG", False):
-        if not all((param.get("SKIP_DOWNSAMPLE", False), param.get("SKIP_MESHING", False), param.get("SKIP_SKELETON", False))):
+        if param.get("SKIP_WS", False) or not (param.get("SKIP_DOWNSAMPLE", False) and param.get("SKIP_MESHING", False) and param.get("SKIP_SKELETON", False)):
             if "SEG_PATH" not in param:
                 slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
                 raise ValueError('Must specify path for a existing segmentation when SKIP_AGG is used')
@@ -166,9 +166,6 @@ def check_cv_data():
                 slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
                 raise
 
-            if param.get("SKIP_WS", False):
-                param["AFF_PATH"] = "N/A" if "AFF_PATH" not in param else param["AFF_PATH"]
-                param["WS_PATH"] = "N/A" if "WS_PATH" not in param else param["WS_PATH"]
             param["AFF_MIP"] = 0
             param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
             if "BBOX" not in param:
@@ -295,12 +292,13 @@ def print_summary():
     for p in ["SCRATCH", "WS", "SEG"]:
         path = "{}_PATH".format(p)
         if path not in param:
-            paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
+            if f"{p}_PREFIX" in param:
+                paths[path] = param["{}_PREFIX".format(p)]+param["NAME"]
         else:
             paths[path] = param["{}_PATH".format(p)]
 
     gcs_buckets = set()
-    for path in list(paths.values()) + [param['AFF_PATH'], param.get("SEM_PATH", None), param.get("GT_PATH", None)]:
+    for path in list(paths.values()) + [param.get('AFF_PATH', None), param.get("SEM_PATH", None), param.get("GT_PATH", None)]:
         if path:
             components = extract(path)
             if components.protocol == "gs":
@@ -318,13 +316,13 @@ Watershed: `{ws}`
 Segmentation: `{seg}`
 Region graph and friends: `{scratch}`
 '''.format(
-        aff = param["AFF_PATH"],
+        aff = param.get("AFF_PATH", "N/A"),
         resolution = ", ".join(str(x) for x in param["AFF_RESOLUTION"]),
         bbox = ", ".join(str(x) for x in data_bbox),
         size = ", ".join(str(data_bbox[i+3] - data_bbox[i]) for i in range(3)),
-        ws = paths["WS_PATH"],
-        seg = paths["SEG_PATH"],
-        scratch = paths["SCRATCH_PATH"],
+        ws = paths.get("WS_PATH", "N/A"),
+        seg = paths.get("SEG_PATH", "N/A"),
+        scratch = paths.get("SCRATCH_PATH", "N/A"),
     )
 
     if param.get("SEM_PATH", None):
