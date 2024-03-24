@@ -381,6 +381,13 @@ def setup_env_op(dag, param, queue):
         dag=dag
     )
 
+def remove_workers():
+    from time import sleep
+    param = Variable.get("inference_param", deserialize_json=True)
+    if param["TASK_NUM"] > 1:
+        param["TASK_NUM"] = 1
+        Variable.set("inference_param", param, serialize_json=True)
+        sleep(60)
 
 
 def inference_op(dag, param, queue, wid):
@@ -513,8 +520,8 @@ process_output_task = PythonOperator(
 
 
 try:
-    scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), estimate_worker_instances(param.get("TASK_NUM",1), cluster_info["gpu"]), "cluster")
-    scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "cluster")
+    scale_up_cluster_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", min(param.get("TASK_NUM",1), 20), estimate_worker_instances(param.get("TASK_NUM",1), cluster_info["gpu"]), "cluster", tag="up")
+    scale_down_cluster_task = scale_down_cluster_op(dag_worker, "chunkflow", "gpu", 0, "cluster", tag="down")
 except:
     scale_up_cluster_task = placeholder_op(dag_worker, "chunkflow_gpu_scale_up_dummy")
     scale_down_cluster_task = placeholder_op(dag_worker, "chunkflow_gpu_scale_down_dummy")
@@ -523,6 +530,15 @@ wait_for_chunkflow_task = PythonOperator(
     task_id="wait_for_chunkflow",
     python_callable=check_queue,
     op_args=("chunkflow",),
+    priority_weight=100000,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    dag=dag_worker
+)
+
+remove_workers_op = PythonOperator(
+    task_id="remove_extra_workers",
+    python_callable=remove_workers,
     priority_weight=100000,
     weight_rule=WeightRule.ABSOLUTE,
     queue="manager",
@@ -562,4 +578,4 @@ collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down
 
 [setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> set_env_task >> process_output_task
 
-scale_up_cluster_task >> wait_for_chunkflow_task >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
+scale_up_cluster_task >> wait_for_chunkflow_task >> remove_workers_op >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
