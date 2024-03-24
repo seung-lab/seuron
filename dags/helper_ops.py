@@ -135,10 +135,12 @@ def wait_op(dag, process):
     )
 
 
-def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue, trigger_rule="one_success"):
+def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue, tag=None, trigger_rule="one_success"):
+    if not tag:
+        tag = str(total_size)
     if cluster_api:
         return PythonOperator(
-            task_id=f'resize_{stage}_{total_size}',
+            task_id=f'resize_{stage}_{tag}',
             python_callable=cluster_api.ramp_up_cluster,
             op_args=[key, initial_size, total_size],
             default_args=default_args,
@@ -152,10 +154,12 @@ def scale_up_cluster_op(dag, stage, key, initial_size, total_size, queue, trigge
         return placeholder_op(dag, f'resize_{stage}_{total_size}')
 
 
-def scale_down_cluster_op(dag, stage, key, size, queue, trigger_rule="all_success"):
+def scale_down_cluster_op(dag, stage, key, size, queue, tag=None, trigger_rule="all_success"):
+    if not tag:
+        tag = str(size)
     if cluster_api:
         return PythonOperator(
-            task_id=f'resize_{stage}_{size}',
+            task_id=f'resize_{stage}_{tag}',
             python_callable=cluster_api.ramp_down_cluster,
             op_args=[key, size],
             default_args=default_args,
