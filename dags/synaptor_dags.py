@@ -215,7 +215,15 @@ def add_task(
     dag: DAG, task: Task, prev_operator: BaseOperator, tag: Optional[str] = None
 ) -> BaseOperator:
     """Adds a processing step to a DAG."""
-    generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, tag=tag)
+
+    if task.name == "self_destruct":
+        cluster_size = 1 if tag.startswith("synaptor-seggraph") else MAX_CLUSTER_SIZE
+        extra_args = {"workercount": str(cluster_size)}
+    else:
+        extra_args = None
+
+    generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, extra_args=extra_args, tag=tag)
+
     if tag:
         wait = wait_op(dag, f"{task.name}_{tag}")
     else:

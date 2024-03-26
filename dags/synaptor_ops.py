@@ -235,6 +235,7 @@ def generate_op(
     taskname: str,
     op_queue_name: Optional[str] = "manager",
     task_queue_name: Optional[str] = TASK_QUEUE_NAME,
+    extra_args: Optional[dict] = None,
     tag: Optional[str] = None,
     image: str = default_synaptor_image,
 ) -> BaseOperator:
@@ -246,8 +247,10 @@ def generate_op(
         f" --queueurl {airflow_broker_url}"
         f" --queuename {task_queue_name}"
     )
-    if taskname == "self_destruct":
-        command += f" --clusterkey {tag}"
+
+    if extra_args:
+        for k in extra_args:
+            command += f" --{k} {extra_args[k]}"
 
     # these variables will be mounted in the containers
     task_id = f"generate_{taskname}" if tag is None else f"generate_{taskname}_{tag}"
