@@ -122,15 +122,15 @@ services:
             - grafana-storage:/var/lib/grafana
 
     redis:
-        image: redis:7-alpine
+        image: valkey/valkey:7.2-alpine
         restart: always
-        command: redis-server --save 60 1
+        command: valkey-server --save 60 1
         ports:
             - "6379:6379"
         volumes:
             - redis-storage:/data
         healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
+            test: ["CMD", "valkey-cli", "ping"]
             interval: 5s
             timeout: 30s
             retries: 50
