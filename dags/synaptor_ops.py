@@ -14,6 +14,7 @@ from igneous_and_cloudvolume import check_queue, upload_json, read_single_file
 from slack_message import task_failure_alert, task_retry_alert, task_done_alert, slack_message
 from nglinks import ImageLayer, SegLayer, generate_ng_payload, wrap_payload
 from kombu_helper import drain_messages
+from dag_utils import remove_workers
 
 from airflow import configuration as conf
 
@@ -320,6 +321,20 @@ def wait_op(dag: DAG, taskname: str) -> PythonOperator:
         task_id=f"wait_for_queue_{taskname}",
         python_callable=check_queue,
         op_args=(TASK_QUEUE_NAME,),
+        priority_weight=100_000,
+        weight_rule=WeightRule.ABSOLUTE,
+        on_success_callback=task_done_alert,
+        queue="manager",
+        dag=dag,
+    )
+
+
+def self_destruct_op(dag: DAG, queue: str, tag: str) -> PythonOperator:
+    """Remove workers after finishing tasks."""
+    return PythonOperator(
+        task_id=f"self_destruct_for_queue_{tag}",
+        python_callable=remove_workers,
+        op_args=(queue,),
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
         on_success_callback=task_done_alert,

@@ -8,7 +8,7 @@ from airflow.models import Variable, BaseOperator
 
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from param_default import synaptor_param_default, default_synaptor_image
-from synaptor_ops import manager_op, drain_op
+from synaptor_ops import manager_op, drain_op, self_destruct_op
 from synaptor_ops import synaptor_op, wait_op, generate_op, nglink_op
 
 
@@ -217,12 +217,10 @@ def add_task(
     """Adds a processing step to a DAG."""
 
     if task.name == "self_destruct":
-        cluster_size = 1 if tag.startswith("synaptor-seggraph") else MAX_CLUSTER_SIZE
-        extra_args = {"workercount": str(cluster_size)}
+        cluster_key = cluster_key_from_tag(tag)
+        generate = self_destruct_op(dag, queue=cluster_key, tag=tag)
     else:
-        extra_args = None
-
-    generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, extra_args=extra_args, tag=tag)
+        generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, tag=tag)
 
     if tag:
         wait = wait_op(dag, f"{task.name}_{tag}")
