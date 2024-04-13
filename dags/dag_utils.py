@@ -1,3 +1,6 @@
+from airflow.utils.db import provide_session
+
+
 def check_manager_node(ntasks):
     import psutil
     import humanize
@@ -60,3 +63,18 @@ def get_connection(conn, default_var=None):
         return default_var
 
     return ig_conn
+
+
+@provide_session
+def query_task_instances(queue, session):
+    from airflow import models
+    from airflow.utils.state import State
+    TI = models.TaskInstance
+    return session.query(TI).filter(TI.queue == queue).filter(TI.state.in_(State.unfinished)).all()
+
+
+def remove_workers(queue):
+    from airflow.utils.state import State
+    tis = query_task_instances(queue=queue)
+    for ti in tis:
+        ti.set_state(State.SUCCESS)
