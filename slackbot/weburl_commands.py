@@ -40,7 +40,7 @@ def on_show_grafana(msg):
 
 
 @SeuronBot.on_message(["jupyter", "jupyterlab", "show jupyterlab"],
-                      description="URL of the Jupter Lab instance",
+                      description="URL of the Jupyter Lab instance",
                       exclusive=True,
                       cancelable=False,
                       extra_parameters=False)

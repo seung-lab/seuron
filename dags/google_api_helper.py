@@ -99,7 +99,7 @@ def reset_cluster(key, initial_size):
     except:
         slack_message(":information_source: Cannot obtain the target size of cluster {}".format(key))
 
-    slack_message(":information_source:Start reseting {} instances in cluster {}".format(total_size, key))
+    slack_message(":information_source:Start resetting {} instances in cluster {}".format(total_size, key))
     ramp_down_cluster(key, 0)
     slack_message(":information_source:Reduce the number of instances to 0, wait 5 min to spin them up again")
     sleep(300)
@@ -217,7 +217,7 @@ def reduce_instance_group_size(key, size):
         return
     else:
         real_size = resize_instance_group(cluster_info[key], size)
-        slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stablize".format(key, real_size))
+        slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stabilize".format(key, real_size))
         sleep(60)
 
 

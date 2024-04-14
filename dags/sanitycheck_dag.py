@@ -77,7 +77,7 @@ def check_cv_data():
                 slack_message(":u7981:*ERROR: Cannot access the affinity map* `{}` *at resolution {}*".format(param["AFF_PATH"], param["AFF_RESOLUTION"]))
                 raise ValueError('Resolution does not exist')
             if "AFF_MIP" in param:
-                slack_message(":exclamation:*AFF_RESOLUTION and AFF_MIP are both specified, Perfer AFF_RESOLUTION*")
+                slack_message(":exclamation:*AFF_RESOLUTION and AFF_MIP are both specified, Prefer AFF_RESOLUTION*")
             param["AFF_MIP"] = vol.mip
 
         if "AFF_MIP" not in param:

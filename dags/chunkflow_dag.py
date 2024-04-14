@@ -218,7 +218,7 @@ def supply_default_parameters():
             slack_message(":u7981:*ERROR: Cannot access image * `{}` *at resolution {}*".format(param["IMAGE_PATH"], param["IMAGE_RESOLUTION"]))
             raise ValueError('Resolution does not exist')
         if "IMAGE_MIP" in param:
-            slack_message(":exclamation:*IMAGE_RESOLUTION and IMAGE_MIP are both specified, Perfer IMAGE_RESOLUTION*")
+            slack_message(":exclamation:*IMAGE_RESOLUTION and IMAGE_MIP are both specified, Prefer IMAGE_RESOLUTION*")
         param["IMAGE_MIP"] = vol.mip
 
     if "IMAGE_MASK_RESOLUTION" in param and param.get("IMAGE_MASK_PATH", "N/A") != "N/A":
@@ -229,7 +229,7 @@ def supply_default_parameters():
             raise ValueError('Resolution does not exist')
 
         if "IMAGE_MASK_MIP" in param:
-            slack_message(":exclamation:*IMAGE_MASK_RESOLUTION and IMAGE_MASK_MIP are both specified, Perfer IMAGE_MASK_RESOLUTION*")
+            slack_message(":exclamation:*IMAGE_MASK_RESOLUTION and IMAGE_MASK_MIP are both specified, Prefer IMAGE_MASK_RESOLUTION*")
         param["IMAGE_MASK_MIP"] = vol.mip
 
         slack_message(":exclamation:*Use image mask * `{}` *at resolution {}*".format(param["IMAGE_MASK_PATH"], param["IMAGE_MASK_RESOLUTION"]))
@@ -242,7 +242,7 @@ def supply_default_parameters():
             raise ValueError('Resolution does not exist')
 
         if "OUTPUT_MASK_MIP" in param:
-            slack_message(":exclamation:*OUTPUT_MASK_RESOLUTION and OUTPUT_MASK_MIP are both specified, Perfer OUTPUT_MASK_RESOLUTION*")
+            slack_message(":exclamation:*OUTPUT_MASK_RESOLUTION and OUTPUT_MASK_MIP are both specified, Prefer OUTPUT_MASK_RESOLUTION*")
         param["OUTPUT_MASK_MIP"] = vol.mip
 
         slack_message(":exclamation:*Use output mask * `{}` *at resolution {}*".format(param["OUTPUT_MASK_PATH"], param["OUTPUT_MASK_RESOLUTION"]))

@@ -664,7 +664,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
                 if c.mip_level() not in slack_ops[k]:
                     slack_ops[k][c.mip_level()] = slack_message_op(dag[k], k+str(c.mip_level()), ":heavy_check_mark: {}: MIP {} finished".format(k, c.mip_level()))
                     if c.mip_level() == local_batch_mip and k != "cs":
-                        slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remaping finished".format(k))
+                        slack_ops[k]["remap"] = slack_message_op(dag[k], "remap_{}".format(k), ":heavy_check_mark: {}: Remapping finished".format(k))
                         slack_ops[k]["remap"] >> mark_done[k]
             process_composite_tasks(c, cm, top_mip, param, composite_workers)
 
