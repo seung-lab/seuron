@@ -10,6 +10,7 @@ import requests
 import shutil
 from datetime import datetime
 import redis
+import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 from collections import namedtuple
 
@@ -110,7 +111,7 @@ def update_concurrency(running_tasks, max_concurrency):
 
 def execute(qurl, timeout, queue_name, statsd, max_concurrency):
     run_token = Variable.get("run_token", default_var="")
-    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(max_concurrency) as executor:
+    with Connection(qurl, heartbeat=timeout) as conn, ProcessPoolExecutor(max_concurrency, mp_context=multiprocessing.get_context("spawn")) as executor:
         queue = conn.SimpleQueue(queue_name)
 
         running_tasks = []
