@@ -161,12 +161,12 @@ def check_cv_data():
                 slack_message(":u7981:*ERROR: Must specify path for a existing segmentation when SKIP_AGG is used*")
                 raise ValueError('Must specify path for a existing segmentation when SKIP_AGG is used')
             try:
-                vol_seg = CloudVolume(param["SEG_PATH"])
+                vol_seg = CloudVolume(param["SEG_PATH"], mip=param.get("AFF_RESOLUTION", 0))
             except:
                 slack_message(":u7981:*ERROR: Cannot access the segmentation layer* `{}`".format(param["SEG_PATH"]))
                 raise
 
-            param["AFF_MIP"] = 0
+            param["AFF_MIP"] = vol_seg.mip
             param["AFF_RESOLUTION"] = vol_seg.resolution.tolist()
             if "BBOX" not in param:
                 seg_bbox = vol_seg.bounds
