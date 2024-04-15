@@ -89,16 +89,17 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
 
     drain >> init_cloudvols
 
+    curr_operator = init_cloudvols
     if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
         init_db = manager_op(dag, "init_db", image=SYNAPTOR_IMAGE)
         init_cloudvols >> init_db
+        curr_operator = init_db
 
     if collect_metrics:
         metrics = collect_metrics_op(dag)
         metrics >> drain
 
     curr_cluster = ""
-    curr_operator = init_cloudvols
     for task in tasklist:
         curr_cluster, curr_operator = change_cluster_if_required(
             dag, curr_cluster, curr_operator, task
