@@ -29,6 +29,14 @@ x-airflow-common:
         restart_policy:
             condition: any
 
+networks:
+    default:
+        attachable: true
+        ipam:
+            driver: default
+            config:
+                - subnet: 10.253.0.0/16
+
 volumes:
     rabbitmq-storage:
     postgres-storage:
@@ -197,6 +205,9 @@ services:
             SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py
+        devices:
+            - /dev/fuse
+        privileged: true
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
@@ -299,11 +310,3 @@ services:
             fi &&
             unset SSL_CERTIFICATE &&
             nginx-debug -g \"daemon off;\" 2>&1"
-
-networks:
-    default:
-        attachable: true
-        ipam:
-            driver: default
-            config:
-                - subnet: 10.253.0.0/16
