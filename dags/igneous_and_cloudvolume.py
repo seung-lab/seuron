@@ -72,8 +72,12 @@ def check_queue(queue, agg=None, refill_threshold=0):
             count += 1
             if count % 60 == 0:
                 slack_message("{} tasks remain in queue {}".format(nTasks, queue))
-            process_worker_messages(ret_queue, agg)
-            process_worker_errors(err_queue)
+
+            try:
+                process_worker_messages(ret_queue, agg)
+                process_worker_errors(err_queue)
+            except Exception as e:
+                continue
 
             if nTasks <= refill_threshold:
                 nTries -= 1
