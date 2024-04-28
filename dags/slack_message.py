@@ -67,19 +67,60 @@ def task_retry_alert(context):
         ).format(**locals())
         slack_alert(f":exclamation: Task up for retry {last_try} times already, <{log_url}|check the latest error log>", context)
 
+
+def interpret_error_message(error_message):
+    from langchain_openai import ChatOpenAI
+    from airflow.hooks.base_hook import BaseHook
+
+    try:
+        conn = BaseHook.get_connection("LLMServer")
+        base_url = conn.host
+        api_key = conn.password
+        extra_args = conn.extra_dejson
+    except Exception:
+        return None
+
+    model = ChatOpenAI(base_url=base_url, api_key=api_key, model=extra_args.get("model", "gpt-3.5-turbo"))
+    messages = [
+        ("system", "You are a helpful assistant, identify and explain the error message in a few words"),
+        ("human", error_message),
+    ]
+    try:
+        msg = model.invoke(messages)
+        return msg.content
+    except Exception:
+        return None
+
+
 def task_failure_alert(context):
-    from airflow.models import Variable
     import urllib.parse
+    from sqlalchemy import select
+    from airflow.models import Variable
+    from airflow.utils.log.log_reader import TaskLogReader
     ti = context.get('task_instance')
+    last_try = ti.try_number - 1
     iso = urllib.parse.quote(ti.execution_date.isoformat())
     webui_ip = Variable.get("webui_ip", default_var="localhost")
-    log_url = "https://"+webui_ip + (
-        "/airflow/log"
-        "?dag_id={ti.dag_id}"
-        "&task_id={ti.task_id}"
-        "&execution_date={iso}"
-    ).format(**locals())
+    log_url = f"https://{webui_ip}/airflow/log?dag_id={ti.dag_id}&task_id={ti.task_id}&execution_date={iso}"
     slack_alert(f":exclamation: Task failed, <{log_url}|check the latest error log>", context)
+
+    task_log_reader = TaskLogReader()
+
+    if ti.queue == "manager":
+        metadata = {}
+        error_message = []
+        for text in task_log_reader.read_log_stream(ti, last_try, metadata):
+            lines = text.split("\n")
+            targets = ['error', 'traceback', 'exception']
+            for i, l in enumerate(lines):
+                if any(x in l.lower() for x in targets):
+                    error_message = "\n".join(lines[i:i+10])
+                    break
+        parsed_msg = interpret_error_message(error_message)
+        if parsed_msg:
+            slack_message(interpret_error_message(error_message))
+        else:
+            slack_message(f"Failed to use the LLM server to interpret the error message ```{error_message}```")
 
 
 def task_done_alert(context):
