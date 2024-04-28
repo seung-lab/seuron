@@ -134,7 +134,7 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
 def change_cluster_if_required(
     dag: DAG, prev_cluster_tag: str, curr_operator: BaseOperator, next_task: Task,
 ) -> tuple[str, BaseOperator]:
-    if next_task.cluster_key in prev_cluster_tag:
+    if next_task.cluster_key == "manager" or next_task.cluster_key in prev_cluster_tag:
         # don't need to change the cluster
         return prev_cluster_tag, curr_operator
 
