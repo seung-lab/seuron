@@ -206,6 +206,8 @@ def scale_down_cluster(
         dag, CPUTask("self_destruct"), prev_operator, tag=prev_cluster_tag
     )
 
+    wait_op >> scale_down
+
     return scale_down, wait_op
 
 
