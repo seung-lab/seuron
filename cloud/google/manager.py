@@ -72,13 +72,12 @@ if [ ! -f "/etc/bootstrap_done" ]; then
 {INSTALL_DOCKER_CMD}
 
 mkdir -p /share
+mkdir -p /airflow
 apt-get install nfs-common -y
 
 systemctl enable cron.service
 systemctl start cron.service
 echo "0 0 * * * docker system prune -f"|crontab -
-
-docker swarm init
 
 wget -O compose.yml {context.properties["composeLocation"]}
 
@@ -93,7 +92,8 @@ fi'''
 until mount {hostname_nfs_server}:/share /share; do sleep 60; done'''
 
     startup_script +=f'''
-docker stack deploy --with-registry-auth -c compose.yml {context.env["deployment"]}
+
+docker compose --project-directory /airflow -f /compose.yml up -d
 
 iptables -I INPUT -p tcp --dport 6379 -j DROP
 iptables -I INPUT -p tcp --dport 6379 -s 172.16.0.0/12 -j ACCEPT
@@ -105,9 +105,9 @@ iptables -I DOCKER-USER -p tcp --dport 6379 -s 10.253.0.0/16 -j ACCEPT
 while true
 do
     if [ $(curl -s "http://metadata/computeMetadata/v1/instance/attributes/redeploy" -H "Metadata-Flavor: Google") == "true" ]; then
-        docker stack rm {context.env["deployment"]}
-        sleep 120
-        docker stack deploy --with-registry-auth -c compose.yml {context.env["deployment"]}
+        docker compose --project-directory /airflow -f /compose.yml down
+        docker pull "$SEURON_TAG"
+        docker compose --project-directory /airflow -f /compose.yml up -d
         sleep 300
     else
         sleep 60
