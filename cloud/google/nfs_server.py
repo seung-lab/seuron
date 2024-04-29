@@ -29,6 +29,7 @@ if [ ! -f "/etc/bootstrap_done" ]; then
 mkfs.ext4 -F /dev/sdb
 mount /dev/sdb /share
 chmod 777 /share
+mkdir -p /share/mariadb
 apt-get install nfs-kernel-server -y
 echo "/share 172.31.0.0/16(insecure,rw,async,no_subtree_check)" >> /etc/exports
 echo "ALL: 172.31.0.0/16" >> /etc/hosts.allow
@@ -47,6 +48,7 @@ fi
 mount /dev/sdb /share
 chmod 777 /share
 systemctl restart nfs-kernel-server.service
+docker run --rm -p 3306:3306 --tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=10737418240 >& /dev/null &
 {oom_canary_cmd} &
 {worker_cmd}
 
