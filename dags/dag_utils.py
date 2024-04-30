@@ -78,3 +78,10 @@ def remove_workers(queue):
     tis = query_task_instances(queue=queue)
     for ti in tis:
         ti.set_state(State.SUCCESS)
+
+
+def db_name(run_name, data_ext):
+    import re
+    prefix = re.sub(r'[^a-z0-9]', '_', run_name.strip().lower()).lstrip('_')
+    max_len = 63 - len(data_ext)
+    return prefix[:max_len] + '_' + data_ext
