@@ -46,6 +46,7 @@ def parse_metadata():
         elif item["key"] == "nfs-server":
             worker = json.loads(item["value"])
             metadata["nfs-server"] = {
+                    'hostname': worker['hostname'],
                     'zone': worker['zone'],
             }
 

@@ -39,9 +39,11 @@ def GenerateConfig(context):
 
     if "nfsServer" in context.properties:
         worker_subnetworks.add(context.properties['nfsServer']['subnetwork'])
+        metadata = context.properties['nfsServer']
+        metadata['hostname'] = hostname_nfs_server
         worker_metadata.append({
             'key': 'nfs-server',
-            'value': json.dumps(context.properties['nfsServer'])
+            'value': json.dumps(metadata)
         })
 
     manager_resource = GenerateManager(context, hostname_manager, hostname_nfs_server, worker_metadata)
