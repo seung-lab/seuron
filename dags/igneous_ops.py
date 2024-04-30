@@ -1,9 +1,10 @@
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from slack_message import task_retry_alert
-from igneous_and_cloudvolume import downsample, downsample_for_meshing, mesh, mesh_manifest, merge_mesh_fragments, create_skeleton_fragments, merge_skeleton_fragments
+from igneous_and_cloudvolume import downsample, downsample_for_meshing, ingest_spatial_index, mesh, mesh_manifest, merge_mesh_fragments, create_skeleton_fragments, merge_skeleton_fragments, ingest_spatial_index
 from helper_ops import placeholder_op
-from dag_utils import get_connection
+from dag_utils import get_connection, db_name
+
 
 def create_igneous_ops(param, dag):
     import os
@@ -12,11 +13,16 @@ def create_igneous_ops(param, dag):
     ops = [placeholder_op(dag, "start_igneous_tasks")]
     run_name = f'{param["NAME"]}.segmentation'
 
-    if get_connection("NFSServer"):
-        nfs_kwargs = {"frag_path": f"file:///share/{run_name}"}
+    nfs_conn = get_connection("NFSServer")
+
+    if nfs_conn:
+        extra_args = nfs_conn.extra_dejson
+        sql_url = f"mysql://root:igneous@{extra_args['hostname']}"
+        nfs_kwargs = {"frag_path": f"file:///share/{run_name}", "sql_url": sql_url}
         queue = "nfs"
     else:
-        nfs_kwargs = {"frag_path": None}
+        nfs_kwargs = {"frag_path": None, "sql_url": None}
+        sql_url = None
         queue = "manager"
 
     if not param.get("SKIP_DOWNSAMPLE", False):
@@ -47,6 +53,19 @@ def create_igneous_ops(param, dag):
 
         ops[-1] >> current_op
         ops.append(current_op)
+
+        if sql_url and param.get("SHARDED_MESH", True):
+            current_op = PythonOperator(
+                task_id="ingest_spatial_index_mesh",
+                python_callable=ingest_spatial_index,
+                op_args=[run_name, seg_cloudpath, sql_url, "mesh",],
+                on_retry_callback=task_retry_alert,
+                weight_rule=WeightRule.ABSOLUTE,
+                queue=queue,
+                dag=dag
+            )
+            ops[-1] >> current_op
+            ops.append(current_op)
 
         if param.get("SHARDED_MESH", True):
             current_op = PythonOperator(
@@ -106,6 +125,19 @@ def create_igneous_ops(param, dag):
 
         ops[-1] >> current_op
         ops.append(current_op)
+
+        if sql_url:
+            current_op = PythonOperator(
+                task_id="ingest_spatial_index_skeleton",
+                python_callable=ingest_spatial_index,
+                op_args=[run_name, seg_cloudpath, sql_url, "skeleton",],
+                on_retry_callback=task_retry_alert,
+                weight_rule=WeightRule.ABSOLUTE,
+                queue=queue,
+                dag=dag
+            )
+            ops[-1] >> current_op
+            ops.append(current_op)
 
         current_op = PythonOperator(
             task_id="merge_skeleton",

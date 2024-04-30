@@ -567,13 +567,42 @@ def mesh(run_name, seg_cloudpath, mesh_quality, sharded, frag_path=None):
 
 
 @mount_secrets
+def ingest_spatial_index(run_name, seg_cloudpath, sql_url, db_ext):
+    import os
+    from cloudvolume import CloudVolume
+    from dag_utils import db_name
+    from slack_message import slack_message
+    if sql_url:
+        spatial_index_db = os.path.join(sql_url, db_name(run_name, db_ext))
+        vol = CloudVolume(seg_cloudpath)
+        if db_ext == "mesh":
+            slack_message(f":arrow_forward: Ingesting spatial_index for meshes to {db_name(run_name, db_ext)}")
+            vol.mesh.spatial_index.to_sql(spatial_index_db, parallel=8)
+        elif db_ext == "skeleton":
+            slack_message(f":arrow_forward: Ingesting spatial_index for skeletons to {db_name(run_name, db_ext)}")
+            vol.skeleton.spatial_index.to_sql(spatial_index_db, parallel=8)
+        else:
+            slack_message(f":exclamation:*Error* Cannot ingest spatial_index for {db_ext}")
+    else:
+        slack_message(":arrow_forward: No database configured, skip ingesting spatial index")
+
+
+
+@mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8)
-def merge_mesh_fragments(run_name, seg_cloudpath, concurrency, frag_path=None):
+def merge_mesh_fragments(run_name, seg_cloudpath, concurrency, frag_path=None, sql_url=None):
+    import os
     import igneous.task_creation as tc
     from slack_message import slack_message
+    from dag_utils import db_name
+    if sql_url:
+        spatial_index_db = os.path.join(sql_url, db_name(run_name, "mesh"))
+    else:
+        spatial_index_db = None
     tasks = tc.create_sharded_multires_mesh_tasks(seg_cloudpath,
                                                   num_lod=8,
                                                   frag_path=frag_path,
+                                                  spatial_index_db=spatial_index_db,
                                                   cache=True,
                                                   max_labels_per_shard=10000)
     slack_message(":arrow_forward: Merge mesh fragments `{}`: {} tasks in total".format(seg_cloudpath, len(tasks)))
@@ -679,14 +708,21 @@ def create_skeleton_fragments(run_name, seg_cloudpath, teasar_param, frag_path=N
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4)
-def merge_skeleton_fragments(run_name, seg_cloudpath, frag_path=None):
+def merge_skeleton_fragments(run_name, seg_cloudpath, frag_path=None, sql_url=None):
+    import os
     import igneous.task_creation as tc
     from slack_message import slack_message
+    from dag_utils import db_name
+    if sql_url:
+        spatial_index_db = os.path.join(sql_url, db_name(run_name, "skeleton"))
+    else:
+        spatial_index_db = None
     tasks = tc.create_sharded_skeleton_merge_tasks(seg_cloudpath,
                 dust_threshold=1000,
                 tick_threshold=3500,
                 minishard_index_encoding='gzip', # or None
                 frag_path=frag_path,
+                spatial_index_db=spatial_index_db,
                 cache=True,
                 data_encoding='gzip', # or None
                 max_labels_per_shard=10000,
