@@ -48,7 +48,7 @@ fi
 mount /dev/sdb /share
 chmod 777 /share
 systemctl restart nfs-kernel-server.service
-docker run --rm -p 3306:3306 --tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=10737418240 >& /dev/null &
+docker run --rm -p 3306:3306 --tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=64G --innodb-log-file-size=10G >& /dev/null &
 {oom_canary_cmd} &
 {worker_cmd}
 
