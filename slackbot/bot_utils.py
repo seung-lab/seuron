@@ -77,7 +77,7 @@ def send_slack_message(msg_payload, client=None, context=None):
         )
     else:
         attachment = msg_payload["attachment"]
-        client.files_upload(
+        client.files_upload_v2(
             username=slack_workername,
             channels=slack_channel,
             thread_ts=slack_thread,
