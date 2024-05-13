@@ -118,6 +118,23 @@ def GenerateDisk(diskSizeGb, diskType=None):
     return disk
 
 
+def GenerateScratchDisk(numDisks, diskType):
+    disks = []
+    for i in range(numDisks):
+        disks.append({
+                        "autoDelete": True,
+                        "deviceName": f"local-ssd-{i}",
+                        "initializeParams": {
+                          "diskSizeGb": "375",
+                          "diskType": diskType,
+                        },
+                        "interface": "NVME",
+                        "mode": "READ_WRITE",
+                        "type": "SCRATCH"
+                    })
+
+    return disks
+
 def GenerateNetworkInterface(context, subnetwork, ipAddr=None):
     network_interface = {
         'network': f'$(ref.{context.env["deployment"]}-network.selfLink)',

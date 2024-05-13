@@ -360,6 +360,7 @@ def start_instance(instance_name, zone):
 def stop_instance(instance_name, zone):
     service = discovery.build('compute', 'v1')
     request = service.instances().stop(
+        discardLocalSsd=True,
         project=get_project_id(),
         zone=zone,
         instance=instance_name

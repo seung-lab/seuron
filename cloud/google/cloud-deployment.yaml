@@ -126,13 +126,19 @@ resources:
 # NFS server for meshing and skeletonization tasks. The intermediate files are
 # saved to the nfs server, and the "forge" step will read the input from it.
 # This can reduce the read access/cost siginificantly when the segmentation
-# we want to mesh/skeletonize is large. Make sure the nfsVolumeSizeGB is large
-# enough to accommodate the data
+# we want to mesh/skeletonize is large. Set pdSSDSizeGB to use pd-ssd as the
+# main storage, or numLocalScratchSSD to set the number of local scratch disks
+# for temporary storage. (The data are wipe out once the nfs server is stopped).
+# pdSSDSizeGB and numLocalScratchSSD are mutually exclusive, you can use only
+# choose one of them. You must make sure the storage is large enough to
+# accommodate the data, for example meshing FlyWire segments at 32nmx32nmx40nm
+# resolution generates ~ 1 TB of fragments
           # nfsServer:
           #   zone: us-east1-c
           #   subnetwork: us-east1
-          #   machineType: e2-highmem-16
-          #   nfsVolumeSizeGB: 1000
+          #   machineType: n2d-highmem-16
+          #   pdSSDSizeGB: 1000
+          #   numLocalScratchSSD: 4 # each scratch disk is 375 GB
           easysegWorker:
             zone: us-east1-c
             subnetwork: us-east1
