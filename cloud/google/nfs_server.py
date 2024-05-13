@@ -77,8 +77,8 @@ shutdown -h now
 
 fi
 
-sysctl -w net.netfilter.nf_conntrack_max=2097152
-echo 524288 > /sys/module/nf_conntrack/parameters/hashsize
+sysctl -w net.netfilter.nf_conntrack_max=$(awk '/MemAvailable/ {{print int($2/16)}}' /proc/meminfo)
+echo $(awk '/MemAvailable/ {{print int($2/64)}}' /proc/meminfo) > /sys/module/nf_conntrack/parameters/hashsize
 mount /dev/sdb /share
 chmod 777 /share
 systemctl restart nfs-kernel-server.service
