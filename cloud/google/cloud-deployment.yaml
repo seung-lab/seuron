@@ -131,8 +131,9 @@ resources:
           # nfsServer:
           #   zone: us-east1-c
           #   subnetwork: us-east1
-          #   machineType: e2-highmem-16
-          #   nfsVolumeSizeGB: 1000
+          #   machineType: n2d-highmem-16
+          #   pdSSDSizeGB: 1000
+          #   numLocalScratchSSD: 4
           easysegWorker:
             zone: us-east1-c
             subnetwork: us-east1
