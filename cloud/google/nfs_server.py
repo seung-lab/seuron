@@ -82,7 +82,9 @@ echo $(awk '/MemAvailable/ {{print int($2/64)}}' /proc/meminfo) > /sys/module/nf
 mount /dev/sdb /share
 chmod 777 /share
 systemctl restart nfs-kernel-server.service
-docker run --rm -p 3306:3306 --tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=64G --innodb-log-file-size=10G >& /dev/null &
+export INNODB_POOL_SIZE_GB=$(awk '/MemAvailable/ {{print int($2/1024/1024/2)}}' /proc/meminfo)
+export INNODB_LOG_SIZE_GB=$(awk '/MemAvailable/ {{print int($2/1024/1024/8)}}' /proc/meminfo)
+docker run --rm -p 3306:3306 --tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=${{INNODB_POOL_SIZE_GB}}G --innodb-log-file-size=${{INNODB_LOG_SIZE_GB}}G --skip-innodb-doublewrite >& /dev/null &
 {oom_canary_cmd} &
 {worker_cmd}
 
