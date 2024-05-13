@@ -1,10 +1,16 @@
 import time
+from dags.google_api_helper import toggle_nfs_server
 from seuronbot import SeuronBot
 from bot_utils import replyto, extract_command, clear_queues
 from airflow_api import get_variable, set_variable, \
     check_running, mark_dags_success, run_dag
 from bot_info import broker_url
 from kombu_helper import drain_messages, put_message
+
+if get_variable("vendor") == "Google":
+    import google_api_helper as cluster_api
+else:
+    cluster_api = None
 
 
 @SeuronBot.on_message("cancel run",
@@ -35,6 +41,8 @@ def shut_down_clusters():
         cluster_size[k] = 0
     set_variable("cluster_target_size", cluster_size, serialize_json=True)
     run_dag("cluster_management")
+    if cluster_api:
+        toggle_nfs_server(on=False)
 
 
 def cancel_run(msg):
