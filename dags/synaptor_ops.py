@@ -226,6 +226,7 @@ def manager_op(
         image=image,
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
+        qos=False,
         queue=queue,
         dag=dag,
     )
