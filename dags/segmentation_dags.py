@@ -244,7 +244,7 @@ def compare_segmentation(param):
     s_i = defaultdict(int)
     t_j = defaultdict(int)
     p_ij = defaultdict(lambda: defaultdict(int))
-    ng_host = param.get("NG_HOST", "state-share-dot-neuroglancer-dot-seung-lab.appspot.com")
+    ng_host = param.get("NG_HOST", "spelunker.cave-explorer.org")
     payload = generate_ng_payload(param)
     payload['layers']['size']['visible'] = False
     read_chunks(f, s_i, t_j, p_ij)
