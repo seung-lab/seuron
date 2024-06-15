@@ -59,7 +59,10 @@ def estimate_optimal_number_of_workers(cluster, cluster_info):
         tasks = [check_queue(f"{cluster}_{layer}") for layer in layers]
         num_workers = sum(tasks)
     else:
-        num_tasks = check_queue(cluster)
+        if cluster == "gpu":
+            num_tasks = check_queue(queue="chunkflow")
+        else:
+            num_tasks = check_queue(queue=cluster)
         num_workers = estimate_worker_instances(num_tasks, cluster_info)
 
     return num_workers
