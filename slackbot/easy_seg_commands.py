@@ -220,17 +220,34 @@ def populate_parameters(
 
     elif "synaptor" in defaults:
         seg_params = defaults["synaptor"]
-        seg_params["Volumes"] = {
-            "descriptor": output_path,
-            "output": output_path.replace("inference", "seg"),
-            "tempoutput": output_path.replace("inference", "seg_temp"),
-            "baseseg": seg_params["Volumes"].get("baseseg", ""),
-            "image": inf_params["IMAGE_PATH"],
-            "overlap_seg": seg_params["Volumes"].get("overlap_seg", None),
-        }
+
+        name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}/inference"
+        output_path = seg_params["output_prefix"] + name
+
+        if seg_params["Volumes"]["descriptor"] is not None:
+
+            seg_params["Volumes"] = {
+                "descriptor": seg_params["Volumes"]["descriptor"],
+                "output": output_path.replace("inference", "seg"),
+                "tempoutput": output_path.replace("inference", "seg_temp"),
+                "baseseg": seg_params["Volumes"].get("baseseg", ""),
+                "image": seg_params["Volumes"].get("image", inf_params["IMAGE_PATH"]),
+                "overlap_seg": seg_params["Volumes"].get("overlap_seg", None),
+            }
+
+        else:
+
+            seg_params["Volumes"] = {
+                "descriptor": output_path,
+                "output": output_path.replace("inference", "seg"),
+                "tempoutput": output_path.replace("inference", "seg_temp"),
+                "baseseg": seg_params["Volumes"].get("baseseg", ""),
+                "image": seg_params["Volumes"].get("image", inf_params["IMAGE_PATH"]),
+                "overlap_seg": seg_params["Volumes"].get("overlap_seg", None),
+            }
 
         seg_params["Dimensions"] = {
-            "voxelres": tupstr(inf_params["IMAGE_RESOLUTION"]),
+            "voxelres": tupstr(seg_params["Dimensions"]["voxelres"]),
             "startcoord": tupstr(bbox[:3]),
             "volshape": tupstr(
                 (bbox[3] - bbox[0], bbox[4] - bbox[1], bbox[5] - bbox[2])
@@ -243,9 +260,9 @@ def populate_parameters(
         seg_params["Parameters"] = {
             "ccthresh": seg_params["Parameters"]["ccthresh"],
             "szthresh": seg_params["Parameters"]["szthresh"],
-            "dustthresh": 0,
+            "dustthresh": seg_params["Parameters"]["dustthresh"],
             "nummergetasks": 1,
-            "mergethresh": 100,
+            "mergethresh": seg_params["Parameters"]["mergethresh"],
         }
 
         seg_params["Workflow"] = {
