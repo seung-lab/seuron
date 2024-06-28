@@ -45,7 +45,18 @@ def run_oom_canary():
                 if cpu_usage > 20:
                     logging.info(f"{cpu_usage}% cpu used, heartbeat")
                     redis_conn.set(hostname, datetime.now().timestamp())
-            sleep(1)
+                    continue
+                counters_start = psutil.net_io_counters()
+                sleep(1)
+                counters_end = psutil.net_io_counters()
+                download_speed = counters_end.bytes_recv - counters_start.bytes_recv
+                upload_speed = counters_end.bytes_sent - counters_start.bytes_sent
+                if download_speed > 1e6 or upload_speed > 1e6:
+                    logging.info(f"Significant network IO: {download_speed/1e6}MB/s, {upload_speed/1e6}MB/s, heartbeat")
+                    redis_conn.set(hostname, datetime.now().timestamp())
+                    continue
+            else:
+                sleep(1)
         else:
             sleep(t)
 
