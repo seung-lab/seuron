@@ -14,14 +14,13 @@ def get_image_info():
     client = docker.APIClient(base_url='unix://var/run/docker.sock')
     container_id = socket.gethostname()
     container_info = client.inspect_container(container=container_id)
-    image_info = container_info['Image'].split("@")
+    image_info = container_info["Config"]['Image'].split("@")
     if len(image_info) == 2:
         return image_info
     elif len(image_info) == 1:
         image_data = client.inspect_image(image=image_info[0])
         image_sha256 = image_data['RepoDigests'][0].split("@")[1]
-        if len(image_info) == 2:
-            return image_info[0], image_sha256
+        return image_info[0], image_sha256
     return None
 
 
