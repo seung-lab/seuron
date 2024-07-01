@@ -11,7 +11,7 @@ def create_igneous_ops(param, dag):
     seg_cloudpath = param["SEG_PATH"]
     ws_cloudpath = param["WS_PATH"]
     ops = [placeholder_op(dag, "start_igneous_tasks")]
-    run_name = f'{param["NAME"]}.segmentation'
+    run_name = f'{param["NAME"].replace(".", "_")}.segmentation'
 
     nfs_conn = get_connection("NFSServer")
 
