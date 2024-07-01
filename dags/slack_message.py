@@ -118,7 +118,7 @@ def task_failure_alert(context):
                     break
         parsed_msg = interpret_error_message(error_message)
         if parsed_msg:
-            slack_message(interpret_error_message(error_message))
+            slack_message(parsed_msg)
         else:
             slack_message(f"Failed to use the LLM server to interpret the error message ```{error_message}```")
 
