@@ -111,7 +111,7 @@ def generate_link(param, broadcast):
     if not param.get("SKIP_AGG", False):
         seglist = Variable.get("topsegs", default_var=None)
         if seglist:
-            payload["layers"]["seg"]["hiddenSegments"] = seglist.split(' ')
+            payload["layers"]["seg"]["segments"] = seglist.split(' ')
 
     url = "<https://{host}/#!{payload}|*view the results in neuroglancer*>".format(
         host=ng_host,
