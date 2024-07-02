@@ -307,6 +307,7 @@ def synaptor_op(
         on_retry_callback=task_retry_alert,
         queue=op_queue_name,
         dag=dag,
+        shm_size=8*2**30,
         # qos='quality of service'
         # this turns of a 5-minute failure timer that can kill nodes between
         # task waves or during database tasks
