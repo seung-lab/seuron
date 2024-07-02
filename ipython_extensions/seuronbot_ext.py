@@ -29,6 +29,7 @@ class SeuronBot(Magics):
         self.broker_url = "amqp://rabbitmq"
         self.output_queue = "jupyter-output-queue"
         self.input_queue = "jupyter-input-queue"
+        self.common_block = ""
         self.slack_conv = markdown.Markdown(extensions=[slack_md.SlackExtension()])
         drain_messages(self.broker_url, self.input_queue, verbose=False)
         drain_messages(self.broker_url, self.output_queue, verbose=False)
@@ -36,12 +37,21 @@ class SeuronBot(Magics):
 
     @line_cell_magic
     def seuronbot(self, command, cell=None):
+        if command == "define common block":
+            if cell:
+                self.common_block = self.shell.input_transformer_manager.transform_cell(cell)
+                exec(self.common_block, globals())
+            else:
+                self.common_block = ""
+                print("Emptying seuronbot common block")
+            return
+
         msg_payload = {
                 "text": command,
                 "from_jupyter": True,
         }
         if cell:
-            code_content = self.shell.input_transformer_manager.transform_cell(cell)
+            code_content = self.common_block + "\n" + self.shell.input_transformer_manager.transform_cell(cell)
             msg_payload["attachment"] = base64.b64encode(code_content.encode("utf-8")).decode("utf-8")
 
         put_message(self.broker_url, self.input_queue, msg_payload)
