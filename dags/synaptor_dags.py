@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from airflow import DAG
 from airflow.models import Variable, BaseOperator
 
-from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
+from helper_ops import placeholder_op, scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from param_default import synaptor_param_default, default_synaptor_image
 from synaptor_ops import manager_op, drain_op, self_destruct_op
 from synaptor_ops import synaptor_op, wait_op, generate_op, nglink_op
@@ -92,10 +92,10 @@ class ManagerTask(Task):
 
 def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DAG:
     """Fills a synaptor DAG from a list of Tasks."""
-    drain = drain_op(dag)
+    drain_tasks = [drain_op(dag, task_queue_name=f"synaptor-{t}-tasks") for t in ["cpu", "gpu", "seggraph"]]
     init_cloudvols = manager_op(dag, "init_cloudvols", image=SYNAPTOR_IMAGE)
 
-    drain >> init_cloudvols
+    start_nfs_server >> drain_tasks >> init_cloudvols
 
     curr_operator = init_cloudvols
     if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
@@ -105,7 +105,7 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
 
     if collect_metrics:
         metrics = collect_metrics_op(dag)
-        metrics >> drain
+        metrics >> drain_tasks
 
     curr_cluster = ""
     for task in tasklist:
@@ -167,6 +167,7 @@ def change_cluster_if_required(
             i,
             image=SYNAPTOR_IMAGE,
             op_queue_name=next_task.cluster_key,
+            task_queue_name=f"{next_task.cluster_key}-tasks",
             tag=new_tag,
             use_gpus=next_task.use_gpus
         )
@@ -233,12 +234,17 @@ def add_task(
     elif task.cluster_key == "manager":
         generate = manager_op(dag, task.name, image=SYNAPTOR_IMAGE)
     else:
-        generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, tag=tag)
+        generate = generate_op(dag, task.name, image=SYNAPTOR_IMAGE, tag=tag, task_queue_name=f"{task.cluster_key}-tasks")
 
     if tag:
-        wait = wait_op(dag, f"{task.name}_{tag}")
+        wait_task_name = f"{task.name}_{tag}"
     else:
-        wait = wait_op(dag, task.name)
+        wait_task_name = task.name
+
+    if task.cluster_key == "manager":
+        wait = placeholder_op(dag, wait_task_name)
+    else:
+        wait = wait_op(dag, wait_task_name, task_queue_name=f"{task.cluster_key}-tasks")
 
     prev_operator >> generate >> wait
 
