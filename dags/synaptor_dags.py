@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from airflow import DAG
 from airflow.models import Variable, BaseOperator
 
-from helper_ops import placeholder_op, scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
+from helper_ops import placeholder_op, scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op
 from param_default import synaptor_param_default, default_synaptor_image
 from synaptor_ops import manager_op, drain_op, self_destruct_op
 from synaptor_ops import synaptor_op, wait_op, generate_op, nglink_op
@@ -92,10 +92,12 @@ class ManagerTask(Task):
 
 def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DAG:
     """Fills a synaptor DAG from a list of Tasks."""
+    start_nfs_server = toggle_nfs_server_op(dag, on=True)
+    stop_nfs_server = toggle_nfs_server_op(dag, on=False)
     drain_tasks = [drain_op(dag, task_queue_name=f"synaptor-{t}-tasks") for t in ["cpu", "gpu", "seggraph"]]
     init_cloudvols = manager_op(dag, "init_cloudvols", image=SYNAPTOR_IMAGE)
 
-    drain_tasks >> init_cloudvols
+    start_nfs_server >> drain_tasks >> init_cloudvols
 
     curr_operator = init_cloudvols
     if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
@@ -125,8 +127,8 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
         param["Volumes"]["image"],
         tuple(map(int, param["Dimensions"]["voxelres"].split(","))),
     )
-    curr_operator >> nglink
-    scale_down_cluster(dag, curr_cluster, nglink)
+    curr_operator >> nglink >> stop_nfs_server
+    scale_down_cluster(dag, curr_cluster, stop_nfs_server)
 
     return dag
 
