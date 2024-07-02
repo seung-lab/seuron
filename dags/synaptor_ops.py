@@ -193,7 +193,7 @@ def drain_op(
     """Drains leftover messages from the RabbitMQ."""
 
     return PythonOperator(
-        task_id="drain_messages",
+        task_id=f"drain_messages_{task_queue_name}",
         python_callable=drain_messages,
         priority_weight=100_000,
         op_args=(airflow_broker_url, task_queue_name),
@@ -317,12 +317,12 @@ def synaptor_op(
     )
 
 
-def wait_op(dag: DAG, taskname: str) -> PythonOperator:
+def wait_op(dag: DAG, taskname: str, task_queue_name: Optional[str] = TASK_QUEUE_NAME) -> PythonOperator:
     """Waits for a task to finish."""
     return PythonOperator(
         task_id=f"wait_for_queue_{taskname}",
         python_callable=check_queue,
-        op_args=(TASK_QUEUE_NAME,),
+        op_args=(task_queue_name,),
         priority_weight=100_000,
         weight_rule=WeightRule.ABSOLUTE,
         on_success_callback=task_done_alert,

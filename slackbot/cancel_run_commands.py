@@ -64,6 +64,9 @@ def cancel_run(msg):
     drain_messages(broker_url, "custom-gpu")
     drain_messages(broker_url, "chunkflow")
     drain_messages(broker_url, "synaptor")
+    drain_messages(broker_url, "synaptor-cpu-tasks")
+    drain_messages(broker_url, "synaptor-gpu-tasks")
+    drain_messages(broker_url, "synaptor-seggraph-tasks")
     drain_messages(broker_url, "deepem-gpu")
     time.sleep(10)
 
