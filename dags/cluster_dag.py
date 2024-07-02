@@ -61,6 +61,8 @@ def estimate_optimal_number_of_workers(cluster, cluster_info):
     else:
         if cluster == "gpu":
             num_tasks = check_queue(queue="chunkflow")
+        elif cluster.startswith("synaptor"):
+            num_tasks = check_queue(queue=f"{cluster}-tasks")
         else:
             num_tasks = check_queue(queue=cluster)
         num_workers = estimate_worker_instances(num_tasks, cluster_info)
