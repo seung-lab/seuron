@@ -101,7 +101,7 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
 
     curr_operator = init_cloudvols
     if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
-        init_db = manager_op(dag, "init_db", image=SYNAPTOR_IMAGE)
+        init_db = manager_op(dag, "init_db", queue="nfs", image=SYNAPTOR_IMAGE)
         init_cloudvols >> init_db
         curr_operator = init_db
 
