@@ -119,7 +119,7 @@ def GenerateNFSServer(context, hostname_manager, hostname_nfs_server):
 
     startup_script = GenerateNFSServerStartupScript(context, hostname_manager)
 
-    disks = [GenerateBootDisk(diskSizeGb=10),]
+    disks = [GenerateBootDisk(diskSizeGb=100),]
 
     if 'pdSSDSizeGB' in nfs_server_param:
         diskType = ZonalComputeUrl(
