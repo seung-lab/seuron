@@ -125,8 +125,8 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
         param["Volumes"]["image"],
         tuple(map(int, param["Dimensions"]["voxelres"].split(","))),
     )
-    curr_operator >> nglink
-    scale_down_cluster(dag, curr_cluster, nglink)
+    # curr_operator >> nglink
+    scale_down_cluster(dag, curr_cluster, curr_operator)
 
     return dag
 
