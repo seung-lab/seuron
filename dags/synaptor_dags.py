@@ -95,7 +95,7 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
     drain_tasks = [drain_op(dag, task_queue_name=f"synaptor-{t}-tasks") for t in ["cpu", "gpu", "seggraph"]]
     init_cloudvols = manager_op(dag, "init_cloudvols", image=SYNAPTOR_IMAGE)
 
-    start_nfs_server >> drain_tasks >> init_cloudvols
+    drain_tasks >> init_cloudvols
 
     curr_operator = init_cloudvols
     if WORKFLOW_PARAMS.get("workspacetype", "File") == "Database":
