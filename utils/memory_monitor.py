@@ -10,6 +10,9 @@ from kombu_helper import put_message
 from google_metadata import gce_hostname
 
 
+OOM_ALERT_THRESHOLD = 0.95
+
+
 # Algorithm similar to earlyoom
 def sleep_time(mem_avail):
     max_mem_fill_rate = 6_000_000_000  # 6000MB/s
@@ -19,8 +22,6 @@ def sleep_time(mem_avail):
 
 
 def run_oom_canary():
-    ALERT_THRESHOLD = 0.95
-
     loop_counter = 0
     while True:
         loop_counter += 1
@@ -34,7 +35,7 @@ def run_oom_canary():
         if mem_used < 0 or mem_used > 1:
             sleep(1)
             continue
-        if mem_used > ALERT_THRESHOLD:
+        if mem_used > OOM_ALERT_THRESHOLD:
             return
 
         t = sleep_time(mem.available)
