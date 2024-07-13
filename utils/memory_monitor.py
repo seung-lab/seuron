@@ -2,6 +2,7 @@ import sys
 import socket
 import logging
 import psutil
+from enum import Enum
 import os
 import redis
 from datetime import datetime
@@ -9,6 +10,9 @@ from time import sleep
 from kombu_helper import put_message
 from google_metadata import gce_hostname
 
+
+class InstanceError(Enum):
+    OOM = 1
 
 OOM_ALERT_THRESHOLD = 0.95
 
@@ -36,7 +40,7 @@ def run_oom_canary():
             sleep(1)
             continue
         if mem_used > OOM_ALERT_THRESHOLD:
-            return
+            return InstanceError.OOM
 
         t = sleep_time(mem.available)
         if t > 1:
@@ -70,10 +74,12 @@ if __name__ == "__main__":
     except:
         hostname = socket.gethostname()
 
-    msg_payload = {
-        'text': f":u6e80: *OOM detected from instance* `{hostname}`!"
+    error_message = {
+        InstanceError.OOM:          {
+                            'text': f":u6e80: *OOM detected from instance* `{hostname}`!"
+                        },
     }
 
-    run_oom_canary()
+    exit_reason = run_oom_canary()
     logging.warning("canary died")
-    put_message(sys.argv[1], sys.argv[2], msg_payload)
+    put_message(sys.argv[1], sys.argv[2], error_message[exit_reason])
