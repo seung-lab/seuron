@@ -5,7 +5,6 @@ import psutil
 import os
 import redis
 from datetime import datetime
-from collections import namedtuple
 from time import sleep
 from kombu_helper import put_message
 from google_metadata import gce_hostname
