@@ -2,13 +2,38 @@ import sys
 import socket
 import logging
 import psutil
+from enum import Enum
 import os
 import redis
 from datetime import datetime
-from collections import namedtuple
 from time import sleep
 from kombu_helper import put_message
 from google_metadata import gce_hostname
+
+
+class InstanceError(Enum):
+    OOM = 1
+    DISKFULL = 2
+
+OOM_ALERT_THRESHOLD = 0.95
+DISKFULL_ALERT_THRESHOLD = 0.9
+
+
+def check_filesystems_full():
+    partitions = psutil.disk_partitions()
+
+    for partition in partitions:
+        usage = psutil.disk_usage(partition.mountpoint)
+        logging.info(f"Filesystem: {partition.device}")
+        logging.info(f"  Mountpoint: {partition.mountpoint}")
+        logging.info(f"  Total: {usage.total // (2**20)} MB")
+        logging.info(f"  Used: {usage.used // (2**20)} MB")
+        logging.info(f"  Free: {usage.free // (2**20)} MB")
+        logging.info(f"  Usage: {usage.percent}%")
+        if usage.percent > DISKFULL_ALERT_THRESHOLD:  # Change threshold as needed
+            return True
+
+    return False
 
 
 # Algorithm similar to earlyoom
@@ -20,8 +45,6 @@ def sleep_time(mem_avail):
 
 
 def run_oom_canary():
-    ALERT_THRESHOLD = 0.95
-
     loop_counter = 0
     while True:
         loop_counter += 1
@@ -35,12 +58,14 @@ def run_oom_canary():
         if mem_used < 0 or mem_used > 1:
             sleep(1)
             continue
-        if mem_used > ALERT_THRESHOLD:
-            return
+        if mem_used > OOM_ALERT_THRESHOLD:
+            return InstanceError.OOM
 
         t = sleep_time(mem.available)
         if t > 1:
             if loop_counter % 60 == 0:
+                if check_filesystems_full():
+                    return InstanceError.DISKFULL
                 cpu_usage = sum(psutil.cpu_percent(interval=1, percpu=True))
                 if cpu_usage > 20:
                     logging.info(f"{cpu_usage}% cpu used, heartbeat")
@@ -70,10 +95,15 @@ if __name__ == "__main__":
     except:
         hostname = socket.gethostname()
 
-    msg_payload = {
-        'text': f":u6e80: *OOM detected from instance* `{hostname}`!"
+    error_message = {
+        InstanceError.OOM:          {
+                            'text': f":u6e80: *OOM detected from instance* `{hostname}`!"
+                        },
+        InstanceError.DISKFULL:     {
+                            'text': f":u6e80: *instance* `{hostname}` *disk FULL!*"
+                        },
     }
 
-    run_oom_canary()
+    exit_reason = run_oom_canary()
     logging.warning("canary died")
-    put_message(sys.argv[1], sys.argv[2], msg_payload)
+    put_message(sys.argv[1], sys.argv[2], error_message[exit_reason])
