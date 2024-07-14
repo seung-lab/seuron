@@ -15,8 +15,8 @@ class InstanceError(Enum):
     OOM = 1
     DISKFULL = 2
 
-OOM_ALERT_THRESHOLD = 0.95
-DISKFULL_ALERT_THRESHOLD = 0.9
+OOM_ALERT_PERCENT_THRESHOLD = 95
+DISKFULL_ALERT_PERCENT_THRESHOLD = 90
 
 
 def check_filesystems_full():
@@ -30,7 +30,7 @@ def check_filesystems_full():
         logging.info(f"  Used: {usage.used // (2**20)} MB")
         logging.info(f"  Free: {usage.free // (2**20)} MB")
         logging.info(f"  Usage: {usage.percent}%")
-        if usage.percent > DISKFULL_ALERT_THRESHOLD:  # Change threshold as needed
+        if usage.percent > DISKFULL_ALERT_PERCENT_THRESHOLD:  # Change threshold as needed
             return True
 
     return False
@@ -54,11 +54,10 @@ def run_oom_canary():
         if loop_counter % 300 == 0:
             logging.info(f"{mem_used}% memory used")
 
-        mem_used /= 100
-        if mem_used < 0 or mem_used > 1:
+        if mem_used < 0 or mem_used > 100:
             sleep(1)
             continue
-        if mem_used > OOM_ALERT_THRESHOLD:
+        if mem_used > OOM_ALERT_PERCENT_THRESHOLD:
             return InstanceError.OOM
 
         t = sleep_time(mem.available)
