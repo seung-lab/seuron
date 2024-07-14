@@ -49,15 +49,15 @@ def run_oom_canary():
     while True:
         loop_counter += 1
         mem = psutil.virtual_memory()
-        mem_used = mem.percent
+        mem_used_percent = mem.percent
 
         if loop_counter % 300 == 0:
-            logging.info(f"{mem_used}% memory used")
+            logging.info(f"{mem_used_percent}% memory used")
 
-        if mem_used < 0 or mem_used > 100:
+        if mem_used_percent < 0 or mem_used_percent > 100:
             sleep(1)
             continue
-        if mem_used > OOM_ALERT_PERCENT_THRESHOLD:
+        if mem_used_percent > OOM_ALERT_PERCENT_THRESHOLD:
             return InstanceError.OOM
 
         t = sleep_time(mem.available)
