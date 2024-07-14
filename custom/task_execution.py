@@ -129,6 +129,7 @@ def execute(qurl, timeout, queue_name, statsd, max_concurrency):
                     future = executor.submit(handle_task, message.payload, statsd)
                     running_tasks.append(CustomTask(message, future))
                     concurrency = update_concurrency(running_tasks, max_concurrency)
+                    time.sleep(5)
             except SimpleQueue.Empty:
                 pass
 
