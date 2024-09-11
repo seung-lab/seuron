@@ -8,7 +8,7 @@ RUN URL="https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/d
     curl -L "${URL}" | tar -zx
 
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 MAINTAINER ranlu
 
 ARG AIRFLOW_HOME=/usr/local/airflow
