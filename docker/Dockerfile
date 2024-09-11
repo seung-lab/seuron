@@ -27,6 +27,10 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && buildDeps='git build-essential' \
     && apt-get -y update \
     && DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -y install --no-install-recommends ca-certificates curl lsb-release parallel sudo tzdata $buildDeps \
+    && export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s` \
+    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.asc] https://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list \
+    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo tee /usr/share/keyrings/cloud.google.asc \
+    && apt-get -y update  && apt-get -y --no-install-recommends install gcsfuse \
     && mkdir -p /opt \
     && curl -L -o ~/miniconda.sh ${MINICONDA_URL} \
     && chmod +x ~/miniconda.sh \
@@ -52,7 +56,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && chown -R ${AIRFLOW_USER}: ${AIRFLOW_HOME} \
     # Deleting this symlink not handled correctly by shutil.copy
     && apt-mark auto '.*' > /dev/null \
-    && apt-mark manual sudo curl tzdata git ca-certificates \
+    && apt-mark manual sudo curl tzdata git ca-certificates gcsfuse \
     && apt-mark manual $savedAptMark \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -rf \
