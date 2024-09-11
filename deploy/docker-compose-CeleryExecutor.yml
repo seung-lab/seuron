@@ -197,6 +197,12 @@ services:
             SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py
+        devices:
+            - /dev/fuse
+        cap_add:
+            - SYS_ADMIN
+        security_opt:
+            - apparmor:unconfined
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
