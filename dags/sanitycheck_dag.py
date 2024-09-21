@@ -68,6 +68,9 @@ def check_cv_data():
     if not param.get("STATSD_PORT", ""):
         param["STATSD_PORT"] = statsd_port
 
+    if "WS_DUST_THRESHOLD" not in param:
+        param["WS_DUST_THRESHOLD"] = param.get("WS_SIZE_THRESHOLD", None)
+
     # We need affinity map for watershed and agglomeration, not for meshing
     if (not param.get("SKIP_WS", False)) or (not param.get("SKIP_AGG", False)):
         if "AFF_RESOLUTION" in param:
@@ -336,7 +339,7 @@ Semantic labels: `{sem_path}`
         msg += '''
 Watershed parameters: {ws_param}
 '''.format(
-            ws_param = "(high: {}, low: {}, size: {})".format(param["WS_HIGH_THRESHOLD"], param["WS_LOW_THRESHOLD"], param["WS_SIZE_THRESHOLD"]),
+            ws_param=f'(high: {param["WS_HIGH_THRESHOLD"]}, low: {param["WS_LOW_THRESHOLD"]}, size: {param["WS_SIZE_THRESHOLD"]}, dust: {param["WS_DUST_THRESHOLD"]})'
         )
 
     if not param.get("SKIP_AGG", False):
