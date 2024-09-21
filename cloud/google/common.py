@@ -20,11 +20,13 @@ INSTALL_NVIDIA_DOCKER_CMD = '''
 echo ##### Set up NVidia #############################################################
 # Add the package repositories
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
-curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 add-apt-repository -y ppa:graphics-drivers/ppa
 apt-get update -y
-DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nvidia-headless-530 nvidia-utils-530 nvidia-container-toolkit
+DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nvidia-headless-560 nvidia-utils-560 nvidia-container-toolkit
 systemctl restart docker
 '''
 
@@ -99,7 +101,7 @@ def GenerateAirflowVar(context, hostname_manager):
 def GenerateBootDisk(diskSizeGb, diskType=None):
     boot_disk = GenerateDisk(diskSizeGb=diskSizeGb, diskType=diskType)
     boot_disk["boot"] = True
-    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2204-lts")
+    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2404-lts-amd64")
     return boot_disk
 
 
