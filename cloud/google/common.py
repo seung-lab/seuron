@@ -101,7 +101,7 @@ def GenerateAirflowVar(context, hostname_manager):
 def GenerateBootDisk(diskSizeGb, diskType=None):
     boot_disk = GenerateDisk(diskSizeGb=diskSizeGb, diskType=diskType)
     boot_disk["boot"] = True
-    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2204-lts")
+    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2404-lts-amd64")
     return boot_disk
 
 
