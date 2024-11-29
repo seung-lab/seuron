@@ -10,7 +10,7 @@ from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
 from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
 from airflow_api import check_running, set_variable, get_variable
-from kombu_helper import get_message
+from kombu_helper import get_message, visible_messages
 from docker_helper import get_registry_data
 
 
@@ -215,12 +215,26 @@ class SeuronBot:
         client = self.rtmclient.web_client
         while True:
             msg_payload = get_message(broker_url, queue, timeout=30)
-            if msg_payload:
-                try:
-                    send_message(msg_payload, client=client)
-                except Exception:
-                    pass
-                time.sleep(1)
+            if not msg_payload:
+                continue
+
+            while msg_count := visible_messages(broker_url, queue) > 0:
+                for _ in range(msg_count):
+                    next_msg = get_message(broker_url, queue)
+                    if next_msg:
+                        check_keys = ["notification", "broadcast", "attachment"]
+                        if all(msg_payload.get(k, None) == next_msg.get(k, None) for k in check_keys):
+                            msg_payload["text"] += "\n" + next_msg["text"]
+                        else:
+                            send_message(msg_payload, client=client)
+                            time.sleep(1)
+                            msg_payload = next_msg
+                    else:
+                        print("missing messages")
+                time.sleep(5)
+
+            send_message(msg_payload, client=client)
+
 
     def fetch_jupyter_messages(self, queue="jupyter-input-queue"):
         while True:
