@@ -46,6 +46,8 @@ def check_queue(queue, agg=None, refill_threshold=0):
     from urllib.parse import urlparse
     from kombu import Connection
     import traceback
+    from collections import deque
+    import pendulum
 
     broker = configuration.get('celery', 'BROKER_URL')
     totalTries = 2
@@ -53,6 +55,8 @@ def check_queue(queue, agg=None, refill_threshold=0):
     count = 0
     parsed_uri = urlparse(broker)
     rq_host = parsed_uri.hostname
+    dTasks = deque(maxlen=120)
+    nTasks_old = None
     with Connection(broker) as conn:
         ret_queue = conn.SimpleQueue(queue+"_ret")
         err_queue = conn.SimpleQueue(queue+"_err")
@@ -68,10 +72,20 @@ def check_queue(queue, agg=None, refill_threshold=0):
                 continue
 
             print("Tasks left: {}".format(nTasks))
+            if nTasks_old:
+                dTasks.append(nTasks_old - nTasks)
+
+            nTasks_old = nTasks
+
 
             count += 1
             if count % 60 == 0:
-                slack_message("{} tasks remain in queue {}".format(nTasks, queue))
+                vTasks = sum(dTasks) / len(dTasks) if dTasks else 0
+                if vTasks > 0:
+                    eta = pendulum.duration(seconds=nTasks/vTasks * 5).in_words()
+                else:
+                    eta = "unknown"
+                slack_message(f"{nTasks} tasks remain in queue {queue}, Estimated time to empty: {eta}")
 
             try:
                 process_worker_messages(ret_queue, agg)
