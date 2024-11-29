@@ -241,7 +241,7 @@ def latest_param_type():
 def extract_bbox(msgtext: str) -> tuple[int, int, int, int, int, int]:
     """Extracts a bounding box of coordinates from a message's text."""
     regexp = re.compile(
-        ".* @ "
+        ".* @\s*"
         "\(?\[?"  # noqa
         "([0-9]+),?"
         " ([0-9]+),?"
