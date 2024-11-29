@@ -34,7 +34,7 @@ def extract_command(text):
 
 def send_message(msg_payload, client=None, context=None):
     output_queue = "jupyter-output-queue"
-    if msg_payload["text"]:
+    if msg_payload.get("text", None):
         if visible_messages(broker_url, output_queue) < 100:
             put_message(broker_url, output_queue, msg_payload)
 
