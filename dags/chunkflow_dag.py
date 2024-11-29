@@ -53,7 +53,7 @@ def generate_ng_link():
 
     layers["out"] = {
         "source": "precomputed://"+param["OUTPUT_PATH"],
-        "shader": param.get("OUTPUT_SHADER", "void main() {\n  float r = toNormalized(getDataValue(0));\n  float g = toNormalized(getDataValue(1));\n  float b = toNormalized(getDataValue(2)); \n  emitRGB(vec3(r,g,b));\n}"),
+        "shader": param.get("OUTPUT_SHADER", "#uicontrol invlerp normalized\nvoid main() {\n  float r = toNormalized(getDataValue(0));\n  float g = toNormalized(getDataValue(1));\n  float b = toNormalized(getDataValue(2)); \n  emitRGB(vec3(r,g,b));\n}"),
         "type": param.get("OUTPUT_LAYER_TYPE", "image")
     }
 
