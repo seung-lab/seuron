@@ -38,6 +38,7 @@ def GenerateEnvironVar(context, hostname_manager):
         'POSTGRES_USER': postgres_user,
         'POSTGRES_PASSWORD': postgres_password,
         'POSTGRES_DB': postgres_db,
+        'POSTGRES_SHM_MB': """$(free -m|grep Mem|awk '{print int($2/16)}')""",
         'POSTGRES_MEM_MB': """$(free -m|grep Mem|awk '{print int($2/4)}')""",
         'POSTGRES_MAX_CONN': """$(free -m|grep Mem|awk '{print int($2/32)}')""",
         'GRAFANA_USERNAME': grafana_username,

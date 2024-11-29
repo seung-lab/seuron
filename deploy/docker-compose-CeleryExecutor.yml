@@ -61,6 +61,7 @@ services:
             - POSTGRES_USER
             - POSTGRES_PASSWORD
             - POSTGRES_DB
+        shm_size: "${POSTGRES_SHM_MB}m"
         volumes:
             - postgres-storage:/var/lib/postgresql/data
         command: -c max_connections=${POSTGRES_MAX_CONN} -c shared_buffers=${POSTGRES_MEM_MB}MB -c idle_in_transaction_session_timeout=300000
