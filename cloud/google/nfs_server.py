@@ -102,7 +102,7 @@ export INNODB_POOL_SIZE_GB=$(awk '/MemAvailable/ {{print int($2/1024/1024/2)}}' 
 export INNODB_LOG_SIZE_GB=$(awk '/MemAvailable/ {{print int($2/1024/1024/8)}}' /proc/meminfo)
 export POSTGRES_MEM_GB=$(awk '/MemAvailable/ {{print int($2/1024/1024/4)}}' /proc/meminfo)
 export POSTGRES_MAX_CONN=$(awk '/MemAvailable/ {{print int($2/1024/32)}}' /proc/meminfo)
-docker run --rm -p 3306:3306 --shm-size=2g -tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=${{INNODB_POOL_SIZE_GB}}G --innodb-log-file-size=${{INNODB_LOG_SIZE_GB}}G --skip-innodb-doublewrite >& /dev/null &
+docker run --rm -p 3306:3306 --shm-size=2g --tmpfs /tmp:rw -v /share/mariadb:/var/lib/mysql --env MARIADB_ROOT_PASSWORD=igneous --env MARIADB_USER=igneous --env MARIADB_PASSWORD=igneous mariadb:latest --max-connections=10000 --innodb-buffer-pool-size=${{INNODB_POOL_SIZE_GB}}G --innodb-log-file-size=${{INNODB_LOG_SIZE_GB}}G --skip-innodb-doublewrite >& /dev/null &
 docker run --rm -p 5432:5432 --shm-size=2g --tmpfs /tmp:rw -v /share/postgresql/data:/var/lib/postgresql/data --env POSTGRES_PASSWORD=airflow postgres:15-alpine -c max_connections=${{POSTGRES_MAX_CONN}} -c shared_buffers=${{POSTGRES_MEM_GB}}GB -c idle_in_transaction_session_timeout=300000 >& /dev/null &
 {oom_canary_cmd} &
 {worker_cmd}
