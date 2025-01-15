@@ -215,6 +215,18 @@ services:
             <<: *airflow-common-env
         command: python utils/memory_monitor.py amqp://rabbitmq worker-client-queue
 
+    etcd:
+        image: quay.io/coreos/etcd:v3.5.17
+        ports:
+            - "2379:2379/tcp"
+        command: >
+            /usr/local/bin/etcd
+            --data-dir /var/lib/etcd
+            --enable-v2
+            --listen-client-urls http://0.0.0.0:2379
+            --advertise-client-urls http://0.0.0.0:2379
+            --initial-cluster-state new
+
     proxy:
         image: nginx:1.23.0-alpine
         environment:
