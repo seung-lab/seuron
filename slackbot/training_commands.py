@@ -14,6 +14,7 @@ from airflow_api import get_variable, set_variable
 @SeuronBot.on_message("update training parameters",
                       description="Update the default parameters for training",
                       exclusive=False,
+                      cancelable=False,
                       file_inputs=True)
 def update_training_parameters(msg: dict) -> None:
     json_obj = download_json(msg)
