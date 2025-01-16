@@ -126,14 +126,13 @@ def run_training(msg: dict) -> None:
         return
 
     params = get_variable("training_param", deserialize_json=True)
-    wkparams = get_variable("webknossos_param", deserialize_json=True)
+    wkparams = get_variable("webknossos_param", deserialize_json=True, default_var=None)
 
     if pretrain:
         params["pretrain"] = pretrain
 
     params["exp_name"] = exp_name
     params["annotation_ids"] = annotation_ids
-    wkparams["annotation_ids"] = " ".join(annotation_ids)
 
     try:
         initial_sanity_check(params, full=True)
@@ -142,7 +141,9 @@ def run_training(msg: dict) -> None:
         return
 
     set_variable("training_param", params, serialize_json=True)
-    set_variable("webknossos_param", wkparams, serialize_json=True)
+    if wkparams:
+        wkparams["annotation_ids"] = " ".join(annotation_ids)
+        set_variable("webknossos_param", wkparams, serialize_json=True)
     replyto(msg, f"Running training experiment: `{params['exp_name']}`")
     run_dag("training")
 
