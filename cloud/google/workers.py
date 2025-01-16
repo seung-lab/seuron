@@ -26,6 +26,13 @@ def GenerateWorkerStartupScript(context, hostname_nfs_server, env_variables, cmd
     startup_script = f'''
 #!/bin/bash
 set -e
+
+echo "net.ipv6.conf.all.disable_ipv6 = 1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.lo.disable_ipv6 = 1" >> /etc/sysctl.conf
+
+sysctl -p
+
 mount -t tmpfs -o size=80%,noatime tmpfs /tmp
 mkdir -p /var/log/airflow/logs
 chmod 777 /var/log/airflow/logs
