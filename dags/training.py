@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from datetime import datetime
 
 from airflow import DAG
@@ -19,8 +20,12 @@ from webknossos import export_op, report_export
 
 PARAM = Variable.get("training_param", {}, deserialize_json=True)
 DEEPEM_IMAGE = PARAM.get("deepem_image", "zettaai/deepem")
-SKIP_EXPORT = PARAM.pop("skip_export", False)
 
+if "rdzv_id" not in PARAM:
+    PARAM["rdzv_id"] = str(uuid.uuid4())
+    Variable.set("training_param", PARAM, serialize_json=True)
+
+SKIP_EXPORT = PARAM.pop("skip_export", False)
 
 default_args = dict(
     owner="seuronbot",
@@ -59,7 +64,12 @@ def prep_parameters() -> dict:
     return param
 
 
-def make_argstr(param: dict) -> str:
+def make_argstr(param: dict, num_trainers: int, rank: int, rdzv_id: str) -> str:
+
+    launch_command = ["torchrun", f"--nproc_per_node={len(param['gpu_ids'])}",
+                      f"--nnodes={num_trainers}", f"--node_rank={rank}", f"--rdzv_id={rdzv_id}",
+                      "--rdzv_backend=etcd-v2", f"--rdzv_endpoint={os.environ['REDIS_SERVER']}:2379",
+                      "/DeepEM/deepem/train/run.py"]
 
     def format_arg(item) -> str:
         k, v = item
@@ -72,15 +82,17 @@ def make_argstr(param: dict) -> str:
         else:
             return f"--{k} {v}"
 
-    return " ".join(map(format_arg, param.items()))
+    return " ".join(launch_command + list(map(format_arg, param.items())))
 
 
-def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
+def training_op(dag: DAG, rank=0, queue="deepem-gpu") -> Operator:
     param = prep_parameters()
 
     wandb_api_key = param.pop("WANDB_API_KEY", None)
     environment = {"WANDB_API_KEY": wandb_api_key} if wandb_api_key else None
 
+    num_trainers = param.pop("NUM_TRAINERS", 1)
+    rdzv_id = param.pop("rdzv_id", None)
     # these variables will be mounted in the containers
     mount_secrets = param.pop("MOUNT_SECRETS", [])
     variables = []
@@ -90,8 +102,8 @@ def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
     return worker_op(
         variables=variables,
         mount_point=param.pop("MOUNT_PATH", default_mount_path),
-        task_id="training",
-        command=make_argstr(param),
+        task_id=f"training_{rank}",
+        command=make_argstr(param, num_trainers, rank, rdzv_id),
         use_gpus=True,
         environment=environment,
         force_pull=True,
@@ -156,11 +168,12 @@ if not SKIP_EXPORT:
     )
 
 collect_metrics = collect_metrics_op(training_dag)
-scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", 1, 1, "cluster")
+num_trainers = PARAM["NUM_TRAINERS"]
+scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", num_trainers, num_trainers, "cluster")
 scale_down = scale_down_cluster_op(
     training_dag, "training", "deepem-gpu", 0, "cluster", trigger_rule="all_done"
 )
-training = training_op(training_dag)
+training = [training_op(training_dag, i) for i in range(num_trainers)]
 report_training = PythonOperator(
     task_id="report_model",
     python_callable=report_model,
