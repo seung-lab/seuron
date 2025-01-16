@@ -104,6 +104,7 @@ def training_op(dag: DAG, queue="deepem-gpu") -> Operator:
         dag=dag,
         qos=False,
         shm_size=4 * (2 ** 30),  # 4 GB
+        network_mode="host",
     )
 
 

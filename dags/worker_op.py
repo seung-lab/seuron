@@ -26,4 +26,5 @@ def worker_op(**kwargs):
         retry_delay=kwargs.get("retry_delay", default_args.get("retry_delay", 60)),
         retry_exponential_backoff=kwargs.get("retry_exponential_backoff", default_args.get("retry_exponential_backoff", False)),
         shm_size=kwargs.get("shm_size", None),
+        network_mode=kwargs.get("network_mode", None),
     )
