@@ -102,6 +102,8 @@ def delete_dead_instances():
     r = redis.Redis(redis_host)
 
     for key in cluster_info:
+        if key == "deepem-gpu":
+            continue
         if target_sizes.get(key, 0) == 0:
             continue
 
