@@ -107,7 +107,7 @@ def cluster_control():
                 cluster_api.resize_instance_group(cluster_info[key], 0)
             continue
 
-        if num_workers != target_sizes[key]:
+        if num_workers != target_sizes[key] and key != "deepem-gpu":
             target_sizes[key] = max(num_workers, 1)
 
         if stable and requested_size < target_sizes[key]:
