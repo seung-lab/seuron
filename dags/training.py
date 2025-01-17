@@ -122,6 +122,7 @@ def training_op(dag: DAG, rank=0, queue="deepem-gpu") -> Operator:
         weight_rule=WeightRule.ABSOLUTE,
         queue=queue,
         dag=dag,
+        qos=False,
         shm_size=4 * (2 ** 30),  # 4 GB
         network_mode="host",
     )
