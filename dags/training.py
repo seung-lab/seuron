@@ -36,6 +36,13 @@ default_args = dict(
 )
 
 
+def reset_rdzv_id(context):
+    from airflow.models import Variable
+    param = Variable.get("training_param", {}, deserialize_json=True)
+    param["rdzv_id"] = str(uuid.uuid4())
+    Variable.set("training_param", param, serialize_json=True)
+
+
 def prep_parameters() -> dict:
     """Modify the user-supplied parameters to be used as a command for DeepEM."""
     param = PARAM.copy()
@@ -107,6 +114,7 @@ def training_op(dag: DAG, rank=0, queue="deepem-gpu") -> Operator:
         use_gpus=True,
         environment=environment,
         force_pull=True,
+        on_retry_callback=reset_rdzv_id if rank == 0 else None,
         on_failure_callback=task_failure_alert,
         on_success_callback=task_done_alert,
         image=DEEPEM_IMAGE,
