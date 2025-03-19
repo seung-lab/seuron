@@ -10,6 +10,7 @@ from airflow import DAG
 from airflow.utils.weight_rule import WeightRule
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator as Operator
+from airflow.hooks.base_hook import BaseHook
 
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
@@ -20,7 +21,10 @@ from webknossos import export_op, report_export
 
 PARAM = Variable.get("training_param", {}, deserialize_json=True)
 DEEPEM_IMAGE = PARAM.get("deepem_image", "zettaai/deepem")
+cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 training_cluster = "deepem-gpu"
+
+max_trainers = sum(c['max_size'] for c in cluster_info[training_cluster])
 
 if "rdzv_id" not in PARAM:
     PARAM["rdzv_id"] = str(uuid.uuid4())
@@ -99,7 +103,7 @@ def training_op(dag: DAG, rank=0, queue=training_cluster) -> Operator:
     wandb_api_key = param.pop("WANDB_API_KEY", None)
     environment = {"WANDB_API_KEY": wandb_api_key} if wandb_api_key else None
 
-    num_trainers = param.pop("NUM_TRAINERS", 1)
+    num_trainers = min(param.pop("NUM_TRAINERS", 1), max_trainers)
     rdzv_id = param.pop("rdzv_id", None)
     # these variables will be mounted in the containers
     mount_secrets = param.pop("MOUNT_SECRETS", [])
@@ -177,7 +181,8 @@ if not SKIP_EXPORT:
     )
 
 collect_metrics = collect_metrics_op(training_dag)
-num_trainers = PARAM["NUM_TRAINERS"]
+num_trainers = min(PARAM.get("NUM_TRAINERS", 1), max_trainers)
+
 scale_up = scale_up_cluster_op(training_dag, "training", training_cluster, num_trainers, num_trainers, "cluster")
 scale_down = scale_down_cluster_op(
     training_dag, "training", training_cluster, 0, "cluster", trigger_rule="all_done"
