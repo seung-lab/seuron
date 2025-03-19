@@ -78,10 +78,14 @@ def prep_parameters() -> dict:
 
 def make_argstr(param: dict, num_trainers: int, rank: int, rdzv_id: str) -> str:
 
-    launch_command = ["torchrun", f"--nproc_per_node={len(param['gpu_ids'])}",
-                      f"--nnodes={num_trainers}", f"--node_rank={rank}", f"--rdzv_id={rdzv_id}",
-                      "--rdzv_backend=etcd-v2", f"--rdzv_endpoint={os.environ['REDIS_SERVER']}:2379",
-                      "/DeepEM/deepem/train/run.py"]
+    torchrun_launcher =  param.pop("TORCHRUN_LAUNCHER", None)
+    if torchrun_launcher:
+        launch_command = ["torchrun", f"--nproc_per_node={len(param['gpu_ids'])}",
+                          f"--nnodes={num_trainers}", f"--node_rank={rank}", f"--rdzv_id={rdzv_id}",
+                          "--rdzv_backend=etcd-v2", f"--rdzv_endpoint={os.environ['REDIS_SERVER']}:2379",
+                          "/DeepEM/deepem/train/run.py"]
+    else:
+        launch_command = []
 
     def format_arg(item) -> str:
         k, v = item
