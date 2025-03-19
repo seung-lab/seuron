@@ -20,6 +20,7 @@ from webknossos import export_op, report_export
 
 PARAM = Variable.get("training_param", {}, deserialize_json=True)
 DEEPEM_IMAGE = PARAM.get("deepem_image", "zettaai/deepem")
+training_cluster = "deepem-gpu"
 
 if "rdzv_id" not in PARAM:
     PARAM["rdzv_id"] = str(uuid.uuid4())
@@ -92,7 +93,7 @@ def make_argstr(param: dict, num_trainers: int, rank: int, rdzv_id: str) -> str:
     return " ".join(launch_command + list(map(format_arg, param.items())))
 
 
-def training_op(dag: DAG, rank=0, queue="deepem-gpu") -> Operator:
+def training_op(dag: DAG, rank=0, queue=training_cluster) -> Operator:
     param = prep_parameters()
 
     wandb_api_key = param.pop("WANDB_API_KEY", None)
@@ -177,9 +178,9 @@ if not SKIP_EXPORT:
 
 collect_metrics = collect_metrics_op(training_dag)
 num_trainers = PARAM["NUM_TRAINERS"]
-scale_up = scale_up_cluster_op(training_dag, "training", "deepem-gpu", num_trainers, num_trainers, "cluster")
+scale_up = scale_up_cluster_op(training_dag, "training", training_cluster, num_trainers, num_trainers, "cluster")
 scale_down = scale_down_cluster_op(
-    training_dag, "training", "deepem-gpu", 0, "cluster", trigger_rule="all_done"
+    training_dag, "training", training_cluster, 0, "cluster", trigger_rule="all_done"
 )
 training = [training_op(training_dag, i) for i in range(num_trainers)]
 report_training = PythonOperator(
