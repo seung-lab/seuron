@@ -30,6 +30,12 @@ if "rdzv_id" not in PARAM:
     PARAM["rdzv_id"] = str(uuid.uuid4())
     Variable.set("training_param", PARAM, serialize_json=True)
 
+if "gpu_ids" not in PARAM:
+    num_gpus = cluster_info[training_cluster][0]['gpuWorkerAcceleratorCount']
+    PARAM["gpu_ids"] = list(range(num_gpus))
+    Variable.set("training_param", PARAM, serialize_json=True)
+
+
 SKIP_EXPORT = PARAM.pop("skip_export", False)
 
 default_args = dict(
