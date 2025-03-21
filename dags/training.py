@@ -11,6 +11,8 @@ from airflow.utils.weight_rule import WeightRule
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator as Operator
 from airflow.hooks.base_hook import BaseHook
+from airflow.utils.state import State
+from airflow.models import TaskInstance
 
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
@@ -45,6 +47,36 @@ default_args = dict(
     catchup=False,
     retries=10,
 )
+
+
+def skip_parallel_tasks(context):
+    task_failure_alert(context)
+
+    slack_message(":exclamation: Stop the rest of training nodes...")
+
+    task_instance = context['task_instance']
+    dag_run = context['dag_run']
+
+    # Get all tasks in the parallel_tasks group
+    parallel_task_ids = [
+        t.task_id for t in dag_run.dag.tasks
+        if t.task_id.startswith('training_') and t.task_id != task_instance.task_id
+    ]
+
+    # Mark all other running parallel tasks as skipped
+    for task_id in parallel_task_ids:
+        ti = TaskInstance.get_task_instance(
+            task_id=task_id,
+            dag_id=dag_run.dag_id,
+            run_id=dag_run.run_id,
+            map_index=-1,
+        )
+
+        # Only modify tasks that aren't already in a terminal state
+        if ti and ti.state not in State.finished:
+            ti.set_state(State.SKIPPED)
+
+    slack_message(":exclamation: Training cluster stopped")
 
 
 def reset_rdzv_id(context):
@@ -130,7 +162,7 @@ def training_op(dag: DAG, rank=0, queue=training_cluster) -> Operator:
         environment=environment,
         force_pull=True,
         on_retry_callback=reset_rdzv_id if rank == 0 else None,
-        on_failure_callback=task_failure_alert,
+        on_failure_callback=skip_parallel_tasks,
         on_success_callback=task_done_alert,
         image=DEEPEM_IMAGE,
         priority_weight=100_000,
