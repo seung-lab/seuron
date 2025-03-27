@@ -13,6 +13,20 @@ def health_check_info(image_name):
     return False
 
 
+def has_custom_entrypoint(image_name):
+    image = pull_image(image_name)
+    try:
+        entrypoint = image.attrs.get("Config", {}).get("Entrypoint", None)
+
+        if entrypoint:
+            return True
+        else:
+            return False
+    except Exception as e:
+        print(f"Error: {e}")
+        return True
+
+
 def pull_image(image_name):
     import docker
     import traceback

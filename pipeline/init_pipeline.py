@@ -44,6 +44,8 @@ def parse_metadata():
                     worker_setting['workerConcurrencies'] = c['workerConcurrencies']
                 else:
                     worker_setting['concurrency'] = c.get('concurrency', 1)
+                if c['type'] == 'deepem-gpu':
+                    worker_setting['gpuWorkerAcceleratorCount'] = c.get('gpuWorkerAcceleratorCount', 1)
                 instance_groups[c['type']].append(worker_setting)
         elif item["key"] == "easyseg-worker":
             worker = json.loads(item["value"])

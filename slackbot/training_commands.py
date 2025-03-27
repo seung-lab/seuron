@@ -9,6 +9,7 @@ from seuronbot import SeuronBot
 from airflow_api import run_dag
 from bot_utils import replyto, download_json
 from airflow_api import get_variable, set_variable
+from common import docker_helper
 
 
 @SeuronBot.on_message("update training parameters",
@@ -24,6 +25,16 @@ def update_training_parameters(msg: dict) -> None:
             initial_sanity_check(json_obj, full=False)
         except Exception as e:
             replyto(msg, f"Error parsing parameters: {e}")
+
+        replyto(msg, "Download deepem image and check for custom entrypoint")
+        deepem_image = json_obj.get("deepem_image", "zettaai/deepem")
+        if docker_helper.has_custom_entrypoint(deepem_image):
+            replyto(msg, ":disappointed:Custom entrypoint found, disable DDP")
+            json_obj["TORCHRUN_LAUNCHER"] = False
+            json_obj["NUM_TRAINERS"] = 1
+        else:
+            replyto(msg, ":cool:Launch training script with torchrun")
+            json_obj["TORCHRUN_LAUNCHER"] = True
 
         set_variable("training_param", json_obj, serialize_json=True)
         replyto(msg, "Parameters successfully updated")
