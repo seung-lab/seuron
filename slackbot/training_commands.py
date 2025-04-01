@@ -28,13 +28,20 @@ def update_training_parameters(msg: dict) -> None:
 
         replyto(msg, "Download deepem image and check for custom entrypoint")
         deepem_image = json_obj.get("deepem_image", "zettaai/deepem")
-        if docker_helper.has_custom_entrypoint(deepem_image):
-            replyto(msg, ":disappointed:Custom entrypoint found, disable DDP")
-            json_obj["TORCHRUN_LAUNCHER"] = False
-            json_obj["NUM_TRAINERS"] = 1
+        if "TORCHRUN_LAUNCHER" in json_obj:
+            if json_obj["TORCHRUN_LAUNCHER"]:
+                replyto(msg, ":cool:Launch training script with torchrun")
+            else:
+                replyto(msg, ":disappointed:Torchrun disabled")
+                json_obj["NUM_TRAINERS"] = 1
         else:
-            replyto(msg, ":cool:Launch training script with torchrun")
-            json_obj["TORCHRUN_LAUNCHER"] = True
+            if docker_helper.has_custom_entrypoint(deepem_image):
+                replyto(msg, ":disappointed:Custom entrypoint found, disable DDP")
+                json_obj["TORCHRUN_LAUNCHER"] = False
+                json_obj["NUM_TRAINERS"] = 1
+            else:
+                replyto(msg, ":cool:Launch training script with torchrun")
+                json_obj["TORCHRUN_LAUNCHER"] = True
 
         set_variable("training_param", json_obj, serialize_json=True)
         replyto(msg, "Parameters successfully updated")
