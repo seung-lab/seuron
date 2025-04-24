@@ -68,7 +68,7 @@ def supply_database_parameters():
 dag_sanity = DAG(
     "synaptor_sanity_check",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["synaptor"],
 )
 
@@ -341,7 +341,7 @@ db_assignment = [
 dag = DAG(
     "synaptor",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["synaptor"],
 )
 
