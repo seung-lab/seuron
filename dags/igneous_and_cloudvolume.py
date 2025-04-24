@@ -39,7 +39,7 @@ def process_worker_errors(err_queue):
 
 
 def check_queue(queue, agg=None, refill_threshold=0):
-    from airflow import configuration
+    from airflow.configuration import conf
     import requests
     from time import sleep
     from slack_message import slack_message
@@ -49,7 +49,7 @@ def check_queue(queue, agg=None, refill_threshold=0):
     from collections import deque
     import pendulum
 
-    broker = configuration.get('celery', 'BROKER_URL')
+    broker = conf.get('celery', 'broker_url')
     totalTries = 2
     nTries = totalTries
     count = 0
@@ -181,7 +181,7 @@ def kombu_tasks(cluster_name, init_workers):
         def inner(*args, **kwargs):
             import time
             import json
-            from airflow import configuration
+            from airflow.configuration import conf
             from airflow.models import Variable
             from airflow.hooks.base import BaseHook
             from kombu import Connection
@@ -197,7 +197,7 @@ def kombu_tasks(cluster_name, init_workers):
 
             cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 
-            broker = configuration.get('celery', 'BROKER_URL')
+            broker = conf.get('celery', 'broker_url')
             queue_name = cluster_name
             start_time = time.monotonic()
 

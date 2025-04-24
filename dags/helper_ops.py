@@ -223,7 +223,7 @@ def toggle_nfs_server_op(dag, on=False):
         return placeholder_op(dag, f'dummy_toggle_nfs_server_{"on" if on else "off"}')
 
 def save_run_parameters(varname, **kwargs):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     from airflow.models import Variable
     from igneous_and_cloudvolume import upload_json
     import os

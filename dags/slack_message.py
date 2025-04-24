@@ -1,5 +1,5 @@
 def slack_message(msg, notification=False, broadcast=False, attachment=None):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     import kombu_helper
     msg_payload = {
             'text': msg,

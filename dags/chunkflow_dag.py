@@ -205,7 +205,7 @@ def extract_batch_size(fpath):
 def supply_default_parameters():
     from docker_helper import health_check_info
     from kombu_helper import drain_messages
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     param = Variable.get("inference_param", deserialize_json=True)
 
     statsd_host = conf.get('metrics', 'statsd_host')
@@ -420,7 +420,7 @@ def supply_default_parameters():
 
 
 def setup_env_op(dag, param, queue):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/setup_env.sh")} {broker_url}"'
@@ -447,7 +447,7 @@ def setup_env_op(dag, param, queue):
 
 
 def convert_tensorrt_engine_op(dag, param, queue):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
     mount_path = param.get("MOUNT_PATH", default_mount_path)
@@ -477,7 +477,7 @@ def convert_tensorrt_engine_op(dag, param, queue):
 
 
 def inference_op(dag, param, queue, wid):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/inference.sh")} {broker_url}"'
@@ -504,7 +504,7 @@ def inference_op(dag, param, queue, wid):
 
 def process_output(**kwargs):
     from igneous_and_cloudvolume import upload_json
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     from dag_utils import check_manager_node
     import re
     from cloudfiles.paths import extract
