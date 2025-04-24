@@ -34,7 +34,7 @@ SCHEDULE_INTERVAL = '2-59/7 * * * *'
 
 dag = DAG(
     dag_id=DAG_ID,
-    schedule_interval=SCHEDULE_INTERVAL,
+    schedule=SCHEDULE_INTERVAL,
     default_args=default_args,
     catchup=False,
     tags=['maintenance'],
