@@ -81,7 +81,7 @@ def remove_failed_instances():
     from time import sleep
     from datetime import datetime, timezone
     from airflow.models import Variable
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
     from common.redis_utils import get_hostname_failures
 
     if Variable.get("vendor") == "Google":

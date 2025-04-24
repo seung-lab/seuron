@@ -13,7 +13,7 @@ from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.utils.weight_rule import WeightRule
 from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.base import BaseHook
 from airflow.operators.python import PythonOperator
 from airflow.operators.latest_only import LatestOnlyOperator
 
