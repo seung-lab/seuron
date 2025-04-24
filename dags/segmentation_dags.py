@@ -119,17 +119,17 @@ def generate_link(param, broadcast):
     slack_message(url, broadcast=broadcast)
 
 
-dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag_manager = DAG("segmentation", default_args=default_args, schedule=None, tags=['segmentation'])
 
 dag = dict()
 
-dag["ws"] = DAG("watershed", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["ws"] = DAG("watershed", default_args=default_args, schedule=None, tags=['segmentation'])
 
-dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["agg"] = DAG("agglomeration", default_args=default_args, schedule=None, tags=['segmentation'])
 
-dag["cs"] = DAG("contact_surface", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["cs"] = DAG("contact_surface", default_args=default_args, schedule=None, tags=['segmentation'])
 
-dag["pp"] = DAG("postprocess", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["pp"] = DAG("postprocess", default_args=default_args, schedule=None, tags=['segmentation'])
 
 dag_ws = dag["ws"]
 dag_agg = dag["agg"]

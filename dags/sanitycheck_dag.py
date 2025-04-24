@@ -28,7 +28,7 @@ default_args = {
 
 dag = DAG(
     dag_id=DAG_ID,
-    schedule_interval=None,
+    schedule=None,
     default_args=default_args,
     catchup=False,
     tags=['segmentation'],

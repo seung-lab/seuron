@@ -187,7 +187,7 @@ default_args = dict(
 sanity_check_dag = DAG(
     "wkt_sanity_check",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["webknossos"],
 )
 
@@ -211,7 +211,7 @@ validate_wk_param_op >> sanity_check_op(sanity_check_dag, "wk2cv")
 cutout_dag = DAG(
     "wkt_cutouts",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["webknossos", "training"],
 )
 
@@ -234,7 +234,7 @@ cutout >> report_cutout_task
 export_dag = DAG(
     "wkt_export",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["webknossos", "training"],
 )
 

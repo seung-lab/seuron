@@ -15,7 +15,7 @@ igneous_default_args = {
     'retries': 0,
 }
 
-dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule_interval=None, tags=['igneous tasks'])
+dag_igneous = DAG("igneous", default_args=igneous_default_args, schedule=None, tags=['igneous tasks'])
 scaling_igneous_finish = scale_down_cluster_op(dag_igneous, "igneous_finish", "igneous", 0, "cluster")
 
 if get_connection("NFSServer"):
@@ -40,7 +40,7 @@ submit_igneous_tasks = PythonOperator(
 collect_metrics_op(dag_igneous) >> start_nfs_server >> submit_igneous_tasks >> scaling_igneous_finish >> stop_nfs_server
 
 
-dag_custom_cpu = DAG("custom-cpu", default_args=igneous_default_args, schedule_interval=None, tags=['custom tasks'])
+dag_custom_cpu = DAG("custom-cpu", default_args=igneous_default_args, schedule=None, tags=['custom tasks'])
 scaling_custom_cpu_finish = scale_down_cluster_op(dag_custom_cpu, "custom_cpu_finish", "custom-cpu", 0, "cluster")
 
 
@@ -57,7 +57,7 @@ submit_custom_cpu_tasks = PythonOperator(
 collect_metrics_op(dag_custom_cpu) >> submit_custom_cpu_tasks >> scaling_custom_cpu_finish
 
 
-dag_custom_gpu = DAG("custom-gpu", default_args=igneous_default_args, schedule_interval=None, tags=['custom tasks'])
+dag_custom_gpu = DAG("custom-gpu", default_args=igneous_default_args, schedule=None, tags=['custom tasks'])
 scaling_custom_gpu_finish = scale_down_cluster_op(dag_custom_gpu, "custom_gpu_finish", "custom-gpu", 0, "cluster")
 
 

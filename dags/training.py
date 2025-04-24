@@ -205,7 +205,7 @@ def report_model() -> None:
 training_dag = DAG(
     "training",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["training"],
 )
 
