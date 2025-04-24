@@ -16,7 +16,7 @@ def slack_message(msg, notification=False, broadcast=False, attachment=None):
 
 def slack_userinfo():
     from param_default import SLACK_CONN_ID
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
     import slack_sdk as slack
     import json
     try:
@@ -117,7 +117,7 @@ def interpret_error_message(error_message):
     import os
     from langchain_google_vertexai import ChatVertexAI
     from langchain_core.prompts import ChatPromptTemplate
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
     from airflow.models import Variable
 
     file_path_match = re.findall(r'File "([^"]+)", line \d+, in', error_message)

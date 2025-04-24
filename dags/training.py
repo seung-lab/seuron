@@ -10,7 +10,7 @@ from airflow import DAG
 from airflow.utils.weight_rule import WeightRule
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator as Operator
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.base import BaseHook
 from airflow.utils.state import State
 from airflow.models import TaskInstance
 

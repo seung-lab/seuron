@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.base import BaseHook
 from worker_op import worker_op
 from airflow.operators.python import PythonOperator
 from airflow.utils.weight_rule import WeightRule
