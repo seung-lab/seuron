@@ -16,7 +16,7 @@ from nglinks import ImageLayer, SegLayer, generate_ng_payload, wrap_payload
 from kombu_helper import drain_messages
 from dag_utils import remove_workers
 
-from airflow import configuration as conf
+from airflow.configuration import conf
 
 airflow_broker_url = conf.get("celery", "broker_url")
 
