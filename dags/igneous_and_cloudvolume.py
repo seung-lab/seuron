@@ -49,7 +49,7 @@ def check_queue(queue, agg=None, refill_threshold=0):
     from collections import deque
     import pendulum
 
-    broker = configuration.get('celery', 'BROKER_URL')
+    broker = configuration.conf.get('celery', 'BROKER_URL')
     totalTries = 2
     nTries = totalTries
     count = 0
@@ -197,7 +197,7 @@ def kombu_tasks(cluster_name, init_workers):
 
             cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 
-            broker = configuration.get('celery', 'BROKER_URL')
+            broker = configuration.conf.get('celery', 'BROKER_URL')
             queue_name = cluster_name
             start_time = time.monotonic()
 

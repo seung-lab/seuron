@@ -236,7 +236,7 @@ def compare_segmentation(param):
     from collections import defaultdict
     from evaluate_segmentation import read_chunks, evaluate_rand, evaluate_voi, find_large_diff
     from igneous_and_cloudvolume import upload_json
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     size_threshold = 1e6  # nm^3
     segs = classify_segmentations(param)
     prefix = "agg/evaluation/evaluation"
@@ -272,7 +272,7 @@ def compare_segmentation(param):
 
 
 def evaluate_results(param):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     if "GT_PATH" not in param:
         return
 

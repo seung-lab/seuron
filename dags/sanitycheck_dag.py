@@ -56,7 +56,7 @@ def task_done_alert(context):
 
 @mount_secrets
 def check_cv_data():
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     param = Variable.get("param", deserialize_json=True)
 
     statsd_host = conf.get('metrics', 'statsd_host')
