@@ -1,6 +1,6 @@
 from time import sleep
 from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.base import BaseHook
 from googleapiclient import discovery
 from slack_message import slack_message
 import requests

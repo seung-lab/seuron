@@ -13,7 +13,7 @@ def slack_message(msg, notification=False, broadcast=False, attachment=None):
 
 def slack_userinfo():
     from param_default import SLACK_CONN_ID
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
     import slack_sdk as slack
     import json
     try:
@@ -70,7 +70,7 @@ def task_retry_alert(context):
 
 def interpret_error_message(error_message):
     from langchain_openai import ChatOpenAI
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
 
     try:
         conn = BaseHook.get_connection("LLMServer")

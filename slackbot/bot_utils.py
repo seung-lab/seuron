@@ -13,7 +13,7 @@ from secrets import token_hex
 from kombu_helper import put_message, visible_messages
 import slack_sdk as slack
 from typing import Optional
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.base import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from airflow_api import update_slack_connection, set_variable
 from kombu_helper import drain_messages, peek_message

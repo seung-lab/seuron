@@ -81,7 +81,7 @@ def delete_dead_instances():
     from time import sleep
     from datetime import datetime, timezone
     from airflow.models import Variable
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api
     else:
