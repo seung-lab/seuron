@@ -56,6 +56,7 @@ rng = random.SystemRandom()
 
 fernet_key = base64.urlsafe_b64encode(rng.randbytes(32)).decode()
 secret_key = base64.urlsafe_b64encode(rng.randbytes(16)).decode()
+jwt_secret_key = base64.urlsafe_b64encode(rng.randbytes(32)).decode()
 
 def GlobalComputeUrl(project, collection, name):
     return ''.join([COMPUTE_URL_BASE, 'projects/', project,
@@ -84,7 +85,8 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__CORE__FERNET_KEY': context.properties['airflow'].get('fernetKey', fernet_key),
         'AIRFLOW__CELERY__BROKER_URL': f'amqp://{hostname_manager}',
         'AIRFLOW__CELERY__CELERY_RESULT_BACKEND': f'db+{sqlalchemy_conn}',
-        'AIRFLOW__WEBSERVER__SECRET_KEY': context.properties['airflow'].get('secretKey', secret_key),
+        'AIRFLOW__API__SECRET_KEY': context.properties['airflow'].get('secretKey', secret_key),
+        'AIRFLOW__API_AUTH__JWT_SECRET': context.properties['airflow'].get('jwtSecretKey', jwt_secret_key),
         'AIRFLOW__LOGGING__REMOTE_LOGGING': 'True',
         'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID': 'GCSConn',
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
