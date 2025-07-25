@@ -102,6 +102,9 @@ def cluster_control():
             slack_message(":exclamation:Failed to get the {} cluster information from google.".format(key), notification=True)
             continue
 
+        if not stable:
+            continue
+
         if target_sizes[key] == 0:
             if requested_size != 0:
                 cluster_api.resize_instance_group(cluster_info[key], 0)
@@ -110,7 +113,7 @@ def cluster_control():
         if num_workers != target_sizes[key] and key != "deepem-gpu":
             target_sizes[key] = max(num_workers, 1)
 
-        if stable and requested_size < target_sizes[key]:
+        if requested_size < target_sizes[key]:
             max_size = sum(ig['max_size'] for ig in cluster_info[key])
             updated_size = min([target_sizes[key], requested_size*2, max_size])
             if requested_size != updated_size:
