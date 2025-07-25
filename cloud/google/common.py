@@ -26,7 +26,7 @@ sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-
 sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 add-apt-repository -y ppa:graphics-drivers/ppa
 apt-get update -y
-DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nvidia-headless-560 nvidia-utils-560 nvidia-container-toolkit
+DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install nvidia-container-toolkit
 systemctl restart docker
 '''
 
@@ -101,7 +101,7 @@ def GenerateAirflowVar(context, hostname_manager):
 def GenerateBootDisk(diskSizeGb, diskType=None):
     boot_disk = GenerateDisk(diskSizeGb=diskSizeGb, diskType=diskType)
     boot_disk["boot"] = True
-    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-cloud", "images", "family/ubuntu-2404-lts-amd64")
+    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-accelerator-images", "images", "family/ubuntu-accelerator-2404-amd64-with-nvidia-570")
     return boot_disk
 
 
