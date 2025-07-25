@@ -91,10 +91,16 @@ def check_patch_parameters(param):
         slack_message("No cropping by default, output patch size: `{}`".format(param["INPUT_PATCH_SIZE"]))
         param["OUTPUT_PATCH_SIZE"] = param["INPUT_PATCH_SIZE"][:]
 
-    input_patch_size = param["INPUT_PATCH_SIZE"]
+    if "OUTPUT_RESOLUTION" in param:
+        scale_factor = [int(x / y) for x, y in zip(param["IMAGE_RESOLUTION"], param["OUTPUT_RESOLUTION"])]
+        slack_message(f"Scaling factor: `{scale_factor}`")
+    else:
+        scale_factor = [1, 1, 1]
+
+    scaled_input_patch_size = [int(x * y) for x, y in zip(param["INPUT_PATCH_SIZE"], scale_factor)]
     output_patch_size = param["OUTPUT_PATCH_SIZE"]
 
-    if (any(x < y for x, y in zip(input_patch_size, output_patch_size))):
+    if (any(x < y for x, y in zip(scaled_input_patch_size, output_patch_size))):
         slack_message("""input patch size smaller than output patch size""")
         raise ValueError('Parameter mismatch')
 
@@ -103,7 +109,7 @@ def check_patch_parameters(param):
             slack_message("""Use 50% overlap between input patches""")
 
     overlap = param.get("INPUT_PATCH_OVERLAP_RATIO", 0.5)
-    output_patch_overlap = [ int(i*overlap - (i-o)) for i, o in zip(input_patch_size, output_patch_size)  ]
+    output_patch_overlap = [ int(i*overlap - (i-o)) for i, o in zip(scaled_input_patch_size, output_patch_size)  ]
     output_patch_overlap = [o+o%2 for o in output_patch_overlap]
 
 
@@ -121,7 +127,7 @@ def check_patch_parameters(param):
 
 
     if "CHUNK_CROP_MARGIN" not in param:
-        param["CHUNK_CROP_MARGIN"] = [o + (ip - op)//2 for o, ip, op in zip(param["OUTPUT_PATCH_OVERLAP"], input_patch_size, output_patch_size)]
+        param["CHUNK_CROP_MARGIN"] = [o + (ip - op)//2 for o, ip, op in zip(param["OUTPUT_PATCH_OVERLAP"], scaled_input_patch_size, output_patch_size)]
         slack_message(f'Chunk crop margin: `{param["CHUNK_CROP_MARGIN"]}`')
 
     return param
@@ -162,9 +168,6 @@ def check_onnx_model(param):
             slack_message(f":u7981:*ERROR: Specified `INFERENCE_OUTPUT_CHANNELS = {param['INFERENCE_OUTPUT_CHANNELS']}`, does not match ONNX output shape `{output_shape}`*")
             raise ValueError('Inference output channel error')
 
-        if any(x != y for x, y in zip(input_shape[-3:], output_shape[-3:])):
-            slack_message(f":u7981:*ERROR: The input shape `{input_shape[-3:][::-1]}` does not match the output shape `{output_shape[-3:][::-1]}`*")
-            raise ValueError('Input shape does not match the output shape')
 
         if "INPUT_PATCH_SIZE" not in param:
             slack_message(f"Set `INPUT_PATH_SIZE` to `{input_shape[-3:][::-1]}`")
@@ -292,6 +295,9 @@ def supply_default_parameters():
     image_bbox = vol.bounds
     if "IMAGE_RESOLUTION" not in param:
         param["IMAGE_RESOLUTION"] = vol.resolution.tolist()
+
+    if "OUTPUT_RESOLUTION" not in param:
+        param["OUTPUT_RESOLUTION"] = param["IMAGE_RESOLUTION"]
 
     if "BBOX" not in param:
         param["BBOX"] = [int(x) for x in image_bbox.to_list()]
