@@ -67,6 +67,12 @@ def command(queue, timeout, concurrency):
     except AttributeError:
         pass
 
+    if hasattr(custom_worker, 'prepare_worker'):
+        try:
+            custom_worker.prepare_worker()
+        except Exception:
+            pass
+
     if concurrency == 0:
         concurrency = len(os.sched_getaffinity(0))
     execute(qurl, timeout, queue, statsd, concurrency)
