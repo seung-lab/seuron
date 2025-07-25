@@ -82,7 +82,7 @@ with DAG("compute_metrics",
                 messages += [f"GCS api call to bucket `{b}`: {api_summary}"]
 
         if messages:
-            slack_message("\n".join([f"*Compute resources used by* `{target_dag_id}` *in {pendulum.interval(start_time, end_time).in_words()}*:"] + messages), broadcast=True)
+            slack_message("\n".join([f"*Compute resources used by* `{target_dag_id}` *in {humanize.naturaldelta(end_time - start_time)}*:"] + messages), broadcast=True)
 
     res_op = PythonOperator(
                 task_id='resource_summary',

@@ -15,7 +15,7 @@ ARG AIRFLOW_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME ${AIRFLOW_HOME}
 ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER ${AIRFLOW_USER}
-ARG AIRFLOW_VERSION=2.10.5
+ARG AIRFLOW_VERSION=2.11.0
 ENV AIRFLOW_VERSION ${AIRFLOW_VERSION}
 ARG MINICONDA_PATH=/opt/conda
 ARG MINICONDA_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
@@ -38,7 +38,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && rm ~/miniconda.sh \
     && conda update conda \
     && conda install -y nomkl \
-    && conda install -y -c conda-forge -c main boto3=1.36.3 botocore=1.36.3 celery=5.4.0 cryptography=42.0.8 gevent matplotlib-base mysql-connector-python=8.4.0 networkx=3.4.2 numpy=1.26.4 pillow pysimdjson redis-py=5.2.1 scipy zfpy zstandard=0.23.0 \
+    && conda install -y -c conda-forge -c main boto3=1.37.3 botocore=1.37.3 celery=5.5.3 cryptography=45.0.2 gevent kombu=5.5.3 matplotlib-base mysql-connector-python=8.4.0 networkx=3.4.2 numpy=1.26.4 pillow pysimdjson redis-py=5.2.1 scipy zfpy zstandard=0.23.0 \
     && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
     && find ${MINICONDA_PATH} -follow -type f -name '*.js.map' -delete \
     && conda clean -yaf \
