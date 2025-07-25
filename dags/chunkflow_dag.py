@@ -144,6 +144,17 @@ def check_onnx_model(param):
         input_shape = [dim.dim_value for dim in inputs[0].type.tensor_type.shape.dim]
         output_shape = [dim.dim_value for dim in outputs[0].type.tensor_type.shape.dim]
 
+        if "BATCH_SIZE" in param:
+            if param["BATCH_SIZE"] != input_shape[0] or param["BATCH_SIZE"] != output_shape[0]:
+                slack_message(f":u7981:*ERROR: Batch size `{param['BATCH_SIZE']}` does not match the onnx model, input: `{input_shape}`, output: `{output_shape}`*")
+                raise ValueError('Batch size error')
+        else:
+            if input_shape[0] == output_shape[0]:
+                param["BATCH_SIZE"] = input_shape[0]
+            else:
+                slack_message(f":u7981:*ERROR: The input batch size `{input_shape[0]}` does not match the output batch size `{output_shape[0]}`*")
+                raise ValueError('Input batch size does not match the output batch size')
+
         if "INFERENCE_OUTPUT_CHANNELS" not in param:
             slack_message(f"Set `INFERENCE_OUTPUT_CHANNELS` to `{output_shape[1]}`")
             param["INFERENCE_OUTPUT_CHANNELS"] = output_shape[1]
