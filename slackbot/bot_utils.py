@@ -241,16 +241,16 @@ def latest_param_type():
 def extract_bbox(msgtext: str) -> tuple[int, int, int, int, int, int]:
     """Extracts a bounding box of coordinates from a message's text."""
     regexp = re.compile(
-        ".* @\s*"
-        "\(?\[?"  # noqa
-        "([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+)"
-        "\)?\]?"  # noqa
-        "[ \n]*"
+        r".* @\s*"
+        r"\(?\[?"  # noqa
+        r"([0-9]+),?"
+        r" ([0-9]+),?"
+        r" ([0-9]+),?"
+        r" ([0-9]+),?"
+        r" ([0-9]+),?"
+        r" ([0-9]+)"
+        r"\)?\]?"  # noqa
+        r"[ \n]*"
     )
     rematch = regexp.match(msgtext)
     if rematch:
@@ -265,13 +265,13 @@ def extract_bbox(msgtext: str) -> tuple[int, int, int, int, int, int]:
 def extract_point(msgtext: str) -> tuple[int, int, int]:
     """Extracts a point of coordinates from the end of a message's text."""
     regexp = re.compile(
-        ".* @ "
-        "\(?\[?"  # noqa
-        "([0-9]+),?"
-        " ([0-9]+),?"
-        " ([0-9]+)"
-        "\)?\]?"  # noqa
-        "[ \n]*"
+        r".* @ "
+        r"\(?\[?"  # noqa
+        r"([0-9]+),?"
+        r" ([0-9]+),?"
+        r" ([0-9]+)"
+        r"\)?\]?"  # noqa
+        r"[ \n]*"
     )
     rematch = regexp.match(msgtext)
     if rematch:
