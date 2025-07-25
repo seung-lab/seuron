@@ -9,9 +9,9 @@ import docker
 from airflow.exceptions import AirflowException
 from airflow.plugins_manager import AirflowPlugin
 from airflow.models import Variable
-from airflow.operators.docker_operator import DockerOperator
+from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.docker.hooks.docker import DockerHook
-from airflow.utils.file import TemporaryDirectory
+from tempfile import TemporaryDirectory
 
 import threading
 

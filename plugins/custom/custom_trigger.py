@@ -6,7 +6,6 @@ import collections
 
 from airflow.models import BaseOperator
 from airflow.models import DagBag
-from airflow.utils.decorators import apply_defaults
 from airflow.utils.state import State
 from airflow import settings
 
@@ -25,7 +24,6 @@ class MultiTriggerDagRunOperator(BaseOperator):
     :type params: Iterable<dict> or types.GeneratorType
     """
 
-    @apply_defaults
     def __init__(
             self,
             trigger_dag_id,
