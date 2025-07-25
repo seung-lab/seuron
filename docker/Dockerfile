@@ -47,7 +47,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd,openai]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
-    && pip install --no-cache-dir -U igneous-pipeline onnx langchain-openai \
+    && pip install --no-cache-dir -U numpy==1.26.4 igneous-pipeline onnx langchain-openai \
     && mkdir -p ${AIRFLOW_HOME}/version \
     && groupadd -r docker \
     && groupadd -r ${AIRFLOW_USER} \
