@@ -45,7 +45,7 @@ default_args = dict(
     depends_on_path=False,
     start_date=datetime(2022, 1, 23),
     catchup=False,
-    retries=10,
+    retries=100,
 )
 
 
