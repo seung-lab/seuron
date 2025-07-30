@@ -1,4 +1,5 @@
 from time import sleep
+from datetime import datetime, timedelta, timezone
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from googleapiclient import discovery
@@ -17,6 +18,11 @@ def get_project_id():
 def instance_group_manager_info(project_id, instance_group):
     service = discovery.build('compute', 'v1')
     request = service.instanceGroupManagers().get(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'])
+    return request.execute()
+
+def instance_group_manager_error(project_id, instance_group):
+    service = discovery.build('compute', 'v1')
+    request = service.instanceGroupManagers().listErrors(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'], orderBy="creationTimestamp desc")
     return request.execute()
 
 def instance_group_info(project_id, instance_group):
@@ -65,6 +71,25 @@ def get_cluster_target_size(project_id, instance_groups):
         info = instance_group_manager_info(project_id, ig)
         total_size += info['targetSize']
     return total_size
+
+def get_cluster_errors(project_id, instance_groups):
+    msg = []
+    for ig in instance_groups:
+        items = instance_group_manager_error(project_id, ig)
+
+        if len(items["items"]) == 0:
+            continue
+
+        item = items["items"][0]
+
+        dt = datetime.fromisoformat(item.get('timestamp'))
+        now = datetime.now(timezone.utc)
+
+        if now - timedelta(minutes=10) <= dt <= now:
+            msg.append(f"Instance Group: {ig['name']}")
+            msg.append(f"Error: {item['error']['code']}")
+            msg.append(f"Message: {item['error']['message']}")
+    return msg
 
 def get_cluster_size(project_id, instance_groups):
     total_size = 0
@@ -225,6 +250,7 @@ def cluster_status(name, cluster):
     project_id = get_project_id()
     current_size = get_cluster_size(project_id, cluster)
     requested_size = get_cluster_target_size(project_id, cluster)
+    errors = get_cluster_errors(project_id, cluster)
     stable = True
     if requested_size > 0:
         slack_message(":information_source: status of cluster {}: {} out of {} instances up and running".format(name, current_size, requested_size), notification=True)
@@ -232,6 +258,10 @@ def cluster_status(name, cluster):
     if (requested_size - current_size) > 0.1 * requested_size:
         slack_message(":exclamation: cluster {} is still stabilizing, {} of {} instances created".format(name, current_size, requested_size))
         stable = False
+
+    if errors:
+        error_messages = "\n".join(errors)
+        slack_message(f":exclamation: Cluster error: {error_messages}")
 
     return stable, requested_size
 
