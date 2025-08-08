@@ -23,6 +23,7 @@ airflow_broker_url = conf.get("celery", "broker_url")
 maybe_aws = Variable.get("aws-secret.json", None)
 maybe_gcp = Variable.get("google-secret.json", None)
 maybe_td = Variable.get("tigerdata-secret.json", None)
+maybe_cave = Variable.get("cave-secret.json", None)
 
 mount_variables = ["synaptor_param.json"]
 
@@ -32,6 +33,8 @@ if maybe_gcp is not None:
     mount_variables.append("google-secret.json")
 if maybe_td is not None:
     mount_variables.append("tigerdata-secret.json")
+if maybe_cave is not None:
+    mount_variables.append("cave-secret.json")
 
 # hard-coding these for now
 MOUNT_POINT = "/root/.cloudvolume/secrets/"
