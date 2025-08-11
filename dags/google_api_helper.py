@@ -77,7 +77,7 @@ def get_cluster_errors(project_id, instance_groups):
     for ig in instance_groups:
         items = instance_group_manager_error(project_id, ig)
 
-        if len(items["items"]) == 0:
+        if len(items.get("items", [])) == 0:
             continue
 
         item = items["items"][0]
