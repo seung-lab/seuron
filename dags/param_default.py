@@ -89,6 +89,7 @@ redis_databases = {
     'SEURON': 0,
     'ABISS': 1,
     'CHUNKFLOW': 2,
+    'LLM': 3,
 }
 
 SLACK_CONN_ID = 'Slack'

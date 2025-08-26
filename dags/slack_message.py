@@ -54,9 +54,13 @@ def task_start_alert(context):
 def task_retry_alert(context):
     from airflow.models import Variable
     import urllib.parse
-    ti = context.get('task_instance')
+    from common.redis_utils import AdaptiveRateLimiter
+    from airflow.utils.log.log_reader import TaskLogReader
+
+    REDIS_LLM_DB = "LLM"
+    ti = context.get("task_instance")
     last_try = ti.try_number - 1
-    if last_try > 0 and last_try % 5 == 0:
+    if last_try > 0:
         iso = urllib.parse.quote(ti.execution_date.isoformat())
         webui_ip = Variable.get("webui_ip", default_var="localhost")
         log_url = "https://"+webui_ip + (
@@ -65,12 +69,49 @@ def task_retry_alert(context):
             "&task_id={ti.task_id}"
             "&execution_date={iso}"
         ).format(**locals())
-        slack_alert(f":exclamation: Task up for retry {last_try} times already, <{log_url}|check the latest error log>", context)
 
+        limiter = AdaptiveRateLimiter(REDIS_LLM_DB)
+        rate_limit_key = ti.dag_id
+
+        is_allowed, rejections_count = limiter.is_allowed(rate_limit_key)
+
+        if is_allowed:
+            slack_alert(
+                f":exclamation: Task up for retry {last_try} times already, <{log_url}|check the latest error log>",
+                context,
+            )
+            summary = ""
+            if rejections_count > 0:
+                summary = f"\nThere have been {rejections_count} retries since the last analysis.\n"
+
+            task_log_reader = TaskLogReader()
+            metadata = {}
+            current_error_message = " ".join([
+                text
+                for text in task_log_reader.read_log_stream(
+                    ti, ti.try_number - 1, metadata
+                )
+            ])
+
+            if current_error_message:
+                if "No logs found in GCS" in current_error_message and "Found local files" not in current_error_message:
+                    pass
+                elif current_error_message.endswith("Task is not able to be run"):
+                    pass
+                else:
+                    parsed_msg = interpret_error_message(current_error_message)
+                    if parsed_msg:
+                        slack_message(parsed_msg + summary)
+            else:
+                pass
 
 def interpret_error_message(error_message):
-    from langchain_openai import ChatOpenAI
+    import re
+    import os
+    from langchain_google_vertexai import ChatVertexAI
+    from langchain_core.prompts import ChatPromptTemplate
     from airflow.hooks.base_hook import BaseHook
+    from airflow.models import Variable
 
     try:
         conn = BaseHook.get_connection("LLMServer")
@@ -80,13 +121,56 @@ def interpret_error_message(error_message):
     except Exception:
         return None
 
-    model = ChatOpenAI(base_url=base_url, api_key=api_key, model=extra_args.get("model", "gpt-3.5-turbo"))
-    messages = [
-        ("system", "You are a helpful assistant, identify and explain the error message in a few words"),
-        ("human", error_message),
-    ]
+    file_path_match = re.findall(r'File "([^"]+)", line \d+, in', error_message)
+    if file_path_match:
+        file_path = file_path_match[-1]
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                source_code = f.read()
+            error_message += f"""\n\n<source_code file_path="{file_path}">
+{source_code}
+</source_code>\n"""
+
+    for p in ["inference_param", "param"]:
+        param = Variable.get(p)
+        error_message += f"""\n\n<parameter name="{p}">
+{param}
+</parameter>\n"""
+
+    error_parse_prompt = ChatPromptTemplate.from_messages([
+        (
+            "system",
+            """You are an expert in Airflow and distributed systems debugging. I will provide you with raw Airflow job logs and the source code of the file that created the error. Your task is to:
+Identify and extract the main error message(s), including relevant stack traces and error codes.
+Summarize the error in plain English.
+Suggest the most likely root causes.
+
+Propose step-by-step fixes or debugging actions that could resolve the issue (e.g., DAG misconfiguration, dependency issue, missing package, environment/path problem, operator failure, connection misconfiguration, resource limits, etc.).
+Please output your answer in the following structured format, use markdown syntax for slack:
+
+Error Extracted:
+[copy/paste of the key error lines]
+
+Summary:
+[short explanation in plain English]
+
+Likely Root Causes:
+[cause 1]
+[cause 2]
+
+Suggested Fixes:
+[fix 1]
+[fix 2]
+[fix 3]
+""",
+        ),
+        ("human", "Airflow error log: {input}"),
+    ])
+
+    llm_model = ChatVertexAI(model="gemini-2.5-pro", temperature=0.5)
+    error_parse_chain = error_parse_prompt | llm_model
     try:
-        msg = model.invoke(messages)
+        msg = error_parse_chain.invoke({"input": error_message})
         return msg.content
     except Exception:
         return None
@@ -97,8 +181,8 @@ def task_failure_alert(context):
     from sqlalchemy import select
     from airflow.models import Variable
     from airflow.utils.log.log_reader import TaskLogReader
-    ti = context.get('task_instance')
-    last_try = ti.try_number - 1
+
+    ti = context.get("task_instance")
     iso = urllib.parse.quote(ti.execution_date.isoformat())
     webui_ip = Variable.get("webui_ip", default_var="localhost")
     log_url = f"https://{webui_ip}/airflow/log?dag_id={ti.dag_id}&task_id={ti.task_id}&execution_date={iso}"
@@ -108,20 +192,18 @@ def task_failure_alert(context):
 
     if ti.queue == "manager":
         metadata = {}
-        error_message = []
-        for text in task_log_reader.read_log_stream(ti, last_try, metadata):
-            lines = text.split("\n")
-            targets = ['error', 'traceback', 'exception']
-            for i, l in enumerate(lines):
-                if any(x in l.lower() for x in targets):
-                    error_message = "\n".join(lines[i:i+10])
-                    break
-        parsed_msg = interpret_error_message(error_message)
-        if parsed_msg:
-            slack_message(parsed_msg)
+        error_message = " ".join([
+            text
+            for text in task_log_reader.read_log_stream(ti, ti.try_number, metadata)
+        ])
+        if "No logs found in GCS" in error_message and "Found local files" not in error_message:
+            pass
+        elif error_message.endswith("Task is not able to be run"):
+            pass
         else:
-            slack_message(f"Failed to use the LLM server to interpret the error message ```{error_message}```")
-
+            parsed_msg = interpret_error_message(error_message)
+            if parsed_msg:
+                slack_message(parsed_msg)
 
 def task_done_alert(context):
     return slack_alert(":heavy_check_mark: Task Finished", context)
