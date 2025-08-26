@@ -101,7 +101,7 @@ def task_retry_alert(context):
                 else:
                     parsed_msg = interpret_error_message(current_error_message)
                     if parsed_msg:
-                        slack_message(parsed_msg + summary)
+                        send_llm_feedback(parsed_msg, summary)
             else:
                 pass
 
@@ -169,6 +169,27 @@ Suggested Fixes:
     except Exception:
         return None
 
+def send_llm_feedback(msg, summary=None):
+    import re
+    # The LLM response is structured with these headers.
+    # We split the message into sections based on these headers,
+    # preserving the headers with their content.
+    pattern = r'(^\s*[*#]*\s*(?:Error Extracted:|Summary:|Likely Root Causes:|Suggested Fixes:)\s*[*#]*\s*$)'
+    parts = re.split(pattern, msg, flags=re.MULTILINE)
+
+    # The first part is anything before the first header. Ignore it
+    for i in range(1, len(parts), 2):
+        section = parts[i]
+        if i + 1 < len(parts):
+            section += parts[i+1]
+
+        section = section.strip()
+        if section:
+            slack_message(section)
+
+    if summary:
+        slack_message(summary)
+
 
 def task_failure_alert(context):
     import urllib.parse
@@ -197,7 +218,7 @@ def task_failure_alert(context):
         else:
             parsed_msg = interpret_error_message(error_message)
             if parsed_msg:
-                slack_message(parsed_msg)
+                send_llm_feedback(parsed_msg)
 
 def task_done_alert(context):
     return slack_alert(":heavy_check_mark: Task Finished", context)
