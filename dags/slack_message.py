@@ -119,15 +119,17 @@ def interpret_error_message(error_message):
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
                 source_code = f.read()
-            error_message += f"""\n\n<source_code file_path="{file_path}">
+            error_message += f"""
+<source_code file_path="{file_path}">
 {source_code}
-</source_code>\n"""
+</source_code>"""
 
     for p in ["inference_param", "param", "synaptor_param.json", "training_param", "custom_script"]:
         param = Variable.get(p, default_var="")
-        error_message += f"""\n\n<parameter name="{p}">
+        error_message += f"""
+<parameter name="{p}">
 {param}
-</parameter>\n"""
+</parameter>"""
 
     error_parse_prompt = ChatPromptTemplate.from_messages([
         (
