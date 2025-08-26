@@ -131,8 +131,8 @@ def interpret_error_message(error_message):
 {source_code}
 </source_code>\n"""
 
-    for p in ["inference_param", "param"]:
-        param = Variable.get(p)
+    for p in ["inference_param", "param", "synaptor_param.json", "training_param", "custom_script"]:
+        param = Variable.get(p, default_var="")
         error_message += f"""\n\n<parameter name="{p}">
 {param}
 </parameter>\n"""
