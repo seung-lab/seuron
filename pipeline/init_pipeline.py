@@ -84,16 +84,6 @@ db_utils.merge_conn(
             conn_id='Slack', conn_type='http',
             host='localhost', extra=json.dumps({"notification_channel": os.environ.get("SLACK_NOTIFICATION_CHANNEL", "seuron-alerts")})))
 
-db_utils.merge_conn(
-        models.Connection(
-            conn_id='LLMServer', conn_type='openai',
-            host=os.environ.get('LLM_HOST', 'https://api.openai.com/v1'),
-            password="",
-            extra=json.dumps({
-                                "model": os.environ.get("LLM_MODEL", "gpt-4.1"),
-                                "temperature": 0.5,
-                              })))
-
 if os.environ.get("VENDOR", None) == "Google":
     deployment = os.environ.get("DEPLOYMENT", None)
     zone = os.environ.get("ZONE", None)

@@ -113,14 +113,6 @@ def interpret_error_message(error_message):
     from airflow.hooks.base_hook import BaseHook
     from airflow.models import Variable
 
-    try:
-        conn = BaseHook.get_connection("LLMServer")
-        base_url = conn.host
-        api_key = conn.password
-        extra_args = conn.extra_dejson
-    except Exception:
-        return None
-
     file_path_match = re.findall(r'File "([^"]+)", line \d+, in', error_message)
     if file_path_match:
         file_path = file_path_match[-1]
