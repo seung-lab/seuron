@@ -220,6 +220,11 @@ services:
             <<: *airflow-common-env
         command: python utils/memory_monitor.py amqp://rabbitmq worker-client-queue
 
+    wiki:
+        image: ranlu/tiddlybucket:latest
+        restart: always
+        command: --port=8080 --pathprefix=/wiki ${REMOTE_WORKSPACE_FOLDER}/wiki
+
     etcd:
         image: quay.io/coreos/etcd:v3.5.17
         ports:
@@ -284,6 +289,7 @@ services:
                         set \\$$webserver \\\"http:\\/\\/webserver:8080\\\";\\n
                         set \\$$slackbot \\\"http:\\/\\/slackbot:8888\\\";\\n
                         set \\$$grafana \\\"http:\\/\\/grafana:3000\\\";\\n
+                        set \\$$wiki \\\"http:\\/\\/wiki:8080\\\";\\n
                         listen 443 ssl;\\n
                         auth_basic $${AUTH_BASIC_STRING};\\n
                         auth_basic_user_file \\/etc\\/nginx\\/\.htpasswd;\\n
@@ -317,6 +323,12 @@ services:
                             proxy_set_header Host \\$$http_host;\\n
                             proxy_redirect off;\\n
                             proxy_set_header Authorization \\\"\\\";\\n
+                        }\\n
+                        location \\/wiki\\/ {\\n
+                            proxy_pass \\$$wiki;\\n
+                            proxy_set_header Host \\$$http_host;\\n
+                            proxy_redirect off;\\n
+                            proxy_set_header X-Forwarded-Proto \\$$scheme;\\n
                         }\\n
                     }\\n
                 }/\" /etc/nginx/nginx.conf;
