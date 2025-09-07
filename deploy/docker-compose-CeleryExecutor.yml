@@ -21,6 +21,7 @@ x-airflow-common:
         AIRFLOW__METRICS__STATSD_HOST:
         AIRFLOW__METRICS__STATSD_PORT:
         REDIS_SERVER:
+        REMOTE_WORKSPACE_FOLDER:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp:/tmp
