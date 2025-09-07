@@ -78,6 +78,17 @@ def GenerateAirflowVar(context, hostname_manager):
         postgres_db = "airflow"
 
     sqlalchemy_conn = f'''postgresql+psycopg2://{postgres_user}:{postgres_password}@{hostname_manager}/{postgres_db}'''
+
+    airflow_props = context.properties.get('airflow', {})
+    if 'remoteWorkspaceFolder' in airflow_props:
+        remote_workspace_folder = airflow_props['remoteWorkspaceFolder']
+    elif 'remoteLogFolder' in airflow_props:
+        remote_workspace_folder = airflow_props['remoteLogFolder']
+        print("Warning: 'remoteLogFolder' is deprecated. Please use 'remoteWorkspaceFolder' instead.")
+    else:
+        # Let it fail with KeyError as it would have before
+        remote_workspace_folder = context.properties["airflow"]["remoteWorkspaceFolder"]
+
     airflow_variable = {
         'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'common.google_api.gce_hostname',
         'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN': sqlalchemy_conn,
@@ -88,11 +99,12 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__LOGGING__REMOTE_LOGGING': 'True',
         'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID': 'GCSConn',
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
-        'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{context.properties["airflow"]["remoteLogFolder"]}/{context.env["deployment"]}',
+        'AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER': f'{remote_workspace_folder}/logs/{context.env["deployment"]}',
         'AIRFLOW__METRICS__STATSD_ON': 'True',
         'AIRFLOW__METRICS__STATSD_HOST': hostname_manager,
         'AIRFLOW__METRICS__STATSD_PORT': 9125,
         'REDIS_SERVER': hostname_manager,
+        'REMOTE_WORKSPACE_FOLDER': remote_workspace_folder,
     }
 
     return airflow_variable
