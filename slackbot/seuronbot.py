@@ -13,6 +13,7 @@ from bot_utils import replyto, extract_command, update_slack_thread, create_run_
 from airflow_api import check_running, set_variable, get_variable
 from kombu_helper import get_message, visible_messages
 from docker_helper import get_registry_data
+from llm import LLMChatbot
 
 
 _help_trigger = ["help"]
@@ -74,12 +75,14 @@ class SeuronBot:
     def __init__(self, slack_token=None):
         self.task_owner = "seuronbot"
         self.slack_token = slack_token
+        self.llm_user = None
 
         self.rtmclient = RTMClient(token=slack_token)
         self.rtmclient.on("message")(functools.partial(self.process_message.__func__, self))
         self.rtmclient.on("reaction_added")(functools.partial(self.process_reaction.__func__, self))
         self.rtmclient.on("hello")(functools.partial(self.process_hello.__func__, self))
         self.executor = concurrent.futures.ThreadPoolExecutor()
+        self.llm = LLMChatbot()
 
     def update_task_owner(self, msg):
         sc = self.rtmclient.web_client
@@ -134,23 +137,57 @@ class SeuronBot:
                 self.report(msg)
             return False
 
-        if re.search(r"^{}[\s,:]".format(workerid), text, re.IGNORECASE):
+        is_direct_mention = re.search(fr"^{workerid}[\s,:]", text, re.IGNORECASE)
+        msg_user = msg.get('user')
+
+        if self.llm.in_session:
+            if msg_user == self.llm_user:
+                return True
+            elif is_direct_mention:
+                return True
+            else:
+                return False
+        elif is_direct_mention:
             return True
+
+        return False
 
     def process_message(self, client: RTMClient, event: dict):
         if self.filter_msg(event) or event.get("from_jupyter", False):
+            print(json.dumps(event, indent=4))
+            msg_user = event.get('user')
+
+            # Check for interruption: new user making a direct mention during a session.
+            if self.llm.in_session and msg_user != self.llm_user:
+                print(f"Interrupting session with {self.llm_user} to start a new one with {msg_user}")
+                self.llm.reset_session()
+                self.llm_user = None
+
             handled = False
             check_image_updates(event)
             for listener in self.message_listeners:
                 handled |= listener["command"](event)
 
             if not handled:
-                reply_msg = "I do not understand the message"
-                candidates = self.find_suggestions(event)
-                if candidates:
-                    reply_msg += "\nDo you mean "+ " or ".join(f"`{x}`" for x in candidates)
-                replyto(event, reply_msg)
+                if not event.get("from_jupyter", False):
+                    # If a session isn't active, start a new one.
+                    if not self.llm.in_session:
+                        self.llm_user = msg_user
+                        self.llm.in_session = True
+                        self.llm.chat_history.clear()
+
+                    reply_msg = self.llm.llm_reply(event)
+                    if reply_msg:
+                        update_slack_thread(event)
+                        replyto(event, reply_msg)
+
+                    # If the session was ended by the LLM, clear the user.
+                    if not self.llm.in_session:
+                        self.llm_user = None
             else:
+                # A predefined command was handled. This ends the LLM session.
+                self.llm.reset_session()
+                self.llm_user = None
                 if not event.get("from_jupyter", False):
                     self.update_task_owner(event)
 
