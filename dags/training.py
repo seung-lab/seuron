@@ -17,7 +17,7 @@ from airflow.models import TaskInstance
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
 from param_default import default_mount_path
-from slack_message import slack_message, task_failure_alert, task_done_alert
+from slack_message import slack_message, task_failure_alert, task_done_alert, task_retry_alert
 from webknossos import export_op, report_export
 
 
@@ -84,6 +84,7 @@ def reset_rdzv_id(context):
     param = Variable.get("training_param", {}, deserialize_json=True)
     param["rdzv_id"] = str(uuid.uuid4())
     Variable.set("training_param", param, serialize_json=True)
+    task_retry_alert(context)
 
 
 def prep_parameters() -> dict:
@@ -161,7 +162,7 @@ def training_op(dag: DAG, rank=0, queue=training_cluster) -> Operator:
         use_gpus=True,
         environment=environment,
         force_pull=True,
-        on_retry_callback=reset_rdzv_id if rank == 0 else None,
+        on_retry_callback=reset_rdzv_id if rank == 0 else task_retry_alert,
         on_failure_callback=skip_parallel_tasks,
         on_success_callback=task_done_alert,
         image=DEEPEM_IMAGE,
