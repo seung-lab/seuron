@@ -16,6 +16,7 @@ from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
 from airflow.operators.python import PythonOperator
 from airflow.operators.latest_only import LatestOnlyOperator
+from airflow.utils.db import provide_session
 
 from slack_message import slack_message
 import json
@@ -40,6 +41,72 @@ dag = DAG(
     catchup=False,
     tags=['maintenance'],
 )
+
+@provide_session
+def check_deepem_health(session=None):
+    from airflow.models import Variable
+    from airflow.utils.state import State
+    import google_api_helper as cluster_api
+    from collections import Counter
+    from airflow.hooks.base_hook import BaseHook
+    import json
+
+    from dag_utils import query_task_instances
+
+    active_tasks = query_task_instances(queue='deepem-gpu', session=session)
+
+    if not active_tasks:
+        return
+
+    hostname_failures = Counter()
+    for task in active_tasks:
+        failures = task.try_number - 1
+
+        if task.state == State.UP_FOR_RETRY:
+            failures += 1
+
+        if failures > 0 and task.hostname:
+            hostname = task.hostname.split(".")[0]
+            hostname_failures[hostname] += failures
+
+    reset_triggered = False
+    for hostname, count in hostname_failures.items():
+        if count > 10:
+            host_is_live = False
+            if Variable.get("vendor") == "Google":
+                try:
+                    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+                    if 'deepem-gpu' in cluster_info:
+                        deepem_cluster_igs = cluster_info['deepem-gpu']
+                        for ig in deepem_cluster_igs:
+                            live_instances = cluster_api.list_managed_instances(ig)
+                            live_instance_names = [url.split('/')[-1] for url in live_instances]
+                            if hostname in live_instance_names:
+                                host_is_live = True
+                                break
+                except Exception as e:
+                    slack_message(f":warning: Could not verify if host `{hostname}` is in deepem-gpu cluster: {e}", notification=True)
+                    continue
+
+            if host_is_live:
+                slack_message(
+                    f":warning: Host `{hostname}` is a live instance in deepem-gpu and has {count} failed/retried tasks. "
+                    "Triggering cluster reset.",
+                )
+                reset_triggered = True
+                break
+
+    if reset_triggered:
+        if Variable.get("vendor") == "Google":
+            try:
+                target_sizes = Variable.get("cluster_target_size", deserialize_json=True, default_var={})
+                deepem_target_size = target_sizes.get('deepem-gpu', 1)
+                cluster_api.reset_cluster('deepem-gpu', deepem_target_size)
+            except Exception as e:
+                slack_message(f":exclamation:Failed to get target size and reset deepem cluster: {e}")
+                cluster_api.reset_cluster('deepem-gpu', 1)
+        else:
+            slack_message(":warning: Cluster reset for deepem is only supported on Google Cloud")
 
 def check_queue(queue):
     import requests
@@ -134,4 +201,13 @@ queue_sizes_task = PythonOperator(
     queue="cluster",
     dag=dag)
 
+check_deepem_health_task = PythonOperator(
+    task_id="check_deepem_health",
+    python_callable=check_deepem_health,
+    priority_weight=100000,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="cluster",
+    dag=dag)
+
 latest.set_downstream(queue_sizes_task)
+latest.set_downstream(check_deepem_health_task)
