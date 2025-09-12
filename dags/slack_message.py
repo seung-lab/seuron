@@ -54,8 +54,12 @@ def task_start_alert(context):
 def task_retry_alert(context):
     from airflow.models import Variable
     import urllib.parse
-    from common.redis_utils import AdaptiveRateLimiter
+    from common.redis_utils import AdaptiveRateLimiter, record_hostname_failure
     from airflow.utils.log.log_reader import TaskLogReader
+
+    ti = context.get("task_instance")
+    if ti and ti.hostname and ti.queue:
+        record_hostname_failure(queue=ti.queue, hostname=ti.hostname)
 
     REDIS_LLM_DB = "LLM"
     ti = context.get("task_instance")

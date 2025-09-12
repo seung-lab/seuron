@@ -84,3 +84,38 @@ class AdaptiveRateLimiter:
         )
 
         return bool(result[0]), int(result[1])
+
+
+def record_hostname_failure(queue: str, hostname: str):
+    """Tracks failure counts for hostnames in Redis."""
+    if not (hostname and queue):
+        print(f"Could not log failure: missing hostname or queue")
+        return
+
+    redis_key = f"{queue}_hostname_failures"
+    host = hostname.split('.')[0]
+
+    try:
+        r = _get_redis_connection('SEURON')
+        if r:
+            r.hincrby(redis_key, host, 1)
+        else:
+            print("Could not get Redis connection.")
+    except Exception as e:
+        print(f"An unexpected error occurred in record_hostname_failure: {e}")
+
+
+def get_hostname_failures(queue: str) -> dict[str, int]:
+    """Retrieves failure counts for a queue from Redis."""
+    redis_key = f"{queue}_hostname_failures"
+    failures = {}
+    try:
+        r = _get_redis_connection('SEURON')
+        if r:
+            failures = r.hgetall(redis_key)
+        else:
+            print("Could not get Redis connection.")
+    except Exception as e:
+        print(f"An unexpected error occurred in get_hostname_failures: {e}")
+
+    return {host: int(count) for host, count in failures.items()}
