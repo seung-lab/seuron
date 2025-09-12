@@ -102,8 +102,12 @@ def delete_dead_instances():
     r = redis.Redis(redis_host)
 
     for key in cluster_info:
-        if key == "deepem-gpu":
-            continue
+        delta_threshold = 300
+        delta2_threshold = 600
+        if "deepem" in key:
+            delta_threshold *= 2
+            delta2_threshold *= 2
+
         if target_sizes.get(key, 0) == 0:
             continue
 
@@ -123,13 +127,13 @@ def delete_dead_instances():
                     r.set(instance, timestamp)
                 else:
                     delta = timestamp - float(ts)
-                    if delta > 300:
+                    if delta > delta_threshold:
                         try:
                             creationTimestamp = datetime.fromisoformat(cluster_api.get_instance_property(ig["zone"], instance, "creationTimestamp"))
                             delta2 = timestamp - creationTimestamp.timestamp()
                         except:
                             continue
-                        if delta2 > 600:
+                        if delta2 > delta2_threshold:
                             msg.append(f"{instance} created {humanize.naturaltime(creationTimestamp.astimezone(timezone.utc), when=datetime.now(timezone.utc))} has no heartbeat for {humanize.naturaldelta(delta)}")
                             idle_instances.append(instance_url)
 
