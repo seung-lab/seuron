@@ -184,6 +184,8 @@ def ramp_up_cluster(key, initial_size, total_size):
         increase_instance_group_size(key, min(initial_size, total_size))
     except:
         increase_instance_group_size(key, total_size)
+    sleep(60)
+    Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
 
 def ramp_down_cluster(key, total_size):
@@ -197,6 +199,8 @@ def ramp_down_cluster(key, total_size):
         reduce_instance_group_size(key, total_size)
     except:
         reduce_instance_group_size(key, total_size)
+    sleep(60)
+    Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
 
 def increase_instance_group_size(key, size):
