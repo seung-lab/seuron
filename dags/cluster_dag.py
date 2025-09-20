@@ -116,6 +116,10 @@ def cluster_control():
             if requested_size != updated_size:
                 cluster_api.resize_cluster(cluster_info[key], updated_size)
                 slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
+            continue
+
+        if not stable and requested_size > 0:
+            cluster_api.redistribute_instances(key, cluster_info[key], target_sizes[key])
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 

@@ -181,6 +181,90 @@ def resize_cluster(instance_groups, size):
     return min(size, max_size)
 
 
+def redistribute_instances(key, instance_groups, target_size):
+    project_id = get_project_id()
+    slack_message(f":recycle: Redistribute instances in cluster {key} with target size {target_size}")
+
+    ig_statuses = []
+    unstable_indices = []
+
+    # First pass: identify unstable IGs
+    for i, ig in enumerate(instance_groups):
+        manager_info = instance_group_manager_info(project_id, ig)
+        ig_info = instance_group_info(project_id, ig)
+        current_size = ig_info.get('size', 0)
+        ig_target_size = manager_info.get('targetSize', 0)
+        is_unstable = ig_target_size > current_size
+
+        ig_statuses.append({
+            'ig': ig,
+            'current': current_size,
+            'target': ig_target_size,
+            'is_unstable': is_unstable,
+        })
+        if is_unstable:
+            unstable_indices.append(i)
+
+    if not unstable_indices:
+        slack_message(f"No unstable instance groups found for cluster {key}. No redistribution needed.")
+        return
+
+    # Shrink unstable IGs and calculate deficit
+    total_deficit = 0
+    service = discovery.build('compute', 'v1')
+    for i in unstable_indices:
+        status = ig_statuses[i]
+        ig = status['ig']
+        deficit = status['target'] - status['current']
+        if deficit > 0:
+            total_deficit += deficit
+            slack_message(f"Shrinking unstable instance group {ig['name']} from {status['target']} to {status['current']}")
+            request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=status['current'])
+            request.execute()
+            ig_statuses[i]['target'] = status['current']
+
+    if total_deficit == 0:
+        slack_message(f"Cluster {key} was unstable but no deficit to redistribute.")
+        return
+
+    slack_message(f"Total deficit of {total_deficit} instances. Attempting to redistribute.")
+
+    # Second pass: redistribute deficit in a "ring" configuration.
+    last_unstable_index = unstable_indices[-1]
+    start_index = last_unstable_index + 1
+
+    # Create a "ring" of indices to check, starting from the one after the last unstable IG.
+    indices_after = list(range(start_index, len(instance_groups)))
+    indices_before = list(range(0, start_index))
+    indices_to_check = indices_after + indices_before
+
+    slack_message(f"Redistributing deficit in a ring, starting after index {last_unstable_index}.")
+
+    for current_ig_index in indices_to_check:
+        if total_deficit <= 0:
+            break
+
+        if current_ig_index in unstable_indices:
+            continue
+
+        status = ig_statuses[current_ig_index]
+        ig = status['ig']
+        current_target = status['target']
+        available_capacity = ig['max_size'] - current_target
+
+        if available_capacity > 0:
+            to_add = min(total_deficit, available_capacity)
+            new_size = current_target + to_add
+            slack_message(f"Scaling up {ig['name']} from {current_target} to {new_size} to compensate for deficit.")
+            request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=new_size)
+            request.execute()
+            total_deficit -= to_add
+            ig_statuses[current_ig_index]['target'] = new_size
+
+    if total_deficit > 0:
+        slack_message(f":warning: Could not redistribute all of {total_deficit} deficit for cluster {key}.")
+
+
 def ramp_up_cluster(key, initial_size, total_size):
     run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
     if not run_metadata.get("manage_clusters", True):
