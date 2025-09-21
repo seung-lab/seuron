@@ -137,12 +137,15 @@ def delete_dead_instances():
                             msg.append(f"{instance} created {humanize.naturaltime(creationTimestamp.astimezone(timezone.utc), when=datetime.now(timezone.utc))} has no heartbeat for {humanize.naturaldelta(delta)}")
                             idle_instances.append(instance_url)
 
-            if len(instances) > len(idle_instances):
+            if len(instances) > len(idle_instances) or "deepem" in key:
                 cluster_alive = True
 
             if idle_instances:
                 cluster_api.delete_instances(ig, idle_instances)
                 slack_message("\n".join(msg), notification=True)
+                if "deepem" in key:
+                    sleep(60)
+                    cluster_api.resize_instance_group(ig, len(instances))
 
         sleep(60)
         if not cluster_alive:
