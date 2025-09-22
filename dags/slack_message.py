@@ -61,7 +61,7 @@ def task_retry_alert(context):
     if ti and ti.hostname and ti.queue:
         record_hostname_failure(queue=ti.queue, hostname=ti.hostname)
 
-    REDIS_LLM_DB = "LLM"
+    REDIS_LLM_DB = "SEURON"
     ti = context.get("task_instance")
     last_try = ti.try_number - 1
     if last_try > 0:
