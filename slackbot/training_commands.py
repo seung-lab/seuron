@@ -9,7 +9,7 @@ from seuronbot import SeuronBot
 from airflow_api import run_dag
 from bot_utils import replyto, download_json
 from airflow_api import get_variable, set_variable
-from common import docker_helper
+from common import docker_helper, redis_utils
 
 
 @SeuronBot.on_message("update training parameters",
@@ -19,6 +19,9 @@ from common import docker_helper
                       file_inputs=True)
 def update_training_parameters(msg: dict) -> None:
     json_obj = download_json(msg)
+
+    r = redis_utils._get_redis_connection("SEURON")
+    r.flushdb()
 
     if json_obj:
         try:
