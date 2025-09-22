@@ -33,7 +33,7 @@ class AdaptiveRateLimiter:
         local max_backoff_sec = tonumber(ARGV[3])
         local backoff_factor = tonumber(ARGV[4])
 
-        local total_calls_key = key_prefix .. ":total_calls"
+        local backoff_level_key = key_prefix .. ":backoff_level"
         local backoff_sec_key = key_prefix .. ":backoff_sec"
         local last_call_timestamp_key = key_prefix .. ":last_call_timestamp"
         local rejections_key = key_prefix .. ":rejections_since_last_call"
@@ -45,16 +45,20 @@ class AdaptiveRateLimiter:
             local rejections = redis.call('INCR', rejections_key)
             return {0, rejections}
         else
-            local total_calls = redis.call('INCR', total_calls_key)
             local rejections = tonumber(redis.call('GET', rejections_key) or 0)
+            local backoff_level = tonumber(redis.call('GET', backoff_level_key) or 0)
 
-            local new_backoff = base_backoff_sec * (backoff_factor ^ (total_calls - 1))
+            if rejections == 0 then
+                backoff_level = backoff_level / 2
+                if backoff_level < 0 then backoff_level = 0 end
+            else
+                backoff_level = backoff_level + 1
+            end
+            redis.call('SET', backoff_level_key, backoff_level)
+
+            local new_backoff = base_backoff_sec * (backoff_factor ^ backoff_level)
             if new_backoff > max_backoff_sec then
                 new_backoff = max_backoff_sec
-            end
-
-            if rejections <= 1 then
-                new_backoff = new_backoff / 2
             end
 
             redis.call('SET', backoff_sec_key, new_backoff)
