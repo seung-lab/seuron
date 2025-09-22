@@ -132,6 +132,15 @@ def reset_cluster(key, initial_size):
     slack_message(":information_source:{} instances in cluster {} restarted".format(total_size, key))
 
 
+def resize_instance_group(ig, size):
+    project_id = get_project_id()
+    service = discovery.build('compute', 'v1')
+    request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=size)
+    response = request.execute()
+    print(json.dumps(response, indent=2))
+    slack_message(f":information_source: resize instance group {ig['name']} to {size} instances", notification=True)
+
+
 def resize_cluster(instance_groups, size):
     project_id = get_project_id()
 
