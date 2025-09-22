@@ -132,13 +132,13 @@ def reset_cluster(key, initial_size):
     slack_message(":information_source:{} instances in cluster {} restarted".format(total_size, key))
 
 
-def resize_instance_group(instance_group, size):
+def resize_cluster(instance_groups, size):
     project_id = get_project_id()
 
-    total_size = get_cluster_target_size(project_id, instance_group)
+    total_size = get_cluster_target_size(project_id, instance_groups)
 
     max_size = 0
-    for ig in instance_group:
+    for ig in instance_groups:
         max_size += ig['max_size']
 
     if size > max_size:
@@ -149,7 +149,7 @@ def resize_instance_group(instance_group, size):
         downsize = True
 
     target_size = size
-    for ig in instance_group:
+    for ig in instance_groups:
         info_group_manager = instance_group_manager_info(project_id, ig)
         info_group = instance_group_info(project_id, ig)
         ig_size = min(target_size, ig['max_size'])
@@ -222,7 +222,7 @@ def increase_instance_group_size(key, size):
         slack_message(":arrow_up: No need to scale up the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(cluster_info[key], size)
+        real_size = resize_cluster(cluster_info[key], size)
         slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
 
@@ -245,7 +245,7 @@ def reduce_instance_group_size(key, size):
         slack_message(":arrow_down: No need to scale down the cluster ({} instances requested, {} instances running)".format(size, total_size))
         return
     else:
-        real_size = resize_instance_group(cluster_info[key], size)
+        real_size = resize_cluster(cluster_info[key], size)
         slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stabilize".format(key, real_size))
         sleep(60)
 

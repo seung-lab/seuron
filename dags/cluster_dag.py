@@ -104,7 +104,7 @@ def cluster_control():
 
         if target_sizes[key] == 0:
             if requested_size != 0:
-                cluster_api.resize_instance_group(cluster_info[key], 0)
+                cluster_api.resize_cluster(cluster_info[key], 0)
             continue
 
         if num_workers != target_sizes[key] and key != "deepem-gpu":
@@ -114,7 +114,7 @@ def cluster_control():
             max_size = sum(ig['max_size'] for ig in cluster_info[key])
             updated_size = min([target_sizes[key], requested_size*2, max_size])
             if requested_size != updated_size:
-                cluster_api.resize_instance_group(cluster_info[key], updated_size)
+                cluster_api.resize_cluster(cluster_info[key], updated_size)
                 slack_message(":arrow_up: ramping up cluster {} from {} to {} instances".format(key, requested_size, updated_size))
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
