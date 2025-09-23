@@ -73,7 +73,7 @@ def get_num_task_instances(session):
 *{}* tasks running, *{}* tasks queued, *{}* tasks up for retry'''.format(running, queued, up_for_retry)
     slack_message(message, notification=True)
 
-def delete_dead_instances():
+def remove_failed_instances():
     import os
     import json
     import redis
@@ -82,6 +82,8 @@ def delete_dead_instances():
     from datetime import datetime, timezone
     from airflow.models import Variable
     from airflow.hooks.base_hook import BaseHook
+    from common.redis_utils import get_hostname_failures
+
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api
     else:
@@ -99,7 +101,9 @@ def delete_dead_instances():
 
     redis_host = os.environ['REDIS_SERVER']
     timestamp = datetime.now().timestamp()
-    r = redis.Redis(redis_host)
+    r = redis.Redis(redis_host, decode_responses=True)
+
+    FAILURE_THRESHOLD = 10
 
     for key in cluster_info:
         delta_threshold = 300
@@ -111,6 +115,9 @@ def delete_dead_instances():
         if target_sizes.get(key, 0) == 0:
             continue
 
+        hostname_failures = get_hostname_failures(key)
+        failed_hostnames = {host for host, count in hostname_failures.items() if count >= FAILURE_THRESHOLD} if hostname_failures else set()
+
         cluster_alive = False
 
         for ig in cluster_info[key]:
@@ -118,10 +125,24 @@ def delete_dead_instances():
             if not instances:
                 continue
 
-            idle_instances = []
-            msg = ["The follow instances are deleted due to heartbeat timeout:"]
+            failed_instances = []
+            hostnames_to_delete = []
+            dead_instances_msg = ["The follow instances are deleted due to heartbeat timeout:"]
+            failed_instances_msg = [f"The following instances from queue {key} in IG are deleted due to repeated failures:"]
+
+
             for instance_url in instances:
                 instance = instance_url.split("/")[-1]
+                hostname = instance.split('.')[0]
+
+                # Check for failed instances
+                if hostname in failed_hostnames:
+                    failed_instances.append(instance_url)
+                    hostnames_to_delete.append(hostname)
+                    failed_instances_msg.append(f"{hostname} (failed {hostname_failures[hostname]} times)")
+                    continue
+
+                # Check for dead instances
                 ts = r.get(instance)
                 if not ts:
                     r.set(instance, timestamp)
@@ -134,18 +155,30 @@ def delete_dead_instances():
                         except:
                             continue
                         if delta2 > delta2_threshold:
-                            msg.append(f"{instance} created {humanize.naturaltime(creationTimestamp.astimezone(timezone.utc), when=datetime.now(timezone.utc))} has no heartbeat for {humanize.naturaldelta(delta)}")
-                            idle_instances.append(instance_url)
+                            dead_instances_msg.append(f"{instance} created {humanize.naturaltime(creationTimestamp.astimezone(timezone.utc), when=datetime.now(timezone.utc))} has no heartbeat for {humanize.naturaldelta(delta)}")
+                            failed_instances.append(instance_url)
+                            hostnames_to_delete.append(hostname)
 
-            if len(instances) > len(idle_instances) or "deepem" in key:
+            if len(instances) > len(failed_instances) or "deepem" in key:
                 cluster_alive = True
 
-            if idle_instances:
-                cluster_api.delete_instances(ig, idle_instances)
-                slack_message("\n".join(msg), notification=True)
+            if failed_instances:
+                cluster_api.delete_instances(ig, failed_instances)
+
+                if len(dead_instances_msg) > 1:
+                    slack_message("\n".join(dead_instances_msg), notification=True)
+                if len(failed_instances_msg) > 1:
+                    slack_message("\n".join(failed_instances_msg), notification=True)
+
+                if hostnames_to_delete:
+                    redis_key = f"{key}_hostname_failures"
+                    r.hdel(redis_key, *list(set(hostnames_to_delete)))
+
                 if "deepem" in key:
                     sleep(60)
+                    slack_message(f"repopulate {key} instance group to {len(instances)}", notification=True)
                     cluster_api.resize_instance_group(ig, len(instances))
+                    sleep(60)
 
         sleep(60)
         if not cluster_alive:
@@ -210,9 +243,9 @@ queue_sizes_task = PythonOperator(
     queue="cluster",
     dag=dag)
 
-delete_dead_instances_task = PythonOperator(
-    task_id="delete_dead_instances",
-    python_callable=delete_dead_instances,
+remove_failed_instances_task = PythonOperator(
+    task_id="remove_failed_instances",
+    python_callable=remove_failed_instances,
     priority_weight=1000,
     queue="cluster",
     dag=dag)
@@ -224,4 +257,4 @@ shutdown_easyseg_worker_task = PythonOperator(
     queue="cluster",
     dag=dag)
 
-latest >> queue_sizes_task >> delete_dead_instances_task >> shutdown_easyseg_worker_task
+latest >> queue_sizes_task >> remove_failed_instances_task >> shutdown_easyseg_worker_task
