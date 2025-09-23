@@ -74,7 +74,7 @@ def task_retry_alert(context):
             "&execution_date={iso}"
         ).format(**locals())
 
-        limiter = AdaptiveRateLimiter(REDIS_LLM_DB)
+        limiter = AdaptiveRateLimiter(REDIS_LLM_DB, base_backoff_sec=300)
         rate_limit_key = ti.dag_id
 
         is_allowed, rejections_count = limiter.is_allowed(rate_limit_key)
