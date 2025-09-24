@@ -17,7 +17,7 @@ def create_igneous_ops(param, dag):
 
     if nfs_conn:
         extra_args = nfs_conn.extra_dejson
-        sql_url = f"mysql://root:igneous@{extra_args['hostname']}"
+        sql_url = f"postgres://postgres:airflow@{extra_args['hostname']}"
         queue = "nfs"
     else:
         extra_args = None
