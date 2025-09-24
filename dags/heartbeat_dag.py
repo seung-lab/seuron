@@ -124,6 +124,10 @@ def remove_failed_instances():
             instances = cluster_api.list_managed_instances(ig)
             if not instances:
                 continue
+            if len(instances) <= 4:
+                delta_threshold *= 4
+                delta2_threshold *= 4
+
 
             failed_instances = []
             hostnames_to_delete = []
