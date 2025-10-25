@@ -1,4 +1,3 @@
-import os
 import time
 import threading
 import logging
@@ -55,11 +54,6 @@ class SeuronBot(Magics):
             msg_payload["attachment"] = base64.b64encode(code_content.encode("utf-8")).decode("utf-8")
 
         put_message(self.broker_url, self.input_queue, msg_payload)
-
-    def ensure_dir(self, f):
-        d = os.path.dirname(f)
-        if d and not os.path.exists(d):
-            os.makedirs(d)
 
     def forward_bot_message(self):
         while True:
