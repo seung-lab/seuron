@@ -1,11 +1,12 @@
-import time
-import threading
+import asyncio
+import functools
 import logging
 import base64
 import fasteners
 from slack_down import slack_md
 import markdown
 from bs4 import BeautifulSoup
+import contextvars
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
 from IPython.display import display, HTML, Image, IFrame
@@ -30,9 +31,23 @@ class SeuronBot(Magics):
         self.input_queue = "jupyter-input-queue"
         self.common_block = ""
         self.slack_conv = markdown.Markdown(extensions=[slack_md.SlackExtension()])
+        self.last_cell_context = None
         drain_messages(self.broker_url, self.input_queue, verbose=False)
         drain_messages(self.broker_url, self.output_queue, verbose=False)
-        threading.Thread(target=self.forward_bot_message).start()
+        self.forwarder_task = asyncio.create_task(self.forward_bot_message())
+
+    def _display_message(self, msg_payload):
+        # This function will be run inside the captured context
+        html_content = self.slack_conv.convert(msg_payload.get("text", ""))
+        display(HTML(html_content))
+        embed_links(html_content)
+        attachment = msg_payload.get("attachment", None)
+        if attachment:
+            if attachment.get("filetype") in ["png", "jpeg", "gif"]:
+                display(Image(
+                    data=base64.b64decode(attachment["content"]),
+                    format=attachment["filetype"]
+                ))
 
     @line_cell_magic
     def seuronbot(self, command, cell=None):
@@ -45,6 +60,9 @@ class SeuronBot(Magics):
                 print("Emptying seuronbot common block")
             return
 
+        # Capture the context of the current cell
+        self.last_cell_context = contextvars.copy_context()
+
         msg_payload = {
                 "text": command,
                 "from_jupyter": True,
@@ -55,21 +73,31 @@ class SeuronBot(Magics):
 
         put_message(self.broker_url, self.input_queue, msg_payload)
 
-    def forward_bot_message(self):
+    async def forward_bot_message(self):
+        loop = asyncio.get_event_loop()
+        get_with_timeout = functools.partial(get_message, timeout=30)
         while True:
-            msg_payload = get_message(self.broker_url, self.output_queue, timeout=30)
-            if msg_payload:
-                html_content = self.slack_conv.convert(msg_payload.get("text", None))
-                display(HTML(html_content))
-                embed_links(html_content)
-                attachment = msg_payload.get("attachment", None)
-                if attachment:
-                    if attachment["filetype"] in ["png", "jpeg", "gif"]:
-                        display(Image(
-                            data=base64.b64decode(attachment["content"]),
-                            format=attachment["filetype"]
-                        ))
-                time.sleep(1)
+            try:
+                msg_payload = await loop.run_in_executor(
+                    None, get_with_timeout, self.broker_url, self.output_queue
+                )
+                if msg_payload:
+                    if self.last_cell_context:
+                        # Run _display_message within the captured context
+                        self.last_cell_context.run(self._display_message, msg_payload)
+                    else:
+                        # Fallback if no magic has been run yet
+                        self._display_message(msg_payload)
+                await asyncio.sleep(0.1)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logging.error(f"Error in forward_bot_message: {e}")
+                await asyncio.sleep(5)
+
+    def __del__(self):
+        if hasattr(self, 'forwarder_task'):
+            self.forwarder_task.cancel()
 
 
 for k in logging.Logger.manager.loggerDict:
