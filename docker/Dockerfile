@@ -45,7 +45,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && pip install --no-cache-dir -U pip \
-    && pip install --no-cache-dir --compile --global-option=build git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
+    && pip install --no-cache-dir git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
     && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
     && pip install --no-cache-dir -U numpy==1.26.4 igneous-pipeline onnx langchain[google-vertexai] \
     && mkdir -p ${AIRFLOW_HOME}/version \
