@@ -181,7 +181,7 @@ def resize_cluster(instance_groups, size):
     return min(size, max_size)
 
 
-def redistribute_instances(key, instance_groups, target_size):
+def redistribute_instances(key, instance_groups, target_size, move_instances=False):
     project_id = get_project_id()
     slack_message(f":recycle: Redistribute instances in cluster {key} with target size {target_size}")
 
@@ -215,13 +215,21 @@ def redistribute_instances(key, instance_groups, target_size):
     for i in unstable_indices:
         status = ig_statuses[i]
         ig = status['ig']
-        deficit = status['target'] - status['current']
+
+        if move_instances:
+            deficit = status['target']
+            new_ig_size = 0
+            slack_message(f"Moving all instances from unstable instance group {ig['name']}")
+        else:
+            deficit = status['target'] - status['current']
+            new_ig_size = status['current']
+
         if deficit > 0:
             total_deficit += deficit
-            slack_message(f"Shrinking unstable instance group {ig['name']} from {status['target']} to {status['current']}")
-            request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=status['current'])
+            slack_message(f"Shrinking unstable instance group {ig['name']} from {status['target']} to {new_ig_size}")
+            request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=new_ig_size)
             request.execute()
-            ig_statuses[i]['target'] = status['current']
+            ig_statuses[i]['target'] = new_ig_size
 
     if total_deficit == 0:
         slack_message(f"Cluster {key} was unstable but no deficit to redistribute.")

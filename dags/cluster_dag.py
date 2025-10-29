@@ -119,7 +119,10 @@ def cluster_control():
             continue
 
         if not stable and requested_size > 0:
-            cluster_api.redistribute_instances(key, cluster_info[key], target_sizes[key])
+            if key.startswith("deepem"):
+                cluster_api.redistribute_instances(key, cluster_info[key], target_sizes[key], move_instances=True)
+            else:
+                cluster_api.redistribute_instances(key, cluster_info[key], target_sizes[key])
 
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
