@@ -6,7 +6,7 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.weight_rule import WeightRule
 from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels, update_mount_secrets
 from datetime import datetime
-from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data, cv_cleanup_info, mount_secrets
+from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data, cv_cleanup_info, mount_secrets, downsample_affinity_map
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
@@ -362,6 +362,13 @@ def supply_default_parameters():
     if param.get("OUTPUT_CHANNELS", 3) != 3 or param.get("INFERENCE_OUTPUT_CHANNELS", 3) != 3:
         slack_message("*Inference the input into {} channels and output {} channels*".format(param.get("INFERENCE_OUTPUT_CHANNELS", 3),param.get("OUTPUT_CHANNELS", 3)))
 
+    if param.get("DOWNSAMPLE_AFFINITY", False):
+        slack_message("*Downsampling of affinity map will be performed after inference*")
+        if "DOWNSAMPLE_AFFINITY_MIPS" in param:
+            slack_message("*Will downsample {} mip levels*".format(param["DOWNSAMPLE_AFFINITY_MIPS"]))
+        else:
+            slack_message("*Will downsample to isotropic resolution*")
+
     target_bbox = Bbox(param["BBOX"][:3],param["BBOX"][3:])
     if not image_bbox.contains_bbox(target_bbox):
         slack_message(":u7981:*ERROR: Bounding box is outside of the image, image: {} vs bbox: {}*".format([int(x) for x in image_bbox.to_list()], param["BBOX"]))
@@ -555,6 +562,30 @@ remove_workers_op = PythonOperator(
     dag=dag_worker
 )
 
+def downsample_affinity_map_task():
+    """Downsample the affinity map after inference if enabled."""
+    from airflow.models import Variable
+    from slack_message import slack_message
+    param = Variable.get("inference_param", deserialize_json=True)
+
+    if param.get("DOWNSAMPLE_AFFINITY", False):
+        run_name = param.get("NAME", "inference")
+        affinity_path = param["OUTPUT_PATH"]
+        num_mips = param.get("DOWNSAMPLE_AFFINITY_MIPS", None)
+        downsample_affinity_map(run_name, affinity_path, num_mips)
+    else:
+        slack_message("*Skipping affinity map downsampling (not enabled)*")
+
+downsample_affinity_task = PythonOperator(
+    task_id="downsample_affinity_map",
+    python_callable=downsample_affinity_map_task,
+    priority_weight=100000,
+    weight_rule=WeightRule.ABSOLUTE,
+    queue="manager",
+    on_retry_callback=task_retry_alert,
+    dag=dag_worker
+)
+
 generate_ng_link_task = PythonOperator(
     task_id="generate_ng_link",
     python_callable=generate_ng_link,
@@ -588,4 +619,4 @@ collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down
 
 [setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> set_env_task >> process_output_task
 
-scale_up_cluster_task >> wait_for_chunkflow_task >> remove_workers_op >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
+scale_up_cluster_task >> wait_for_chunkflow_task >> remove_workers_op >> mark_done_task >> downsample_affinity_task >> generate_ng_link_task >> scale_down_cluster_task

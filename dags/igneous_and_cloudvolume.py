@@ -538,6 +538,46 @@ def downsample(run_name, cloudpaths):
 
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=8)
+def downsample_affinity_map(run_name, affinity_path, num_mips=None):
+    """
+    Downsample the affinity map after inference.
+
+    Args:
+        run_name: Name of the run for metadata tracking
+        affinity_path: Path to the affinity map cloudvolume
+        num_mips: Number of mip levels to create. If None, downsamples to isotropic resolution.
+    """
+    import igneous.task_creation as tc
+    from slack_message import slack_message
+    from cloudvolume import CloudVolume
+
+    mip, resolution = cv_scale_with_data(affinity_path)
+
+    if num_mips is None:
+        target_mip = isotropic_mip(affinity_path)
+        num_mips_to_create = target_mip - mip
+    else:
+        num_mips_to_create = num_mips
+
+    if num_mips_to_create <= 0:
+        slack_message(":arrow_forward: The affinity map {} is already at target resolution `{}`, skip downsampling".format(affinity_path, resolution))
+        return []
+
+    tasks = list(tc.create_downsampling_tasks(
+        affinity_path,
+        mip=mip,
+        fill_missing=False,
+        num_mips=num_mips_to_create,
+        preserve_chunk_size=True
+    ))
+    slack_message(":arrow_forward: Start downsampling affinity map `{}` at `{}`: {} tasks in total".format(affinity_path, resolution, len(tasks)))
+
+    metadata = {"statsd_task_key": f"{run_name}.igneous.downsample_affinity"}
+    return tasks_with_metadata(metadata, tasks)
+
+
+@mount_secrets
+@kombu_tasks(cluster_name="igneous", init_workers=8)
 def mesh(run_name, seg_cloudpath, mesh_quality, sharded, frag_path=None):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
