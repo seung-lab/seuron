@@ -49,6 +49,10 @@ services:
         ports:
             - "5672:5672"
             - "15672:15672"
+        ulimits:
+            nofile:
+                soft: 65536
+                hard: 65536
         healthcheck:
             test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
             interval: 60s
