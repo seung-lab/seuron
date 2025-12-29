@@ -11,6 +11,7 @@ from chunkiterator import ChunkIterator
 from slack_message import slack_message, task_start_alert, task_done_alert, task_retry_alert
 from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, composite_chunks_wrap_op, remap_chunks_batch_op
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op, collect_metrics_op, toggle_nfs_server_op
+from region_validation import validate_compute_storage_regions_wrapper
 
 from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
 from igneous_and_cloudvolume import create_info
@@ -495,6 +496,16 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     reset_flags = reset_flags_op(dag_manager, param)
 
+    # Validate compute and storage regions
+    validate_regions = PythonOperator(
+        task_id="validate_regions",
+        python_callable=validate_compute_storage_regions_wrapper,
+        op_args=[CLUSTER_1_CONN_ID],
+        default_args=default_args,
+        dag=dag_manager,
+        queue="manager"
+    )
+
     init = dict()
 
     init["ws"] = PythonOperator(
@@ -706,7 +717,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     scaling_igneous_finish = scale_down_cluster_op(dag_manager, "igneous_finish", "igneous", 0, "cluster")
 
     starting_op >> reset_flags >> triggers["ws"] >> wait["ws"] >> triggers["agg"] >> wait["agg"] >> scaling_global_finish >> triggers["pp"] >> wait["pp"]
-    reset_flags >> scaling_global_start
+    reset_flags >> validate_regions >> scaling_global_start
     wait["agg"] >> start_nfs_server >> triggers["pp"]
     wait["pp"] >> [scaling_igneous_finish, ending_op, stop_nfs_server]
 

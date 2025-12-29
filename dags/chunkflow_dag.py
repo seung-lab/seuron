@@ -374,6 +374,10 @@ def supply_default_parameters():
         slack_message(":u7981:*ERROR: Bounding box is outside of the image, image: {} vs bbox: {}*".format([int(x) for x in image_bbox.to_list()], param["BBOX"]))
         raise ValueError('Bounding box is outside of the image')
 
+    # Validate compute and storage regions
+    from region_validation import validate_compute_storage_regions
+    validate_compute_storage_regions(param, "gpu")
+
     Variable.set("inference_param", check_patch_parameters(param), serialize_json=True)
 
     health_check_info(param["CHUNKFLOW_IMAGE"])
