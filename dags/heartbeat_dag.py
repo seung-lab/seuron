@@ -233,6 +233,14 @@ def shutdown_easyseg_worker():
             except Exception:
                 pass
 
+def update_last_success_timestamp():
+    import os
+    import redis
+    from datetime import datetime
+    redis_host = os.environ['REDIS_SERVER']
+    r = redis.Redis(redis_host, decode_responses=True)
+    r.set('heartbeat_dag_last_success_timestamp', datetime.now().timestamp())
+
 
 latest = LatestOnlyOperator(
     task_id='latest_only',
@@ -261,4 +269,12 @@ shutdown_easyseg_worker_task = PythonOperator(
     queue="cluster",
     dag=dag)
 
-latest >> queue_sizes_task >> remove_failed_instances_task >> shutdown_easyseg_worker_task
+update_timestamp_task = PythonOperator(
+    task_id="update_last_success_timestamp",
+    python_callable=update_last_success_timestamp,
+    priority_weight=1000,
+    queue="cluster",
+    dag=dag
+)
+
+latest >> queue_sizes_task >> remove_failed_instances_task >> shutdown_easyseg_worker_task >> update_timestamp_task
