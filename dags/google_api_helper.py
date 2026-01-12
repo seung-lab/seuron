@@ -1,81 +1,37 @@
 from time import sleep
 from datetime import datetime, timedelta, timezone
+
+from requests import Response
 from airflow.models import Variable
 from airflow.hooks.base_hook import BaseHook
-from googleapiclient import discovery
 from slack_message import slack_message
-import requests
 import json
+from common import google_api
 
-
-def get_project_id():
-    apiurl = "http://metadata.google.internal/computeMetadata/v1/project/project-id"
-    response = requests.get(apiurl, headers={"Metadata-Flavor": "Google"})
-    response.raise_for_status()
-    return response.text
-
-
-def instance_group_manager_info(project_id, instance_group):
-    service = discovery.build('compute', 'v1')
-    request = service.instanceGroupManagers().get(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'])
-    return request.execute()
-
-def instance_group_manager_error(project_id, instance_group):
-    service = discovery.build('compute', 'v1')
-    request = service.instanceGroupManagers().listErrors(project=project_id, zone=instance_group['zone'], instanceGroupManager=instance_group['name'], orderBy="creationTimestamp desc")
-    return request.execute()
-
-def instance_group_info(project_id, instance_group):
-    service = discovery.build('compute', 'v1')
-    request = service.instanceGroups().get(project=project_id, zone=instance_group['zone'], instanceGroup=instance_group['name'])
-    return request.execute()
 
 def list_managed_instances(instance_group):
-    project_id = get_project_id()
-    service = discovery.build("compute", "v1")
-    page_token = None
-    instances = []
-    while True:
-        request = service.instanceGroupManagers().listManagedInstances(project=project_id, zone=instance_group["zone"], instanceGroupManager=instance_group["name"], pageToken=page_token, maxResults=20)
-        ret = request.execute()
-        if not ret:
-            return instances
-        instances += [r["instance"] for r in ret['managedInstances']]
-        page_token = ret.get("nextPageToken", None)
-        if not page_token:
-            break
+    return google_api.list_managed_instances(instance_group)
 
-    return instances
 
 def get_instance_property(instance_zone, instance, key):
-    project_id = get_project_id()
-    service = discovery.build("compute", "v1")
-    request = service.instances().get(project=project_id, zone=instance_zone, instance=instance)
-    ret = request.execute()
-    return ret[key]
+    return google_api.get_instance_property(instance_zone, instance, key)
+
 
 def delete_instances(ig, instances):
-    project_id = get_project_id()
-    request_body = {
-        "instances": instances,
-        "skipInstancesOnValidationError": True,
-    }
-    service = discovery.build('compute', 'v1')
-    request = service.instanceGroupManagers().deleteInstances(project=project_id, zone=ig["zone"], instanceGroupManager=ig["name"], body=request_body)
-    ret = request.execute()
-    print(ret)
+    return google_api.delete_instances(ig, instances)
+
 
 def get_cluster_target_size(project_id, instance_groups):
     total_size = 0
     for ig in instance_groups:
-        info = instance_group_manager_info(project_id, ig)
+        info = google_api.instance_group_manager_info(project_id, ig)
         total_size += info['targetSize']
     return total_size
 
 def get_cluster_errors(project_id, instance_groups):
     msg = []
     for ig in instance_groups:
-        items = instance_group_manager_error(project_id, ig)
+        items = google_api.instance_group_manager_error(project_id, ig)
 
         if len(items.get("items", [])) == 0:
             continue
@@ -94,7 +50,7 @@ def get_cluster_errors(project_id, instance_groups):
 def get_cluster_size(project_id, instance_groups):
     total_size = 0
     for ig in instance_groups:
-        info = instance_group_info(project_id, ig)
+        info = google_api.instance_group_info(project_id, ig)
         total_size += info['size']
     return total_size
 
@@ -103,7 +59,7 @@ def reset_cluster(key, initial_size):
     if not run_metadata.get("manage_clusters", True):
         return
     try:
-        project_id = get_project_id()
+        project_id = google_api.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
@@ -133,16 +89,12 @@ def reset_cluster(key, initial_size):
 
 
 def resize_instance_group(ig, size):
-    project_id = get_project_id()
-    service = discovery.build('compute', 'v1')
-    request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=size)
-    response = request.execute()
-    print(json.dumps(response, indent=2))
     slack_message(f":information_source: resize instance group {ig['name']} to {size} instances", notification=True)
+    return google_api.resize_instance_group(ig, size)
 
 
 def resize_cluster(instance_groups, size):
-    project_id = get_project_id()
+    project_id = google_api.get_project_id()
 
     total_size = get_cluster_target_size(project_id, instance_groups)
 
@@ -159,16 +111,14 @@ def resize_cluster(instance_groups, size):
 
     target_size = size
     for ig in instance_groups:
-        info_group_manager = instance_group_manager_info(project_id, ig)
-        info_group = instance_group_info(project_id, ig)
+        info_group_manager = google_api.instance_group_manager_info(project_id, ig)
+        info_group = google_api.instance_group_info(project_id, ig)
         ig_size = min(target_size, ig['max_size'])
         if ig_size < info_group["size"] and not downsize:
             continue
         if info_group_manager["targetSize"] > info_group["size"]:
             ig_size = min(ig_size, info_group["size"]+1)
-        service = discovery.build('compute', 'v1')
-        request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=ig_size)
-        response = request.execute()
+        response = google_api.resize_instance_group(ig, ig_size)
         print(json.dumps(response, indent=2))
         slack_message(":information_source: resize instance group {} to {} instances".format(ig['name'], ig_size), notification=True)
         target_size -= ig_size
@@ -180,9 +130,8 @@ def resize_cluster(instance_groups, size):
 
     return min(size, max_size)
 
-
 def redistribute_instances(key, instance_groups, target_size, move_instances=False):
-    project_id = get_project_id()
+    project_id = google_api.get_project_id()
     slack_message(f":recycle: Redistribute instances in cluster {key} with target size {target_size}")
 
     ig_statuses = []
@@ -190,8 +139,8 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
 
     # First pass: identify unstable IGs
     for i, ig in enumerate(instance_groups):
-        manager_info = instance_group_manager_info(project_id, ig)
-        ig_info = instance_group_info(project_id, ig)
+        manager_info = google_api.instance_group_manager_info(project_id, ig)
+        ig_info = google_api.instance_group_info(project_id, ig)
         current_size = ig_info.get('size', 0)
         ig_target_size = manager_info.get('targetSize', 0)
         is_unstable = ig_target_size > current_size
@@ -211,7 +160,6 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
 
     # Shrink unstable IGs and calculate deficit
     total_deficit = 0
-    service = discovery.build('compute', 'v1')
     for i in unstable_indices:
         status = ig_statuses[i]
         ig = status['ig']
@@ -227,8 +175,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
         if deficit > 0:
             total_deficit += deficit
             slack_message(f"Shrinking unstable instance group {ig['name']} from {status['target']} to {new_ig_size}")
-            request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=new_ig_size)
-            request.execute()
+            google_api.resize_instance_group(ig, new_ig_size)
             ig_statuses[i]['target'] = new_ig_size
 
     if total_deficit == 0:
@@ -264,8 +211,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
             to_add = min(total_deficit, available_capacity)
             new_size = current_target + to_add
             slack_message(f"Scaling up {ig['name']} from {current_target} to {new_size} to compensate for deficit.")
-            request = service.instanceGroupManagers().resize(project=project_id, zone=ig['zone'], instanceGroupManager=ig['name'], size=new_size)
-            request.execute()
+            google_api.resize_instance_group(ig, new_size)
             total_deficit -= to_add
             ig_statuses[current_ig_index]['target'] = new_size
 
@@ -288,7 +234,6 @@ def ramp_up_cluster(key, initial_size, total_size):
     sleep(60)
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
-
 def ramp_down_cluster(key, total_size):
     run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
     if not run_metadata.get("manage_clusters", True):
@@ -306,7 +251,7 @@ def ramp_down_cluster(key, total_size):
 
 def increase_instance_group_size(key, size):
     try:
-        project_id = get_project_id()
+        project_id = google_api.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
@@ -326,10 +271,9 @@ def increase_instance_group_size(key, size):
         real_size = resize_cluster(cluster_info[key], size)
         slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
-
 def reduce_instance_group_size(key, size):
     try:
-        project_id = get_project_id()
+        project_id = google_api.get_project_id()
         cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
@@ -350,9 +294,8 @@ def reduce_instance_group_size(key, size):
         slack_message(":arrow_down: Scale down cluster {} to {} instances, sleep for one minute to let it stabilize".format(key, real_size))
         sleep(60)
 
-
 def cluster_status(name, cluster):
-    project_id = get_project_id()
+    project_id = google_api.get_project_id()
     current_size = get_cluster_size(project_id, cluster)
     requested_size = get_cluster_target_size(project_id, cluster)
     errors = get_cluster_errors(project_id, cluster)
@@ -370,12 +313,11 @@ def cluster_status(name, cluster):
 
     return stable, requested_size
 
-
 def collect_resource_metrics(start_time, end_time):
     import pendulum
     from google.cloud import monitoring_v3
 
-    project_id = get_project_id()
+    project_id = google_api.get_project_id()
     cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 
     resources = {}
@@ -429,7 +371,8 @@ def collect_resource_metrics(start_time, end_time):
             return client.list_time_series(
                request={
                    "name": project_name,
-                   "filter": f'metric.type = "{metric}"',
+                   "filter": f'metric.type = "{metric}"'
+,
                    "interval": interval,
                    "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
                    "aggregation": aggregation,
@@ -480,29 +423,15 @@ def collect_resource_metrics(start_time, end_time):
 
     return resources
 
+def wait_for_instance(instance, zone, target, retries=5):
+    for _ in range(retries):
+        status = get_instance_property(zone, instance, "status")
+        if status == target:
+            return
+        sleep(60)
 
-def start_instance(instance_name, zone):
-    service = discovery.build('compute', 'v1')
-    request = service.instances().start(
-        project=get_project_id(),
-        zone=zone,
-        instance=instance_name
-    )
-    response = request.execute()
-    return response
-
-
-def stop_instance(instance_name, zone):
-    service = discovery.build('compute', 'v1')
-    request = service.instances().stop(
-        discardLocalSsd=True,
-        project=get_project_id(),
-        zone=zone,
-        instance=instance_name
-    )
-    response = request.execute()
-    return response
-
+    slack_message(f'*Timeout while waiting {instance}*')
+    raise RuntimeError(f"Timeout waiting {instance}")
 
 def toggle_easyseg_worker(on=False):
     from dag_utils import get_connection
@@ -513,10 +442,9 @@ def toggle_easyseg_worker(on=False):
     zone = ig_conn.login
     easyseg_worker = f"{deployment}-easyseg-worker"
     if on:
-        start_instance(easyseg_worker, zone)
+        google_api.start_instance(easyseg_worker, zone)
     else:
-        stop_instance(easyseg_worker, zone)
-
+        google_api.stop_instance(easyseg_worker, zone)
 
 def toggle_nfs_server(on=False):
     from dag_utils import get_connection
@@ -527,21 +455,11 @@ def toggle_nfs_server(on=False):
     zone = nfs_conn.login
     nfs_server = f"{deployment}-nfs-server"
     if on:
-        start_instance(nfs_server, zone)
+        google_api.start_instance(nfs_server, zone)
         wait_for_instance(nfs_server, zone, "RUNNING")
     else:
-        stop_instance(nfs_server, zone)
+        google_api.stop_instance(nfs_server, zone)
         wait_for_instance(nfs_server, zone, "TERMINATED")
 
     slack_message(f'*Turning {"on" if on else "off"} the nfs server*')
 
-
-def wait_for_instance(instance, zone, target, retries=5):
-    for _ in range(retries):
-        status = get_instance_property(zone, instance, "status")
-        if status == target:
-            return
-        sleep(60)
-
-    slack_message(f'*Timeout while waiting {instance}*')
-    raise RuntimeError(f"Timeout waiting {instance}")
