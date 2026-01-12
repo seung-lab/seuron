@@ -216,6 +216,11 @@ def supply_default_parameters():
         except Exception:
             slack_message(":u7981:*ERROR: Failed to check the ONNX model*")
             raise ValueError('Check ONNX model failed')
+        if "TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param:
+            slack_message(":cool:*Build TensorRT engine for ONNX*")
+            if param.get("REBUILD_TRT_ENGINE", False):
+                slack_message(":exclamation:*Force rebuild TensorRT engine*")
+
 
     if param.get("ENABLE_FP16", False):
         slack_message(":exclamation:*Enable FP16 inference for TensorRT*")
@@ -399,6 +404,36 @@ def setup_env_op(dag, param, queue):
     )
 
 
+def convert_tensorrt_engine_op(dag, param, queue):
+    from airflow import configuration as conf
+    broker_url = conf.get('celery', 'broker_url')
+    workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
+    mount_path = param.get("MOUNT_PATH", default_mount_path)
+    cmdlist = f'python {os.path.join(workspace_path, "scripts/convert_tensorrt.py")} {os.path.join(mount_path, "inference_param")} {broker_url}'
+    chunkflow_image = param.get("CHUNKFLOW_BUILDER_IMAGE", param["CHUNKFLOW_IMAGE"])
+
+    cm = ['inference_param']
+    if "MOUNT_SECRETS" in param:
+        cm += param["MOUNT_SECRETS"]
+
+    return worker_op(
+        variables=cm,
+        mount_point=mount_path,
+        task_id='convert_tensorrt',
+        command=cmdlist,
+        use_gpus=True,
+        do_xcom_push=True,
+        xcom_all=True,
+        force_pull=True,
+        on_retry_callback=task_retry_alert,
+        image=chunkflow_image,
+        priority_weight=100000,
+        weight_rule=WeightRule.ABSOLUTE,
+        queue=queue,
+        dag=dag
+    )
+
+
 def inference_op(dag, param, queue, wid):
     from airflow import configuration as conf
     broker_url = conf.get('celery', 'broker_url')
@@ -423,6 +458,36 @@ def inference_op(dag, param, queue, wid):
         queue=queue,
         dag=dag
     )
+
+
+def setup_tensorrt(**kwargs):
+    param = Variable.get("inference_param", deserialize_json=True)
+    if "ONNX_MODEL_PATH" not in param:
+        return
+    if "TRT_ENGINE_PATH" in param:
+        return
+
+    ti = kwargs['ti']
+    output = ti.xcom_pull(task_ids="convert_tensorrt")
+    trt_engine_path = None
+    batch_size = None
+    target_prefix = "TRT_ENGINE_PATH:"
+    batch_prefix = "BATCH_SIZE:"
+    for l in output:
+        if l.startswith(target_prefix):
+            trt_engine_path = l.removeprefix(target_prefix).strip()
+        elif l.startswith(batch_prefix):
+            batch_size = int(l.removeprefix(batch_prefix).strip())
+
+    if trt_engine_path:
+        param["TRT_ENGINE_PATH"] = trt_engine_path
+    if batch_size:
+        param["BATCH_SIZE"] = batch_size
+    Variable.set("inference_param", param, serialize_json=True)
+    slack_message(f"Inference with TensorRT engine: `{trt_engine_path}`")
+    if batch_size:
+        slack_message(f"Overwrite batch size to `{batch_size}`")
+    # slack_message('TensorRT engine build output: ```{}```'.format("\n".join(output)))
 
 
 def process_output(**kwargs):
@@ -584,7 +649,27 @@ queue = 'gpu'
 for i in range(min(param.get("TASK_NUM", 1), total_workers)):
     workers.append(inference_op(dag_worker, param, queue, i))
 
-collect_metrics_op(dag_worker) >> scale_up_cluster_task >> workers >> scale_down_cluster_task
+if "ONNX_MODEL_PATH" in param and ("TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param):
+    try:
+        start_single_instance_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", 1, 1, "cluster", tag="single")
+    except:
+        start_single_instance_task = placeholder_op(dag_worker, "chunkflow_gpu_scale_single_dummy")
+
+    setup_tensorrt_task = PythonOperator(
+        task_id="setup_tensorrt",
+        provide_context=True,
+        python_callable=setup_tensorrt,
+        priority_weight=100000,
+        on_retry_callback=task_retry_alert,
+        weight_rule=WeightRule.ABSOLUTE,
+        queue="manager",
+        dag=dag_worker
+    )
+    collect_metrics_op(dag_worker) >> start_single_instance_task >> convert_tensorrt_engine_op(dag_worker, param, queue) >> setup_tensorrt_task >> scale_up_cluster_task
+else:
+    collect_metrics_op(dag_worker) >> scale_up_cluster_task
+
+scale_up_cluster_task >> workers >> scale_down_cluster_task
 
 [setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> set_env_task >> process_output_task
 
