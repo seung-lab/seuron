@@ -83,5 +83,7 @@ def remove_workers(queue):
 def db_name(run_name, data_ext):
     import re
     prefix = re.sub(r'[^a-z0-9]', '_', run_name.strip().lower()).lstrip('_')
-    max_len = 63 - len(data_ext)
-    return prefix[:max_len] + '_' + data_ext
+    max_len = 62 - len(data_ext)
+    res = prefix[:max_len] + '_' + data_ext
+    print(f"squeeze the db name to {res}")
+    return res
