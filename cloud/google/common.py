@@ -79,7 +79,7 @@ def GenerateAirflowVar(context, hostname_manager):
 
     sqlalchemy_conn = f'''postgresql+psycopg2://{postgres_user}:{postgres_password}@{hostname_manager}/{postgres_db}'''
     airflow_variable = {
-        'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'google_metadata.gce_hostname',
+        'AIRFLOW__CORE__HOSTNAME_CALLABLE': 'common.google_api.gce_hostname',
         'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN': sqlalchemy_conn,
         'AIRFLOW__CORE__FERNET_KEY': context.properties['airflow'].get('fernetKey', fernet_key),
         'AIRFLOW__CELERY__BROKER_URL': f'amqp://{hostname_manager}',
