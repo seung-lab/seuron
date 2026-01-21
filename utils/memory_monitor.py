@@ -11,9 +11,9 @@ from kombu_helper import put_message
 from common.google_api import gce_hostname, get_project_id, get_zone, delete_instances, get_created_by
 
 class RedisHealthMonitor:
-    def __init__(self, timeout_seconds=1800):
+    def __init__(self, timeout=timedelta(seconds=1800)):
         self.last_success_time = datetime.now()
-        self.timeout = timedelta(seconds=timeout_seconds)
+        self.timeout = timeout
 
     def record_success(self):
         self.last_success_time = datetime.now()
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     except:
         hostname = socket.gethostname()
 
-    while (datetime.now() - start_time).total_seconds() < 1800:  # 30 minutes
+    while datetime.now() - start_time < timedelta(seconds=1800):  # 30 minutes
         try:
             redis_conn = redis.Redis(os.environ["REDIS_SERVER"], socket_connect_timeout=5, decode_responses=True)
             redis_conn.ping()  # Check if connection is alive
