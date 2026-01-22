@@ -1,7 +1,7 @@
 import time
 from seuronbot import SeuronBot
 from bot_utils import replyto, send_message
-from google_metadata import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
+from common.google_api import get_project_data, get_instance_data, get_instance_metadata, set_instance_metadata
 import tenacity
 
 

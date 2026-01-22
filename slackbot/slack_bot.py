@@ -9,7 +9,7 @@ from bot_utils import send_message
 import subprocess
 
 if os.environ.get("VENDOR", None) == "Google":
-    from google_metadata import gce_external_ip
+    from common.google_api import gce_external_ip
 else:
     import socket
 
