@@ -475,9 +475,15 @@ def setup_tensorrt(**kwargs):
     batch_prefix = "BATCH_SIZE:"
     for l in output:
         if l.startswith(target_prefix):
-            trt_engine_path = l.removeprefix(target_prefix).strip()
+            try:
+                trt_engine_path = l.removeprefix(target_prefix).strip()
+            except Exception:
+                pass
         elif l.startswith(batch_prefix):
-            batch_size = int(l.removeprefix(batch_prefix).strip())
+            try:
+                batch_size = int(l.removeprefix(batch_prefix).strip())
+            except Exception:
+                pass
 
     if trt_engine_path:
         param["TRT_ENGINE_PATH"] = trt_engine_path
