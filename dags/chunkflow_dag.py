@@ -176,6 +176,31 @@ def check_onnx_model(param):
             slack_message(f":u7981:*ERROR: Specified `INPUT_PATCH_SIZE = {param['INPUT_PATCH_SIZE']}`, does not match ONNX input shape `{input_shape[-3:][::-1]}`*")
             raise ValueError('Input patch size error')
 
+def construct_trt_engine_path(param):
+    import os
+    from cloudfiles import CloudFiles
+    from urllib.parse import urlparse
+    from pathlib import Path
+    output_path = param["OUTPUT_PATH"]
+    trt_engine_cache = param.get("TRT_ENGINE_CACHE_PATH", output_path)
+    model_path = param["ONNX_MODEL_PATH"]
+    parsed = urlparse(model_path)
+    clean_path = Path(parsed.netloc + parsed.path)
+    final_path = clean_path.with_suffix('')
+    cache_path = os.path.join(trt_engine_cache, final_path)
+    print(cache_path)
+    cf = CloudFiles(cache_path)
+    first_hit = list(cf.list())[0]
+    print(first_hit)
+    return os.path.join(cache_path, first_hit)
+
+def extract_batch_size(fpath):
+    from pathlib import Path
+    fn = Path(fpath).stem
+    try:
+        return int(fn.split('_')[-1])
+    except Exception:
+        return None
 
 @mount_secrets
 def supply_default_parameters():
@@ -209,18 +234,6 @@ def supply_default_parameters():
     if "ONNX_MODEL_PATH" in param and "PYTORCH_MODEL_PATH" in param:
         slack_message(":u7981:*ERROR: Cannot specify pytorch model and onnx model at the same time*")
         raise ValueError('Can only use one backend')
-
-    if "ONNX_MODEL_PATH" in param:
-        try:
-            check_onnx_model(param)
-        except Exception:
-            slack_message(":u7981:*ERROR: Failed to check the ONNX model*")
-            raise ValueError('Check ONNX model failed')
-        if "TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param:
-            slack_message(":cool:*Build TensorRT engine for ONNX*")
-            if param.get("REBUILD_TRT_ENGINE", False):
-                slack_message(":exclamation:*Force rebuild TensorRT engine*")
-
 
     if param.get("ENABLE_FP16", False):
         slack_message(":exclamation:*Enable FP16 inference for TensorRT*")
@@ -371,6 +384,32 @@ def supply_default_parameters():
     if not image_bbox.contains_bbox(target_bbox):
         slack_message(":u7981:*ERROR: Bounding box is outside of the image, image: {} vs bbox: {}*".format([int(x) for x in image_bbox.to_list()], param["BBOX"]))
         raise ValueError('Bounding box is outside of the image')
+
+    if "ONNX_MODEL_PATH" in param:
+        try:
+            check_onnx_model(param)
+        except Exception:
+            slack_message(":u7981:*ERROR: Failed to check the ONNX model*")
+            raise ValueError('Check ONNX model failed')
+        if param.get("SKIP_TRT_BUILD", False):
+            try:
+                trt_engine_path = construct_trt_engine_path(param)
+            except Exception:
+                slack_message(f":u7981:*Error: Cannot find any TensorRT engine built for* `{param['ONNX_MODEL_PATH']}`")
+                raise ValueError('No TensorRT engine compiled for ONNX model')
+
+            param["TRT_ENGINE_PATH"] = trt_engine_path
+            slack_message(f":exclamation:*Find prebuild TensorRT engine* `{trt_engine_path}`")
+
+            batch_size = extract_batch_size(trt_engine_path)
+            if batch_size:
+                param["BATCH_SIZE"] = batch_size
+                slack_message(f":exclamation:*Force* `BATCH_SIZE = {batch_size}`")
+        else:
+            if "TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param:
+                slack_message(":cool:*Build TensorRT engine for ONNX*")
+                if param.get("REBUILD_TRT_ENGINE", False):
+                    slack_message(":exclamation:*Force rebuild TensorRT engine*")
 
     Variable.set("inference_param", check_patch_parameters(param), serialize_json=True)
 
@@ -655,7 +694,7 @@ queue = 'gpu'
 for i in range(min(param.get("TASK_NUM", 1), total_workers)):
     workers.append(inference_op(dag_worker, param, queue, i))
 
-if "ONNX_MODEL_PATH" in param and ("TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param):
+if "ONNX_MODEL_PATH" in param and ("TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param) and not param.get("SKIP_TRT_BUILD", False):
     try:
         start_single_instance_task = scale_up_cluster_op(dag_worker, "chunkflow", "gpu", 1, 1, "cluster", tag="single")
     except:
