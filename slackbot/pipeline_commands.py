@@ -207,53 +207,62 @@ def handle_batch(task, msg):
         replyto(msg, "Batch jobs will reuse on the parameters from the first job unless new parameters are specified, *including those with default values*")
 
     default_param = json_obj[0]
-    for i, p in enumerate(json_obj):
-        if visible_messages(broker_url, "seuronbot_cmd") != 0:
-            cmd = get_message(broker_url, "seuronbot_cmd")
-            if cmd == "cancel":
-                replyto(msg, "Cancel batch process")
-                break
+    is_batch = len(json_obj) > 1
+    try:
+        for i, p in enumerate(json_obj):
+            if visible_messages(broker_url, "seuronbot_cmd") != 0:
+                cmd = get_message(broker_url, "seuronbot_cmd")
+                if cmd == "cancel":
+                    replyto(msg, "Cancel batch process")
+                    break
 
-        if p.get("INHERIT_PARAMETERS", True):
-            param = deepcopy(default_param)
-        else:
-            param = {}
+            if p.get("INHERIT_PARAMETERS", True):
+                param = deepcopy(default_param)
+            else:
+                param = {}
 
-        if i > 0:
-            if 'NAME' in param:
-                del param['NAME']
-            for k in p:
-                param[k] = p[k]
-            supply_default_param(param)
-            replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
+            if i > 0:
+                if 'NAME' in param:
+                    del param['NAME']
+                for k in p:
+                    param[k] = p[k]
+                supply_default_param(param)
+                replyto(msg, "*Sanity check: batch job {} out of {}*".format(i+1, len(json_obj)))
+                state = "unknown"
+                current_task = guess_run_type(param)
+                if current_task == "seg_run":
+                    set_variable('param', param, serialize_json=True)
+                    state = run_dag("sanity_check", wait_for_completion=True).state
+                elif current_task == "inf_run":
+                    set_variable('inference_param', param, serialize_json=True)
+                    state = run_dag("chunkflow_generator", wait_for_completion=True).state
+                elif current_task == "syn_run":
+                    set_variable("synaptor_param.json", param, serialize_json=True)
+                    state = run_dag("synaptor_sanity_check", wait_for_completion=True).state
+
+                if state != "success":
+                    replyto(msg, "*Sanity check failed, abort!*")
+                    break
+
+            is_last_job = (i == len(json_obj) - 1)
             state = "unknown"
-            current_task = guess_run_type(param)
+            replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
+
             if current_task == "seg_run":
-                set_variable('param', param, serialize_json=True)
-                state = run_dag("sanity_check", wait_for_completion=True).state
+                state = run_dag('segmentation', wait_for_completion=True).state
             elif current_task == "inf_run":
-                set_variable('inference_param', param, serialize_json=True)
-                state = run_dag("chunkflow_generator", wait_for_completion=True).state
+                if is_batch and not is_last_job:
+                    set_variable("batch_keep_cluster", "true")
+                else:
+                    set_variable("batch_keep_cluster", "false")
+                state = run_dag("chunkflow_worker", wait_for_completion=True).state
             elif current_task == "syn_run":
-                set_variable("synaptor_param.json", param, serialize_json=True)
-                state = run_dag("synaptor_sanity_check", wait_for_completion=True).state
+                state = run_dag("synaptor", wait_for_completion=True).state
 
             if state != "success":
-                replyto(msg, "*Sanity check failed, abort!*")
+                replyto(msg, f"*Bach job failed, abort!* ({state})")
                 break
-
-        state = "unknown"
-        replyto(msg, "*Starting batch job {} out of {}*".format(i+1, len(json_obj)), broadcast=True)
-
-        if current_task == "seg_run":
-            state = run_dag('segmentation', wait_for_completion=True).state
-        elif current_task == "inf_run":
-            state = run_dag("chunkflow_worker", wait_for_completion=True).state
-        elif current_task == "syn_run":
-            state = run_dag("synaptor", wait_for_completion=True).state
-
-        if state != "success":
-            replyto(msg, f"*Bach job failed, abort!* ({state})")
-            break
+    finally:
+        set_variable("batch_keep_cluster", "false")
 
     replyto(msg, "*Batch process finished*")
