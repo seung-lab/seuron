@@ -40,7 +40,7 @@ volumes:
 
 services:
     rabbitmq:
-        image: rabbitmq:3.12-management
+        image: rabbitmq:3.13-management
         restart: always
         environment:
             - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
