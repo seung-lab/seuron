@@ -101,7 +101,7 @@ def GenerateAirflowVar(context, hostname_manager):
 def GenerateBootDisk(diskSizeGb, diskType=None):
     boot_disk = GenerateDisk(diskSizeGb=diskSizeGb, diskType=diskType)
     boot_disk["boot"] = True
-    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-accelerator-images", "images", "family/ubuntu-accelerator-2404-amd64-with-nvidia-570")
+    boot_disk["initializeParams"]["sourceImage"] = GlobalComputeUrl("ubuntu-os-accelerator-images", "images", "family/ubuntu-accelerator-2404-amd64-with-nvidia-580")
     return boot_disk
 
 
