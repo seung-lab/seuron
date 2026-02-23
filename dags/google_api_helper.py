@@ -223,20 +223,26 @@ def ramp_up_cluster(key, initial_size, total_size):
     run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
     if not run_metadata.get("manage_clusters", True):
         return
+    already_at_size = False
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
+        already_at_size = target_sizes.get(key, 0) >= total_size
         target_sizes[key] = total_size
         Variable.set("cluster_target_size", target_sizes, serialize_json=True)
         slack_message(":information_source: ramping up cluster {} to {} instances, starting from {} instances".format(key, total_size, min(initial_size, total_size)))
         increase_instance_group_size(key, min(initial_size, total_size))
     except:
         increase_instance_group_size(key, total_size)
-    sleep(60)
+    if not already_at_size:
+        sleep(60)
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
 def ramp_down_cluster(key, total_size):
     run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
     if not run_metadata.get("manage_clusters", True):
+        return
+    if Variable.get("batch_keep_cluster", default_var="false") == "true":
+        slack_message(f":recycle: Batch mode: keeping {key} cluster alive for next job")
         return
     try:
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
