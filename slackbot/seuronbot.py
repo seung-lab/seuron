@@ -6,6 +6,7 @@ import itertools
 import difflib
 import concurrent.futures
 import time
+import tenacity
 from slack_sdk.rtm_v2 import RTMClient
 from bot_info import botid, workerid, broker_url
 from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
@@ -211,6 +212,10 @@ class SeuronBot:
 
         return __call__
 
+    @tenacity.retry(
+        retry=tenacity.retry_all(),
+        wait=tenacity.wait_random_exponential(multiplier=1, max=60),
+    )
     def fetch_bot_messages(self, queue="bot-message-queue"):
         client = self.rtmclient.web_client
         while True:
