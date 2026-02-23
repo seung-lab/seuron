@@ -19,7 +19,7 @@ import numpy as np
 import json
 import urllib
 from collections import OrderedDict
-from dag_utils import get_composite_worker_capacities
+from dag_utils import get_composite_worker_capacities, resolve_url
 
 
 def generate_ng_payload(param):
@@ -31,7 +31,7 @@ def generate_ng_payload(param):
     layers = OrderedDict()
     if "IMAGE_PATH" in param:
         layers["img"] = {
-            "source": "precomputed://"+param["IMAGE_PATH"],
+            "source": "precomputed://"+resolve_url(param["IMAGE_PATH"]),
             "type": "image"
         }
         if "IMAGE_SHADER" in param:

@@ -12,7 +12,7 @@ from slack_message import slack_message, task_retry_alert, task_failure_alert
 
 from helper_ops import placeholder_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
 
-from dag_utils import estimate_worker_instances, remove_workers
+from dag_utils import estimate_worker_instances, remove_workers, resolve_url
 
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
@@ -45,7 +45,7 @@ def generate_ng_link():
     layers = OrderedDict()
 
     layers["img"] = {
-        "source": "precomputed://"+param["IMAGE_PATH"],
+        "source": "precomputed://"+resolve_url(param["IMAGE_PATH"]),
         "type": "image"
     }
     if "IMAGE_SHADER" in param:
