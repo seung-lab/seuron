@@ -18,7 +18,7 @@ ENV AIRFLOW_USER=${AIRFLOW_USER}
 ARG AIRFLOW_VERSION=2.11.0
 ENV AIRFLOW_VERSION=${AIRFLOW_VERSION}
 ARG MINICONDA_PATH=/opt/conda
-ARG MINICONDA_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+ARG MINICONDA_URL=https://github.com/conda-forge/miniforge/releases/download/25.11.0-1/Miniforge3-25.11.0-1-Linux-x86_64.sh
 ENV PATH=${MINICONDA_PATH}/bin:${PATH}
 
 WORKDIR ${AIRFLOW_HOME}
