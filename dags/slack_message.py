@@ -7,8 +7,11 @@ def slack_message(msg, notification=False, broadcast=False, attachment=None):
             'broadcast': broadcast,
             'attachment': attachment,
     }
-    broker_url = conf.get('celery', 'broker_url')
-    kombu_helper.put_message(broker_url, 'bot-message-queue', msg_payload)
+    try:
+        broker_url = conf.get('celery', 'broker_url')
+        kombu_helper.put_message(broker_url, 'bot-message-queue', msg_payload)
+    except Exception:
+        pass
 
 
 def slack_userinfo():
