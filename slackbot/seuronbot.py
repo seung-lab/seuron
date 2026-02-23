@@ -121,6 +121,8 @@ class SeuronBot:
     def filter_msg(self, msg):
         if 'subtype' in msg and msg['subtype'] != "file_share":
             return False
+        if msg.get("hidden", False):
+            return False
         if msg['text'] == "This message contains interactive elements.":
             if msg['blocks'][0]['elements'][0]['elements'][0]['type'] == 'text':
                 msg['text'] = msg['blocks'][0]['elements'][0]['elements'][0]['text']
