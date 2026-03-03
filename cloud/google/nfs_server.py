@@ -1,4 +1,4 @@
-from common import ZonalComputeUrl, GenerateDisk, GenerateBootDisk, GenerateScratchDisk, GenerateNetworkInterface, INSTALL_DOCKER_CMD, GenerateAirflowVar
+from common import ZonalComputeUrl, GenerateDisk, GenerateBootDisk, GenerateScratchDisk, GenerateNetworkInterface, INSTALL_DOCKER_CMD, INSTALL_OPS_AGENT, GenerateAirflowVar
 from workers import GenerateDockerCommand, GenerateCeleryWorkerCommand, GenerateEnvironVar
 
 
@@ -60,6 +60,7 @@ mkdir -p /var/log/airflow/logs
 chmod 777 /var/log/airflow/logs
 
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
+{INSTALL_OPS_AGENT}
 {INSTALL_DOCKER_CMD}
 {scratch_nvme_config}
 

@@ -31,19 +31,9 @@ systemctl restart docker
 '''
 
 # https://cloud.google.com/compute/docs/gpus/monitor-gpus
-INSTALL_GPU_MONITORING = '''
-apt-get update -y
-DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install python3-venv
-mkdir -p /opt/google
-cd /opt/google
-git clone https://github.com/GoogleCloudPlatform/compute-gpu-monitoring.git
-cd /opt/google/compute-gpu-monitoring/linux
-python3 -m venv venv
-venv/bin/pip install wheel
-venv/bin/pip install -Ur requirements.txt
-cp /opt/google/compute-gpu-monitoring/linux/systemd/google_gpu_monitoring_agent_venv.service /lib/systemd/system
-systemctl daemon-reload
-systemctl --no-reload --now enable /lib/systemd/system/google_gpu_monitoring_agent_venv.service
+INSTALL_OPS_AGENT = '''
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 '''
 
 DOCKER_CMD = 'docker run --pull always -v /var/run/docker.sock:/var/run/docker.sock -v /share:/share -v /tmp:/tmp -v /var/log/airflow/logs:${AIRFLOW__LOGGING__BASE_LOG_FOLDER} %(args)s %(image)s'

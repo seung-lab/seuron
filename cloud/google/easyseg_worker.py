@@ -1,6 +1,6 @@
 from common import ZonalComputeUrl, GenerateBootDisk, GenerateNetworkInterface, GenerateAirflowVar
 
-from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_GPU_MONITORING
+from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_OPS_AGENT
 
 from workers import GenerateCeleryWorkerCommand, GenerateEnvironVar, GenerateDockerCommand
 
@@ -31,8 +31,8 @@ mkdir -p /share
 chmod 777 /share
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
 {INSTALL_DOCKER_CMD}
+{INSTALL_OPS_AGENT}
 {INSTALL_NVIDIA_DOCKER_CMD if "gpuWorkerAcceleratorType" in easyseg_param else ""}
-{INSTALL_GPU_MONITORING if "gpuWorkerAcceleratorType" in easyseg_param else ""}
 touch /etc/bootstrap_done
 sleep 60
 shutdown -h now

@@ -403,7 +403,7 @@ def collect_resource_metrics(start_time, end_time):
         if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["sent_bytes"] = sum(p.value.int64_value for p in result.points)
 
-    for result in query_metric("custom.googleapis.com/instance/gpu/utilization", aggregation_mean):
+    for result in query_metric("agent.googleapis.com/gpu/utilization", aggregation_mean):
         group_name = result.metadata.system_labels.fields['instance_group'].string_value
         if group_name in resources and "uptime" in resources[group_name]:
             resources[group_name]["gputime"] = pendulum.duration(seconds=sum(p.value.double_value*alignment_period/100 for p in result.points))

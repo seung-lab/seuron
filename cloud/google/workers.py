@@ -1,5 +1,5 @@
 from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, GenerateNetworkInterface, GenerateAirflowVar
-from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_GPU_MONITORING, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
+from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, INSTALL_OPS_AGENT, DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 
 GPU_TYPES = ['gpu', 'custom-gpu', 'synaptor-gpu', 'deepem-gpu']
@@ -37,6 +37,7 @@ mount -t tmpfs -o size=80%,noatime tmpfs /tmp
 mkdir -p /var/log/airflow/logs
 chmod 777 /var/log/airflow/logs
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
+{INSTALL_OPS_AGENT}
 {INSTALL_DOCKER_CMD}
 mkdir -p /share
 chmod 777 /share
@@ -52,7 +53,6 @@ until mount -o nfsvers=4.2,rsize=262144,wsize=1048576,async {hostname_nfs_server
 
     if use_gpu:
         startup_script += INSTALL_NVIDIA_DOCKER_CMD
-        startup_script += INSTALL_GPU_MONITORING
 
     startup_script += f'''
 {GenerateEnvironVar(context, env_variables)}

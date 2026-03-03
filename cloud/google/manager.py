@@ -1,6 +1,6 @@
 from common import GlobalComputeUrl, ZonalComputeUrl, GenerateBootDisk, GenerateNetworkInterface, GenerateAirflowVar
 
-from common import INSTALL_DOCKER_CMD, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
+from common import INSTALL_DOCKER_CMD, INSTALL_OPS_AGENT, INSTALL_NVIDIA_DOCKER_CMD, CELERY_CMD, PARALLEL_CMD
 
 def GenerateEnvironVar(context, hostname_manager):
     if "postgres" in context.properties:
@@ -69,8 +69,8 @@ set -e
 {GenerateEnvironVar(context, hostname_manager)}
 
 if [ ! -f "/etc/bootstrap_done" ]; then
-
 {INSTALL_DOCKER_CMD}
+{INSTALL_OPS_AGENT}
 
 mkdir -p /share
 mkdir -p /airflow
