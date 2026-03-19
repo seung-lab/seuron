@@ -170,7 +170,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
             slack_message(f"Moving all instances from unstable instance group {ig['name']}")
         else:
             deficit = status['target'] - status['current']
-            new_ig_size = status['current']
+            new_ig_size = max(status['current'], 1)
 
         if deficit > 0:
             total_deficit += deficit
