@@ -4,6 +4,8 @@ from cloudfiles.paths import to_https_protocol, ascloudpath, ExtractedPath
 
 def resolve_url(url: str) -> str:
     """Resolves protocol aliases and returns a https url."""
+    if url.startswith("gs://"):
+        return url
     result = to_https_protocol(url)
     if isinstance(result, ExtractedPath):
         return ascloudpath(result)
