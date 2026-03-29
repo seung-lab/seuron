@@ -12,6 +12,11 @@ apt-get update -y
 apt-get install docker-ce -y
 usermod -aG docker ubuntu
 mkdir -p /etc/docker
+cat << EOF > /etc/docker/daemon.json
+{
+    "mtu": 8896
+}
+EOF
 systemctl restart docker
 gcloud auth --quiet configure-docker
 '''

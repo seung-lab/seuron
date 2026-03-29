@@ -63,7 +63,7 @@ def GenerateNetworks(context, subnetworks):
         'type': 'compute.v1.network',
         'properties': {
             'autoCreateSubnetworks': False,
-            'mtu': 1500
+            'mtu': 8896
         }
     }]
 
