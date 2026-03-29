@@ -149,6 +149,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
             'ig': ig,
             'current': current_size,
             'target': ig_target_size,
+            'initial_target': ig_target_size,
             'is_unstable': is_unstable,
         })
         if is_unstable:
@@ -174,8 +175,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
 
         if deficit > 0:
             total_deficit += deficit
-            slack_message(f"Shrinking unstable instance group {ig['name']} from {status['target']} to {new_ig_size}")
-            google_api.resize_instance_group(ig, new_ig_size)
+            slack_message(f"Planning to shrink unstable instance group {ig['name']} from {status['target']} to {new_ig_size}")
             ig_statuses[i]['target'] = new_ig_size
 
     if total_deficit == 0:
@@ -210,13 +210,52 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
         if available_capacity > 0:
             to_add = min(total_deficit, available_capacity)
             new_size = current_target + to_add
-            slack_message(f"Scaling up {ig['name']} from {current_target} to {new_size} to compensate for deficit.")
-            google_api.resize_instance_group(ig, new_size)
+            slack_message(f"Planning to scale up {ig['name']} from {current_target} to {new_size} to compensate for deficit.")
             total_deficit -= to_add
             ig_statuses[current_ig_index]['target'] = new_size
 
     if total_deficit > 0:
-        slack_message(f":warning: Could not redistribute all of {total_deficit} deficit for cluster {key}.")
+        # Even distribution of remaining deficit across all IGs with available capacity
+        available_igs = []
+        for idx, status in enumerate(ig_statuses):
+            capacity = status['ig']['max_size'] - status['target']
+            if capacity > 0:
+                available_igs.append((idx, capacity))
+
+        if available_igs:
+            num_available = len(available_igs)
+            base = total_deficit // num_available
+            remainder = total_deficit % num_available
+
+            slack_message(
+                f"Evenly distributing remaining deficit of {total_deficit} "
+                f"across {num_available} available instance groups."
+            )
+
+            for i, (idx, capacity) in enumerate(available_igs):
+                share = base + (1 if i < remainder else 0)
+                to_add = min(share, capacity)
+                if to_add > 0:
+                    status = ig_statuses[idx]
+                    new_size = status['target'] + to_add
+                    slack_message(
+                        f"Planning to scale up {status['ig']['name']} from "
+                        f"{status['target']} to {new_size} (even distribution)."
+                    )
+                    ig_statuses[idx]['target'] = new_size
+                    total_deficit -= to_add
+
+        if total_deficit > 0:
+            slack_message(
+                f":warning: Could not redistribute all of {total_deficit} "
+                f"deficit for cluster {key}."
+            )
+
+    # Apply final updates
+    for status in ig_statuses:
+        if status['target'] != status['initial_target']:
+            slack_message(f"Applying final target size: {status['target']} for instance group {status['ig']['name']} (was {status['initial_target']})")
+            google_api.resize_instance_group(status['ig'], status['target'])
 
 
 def ramp_up_cluster(key, initial_size, total_size):
