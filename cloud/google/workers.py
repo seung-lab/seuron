@@ -173,7 +173,7 @@ def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
             'threadsPerCore': 1
         }
 
-    template_name = f"{context.env['deployment']}-template-{worker['type']}-worker-{worker['zone']}"
+    template_name = f"{context.env['deployment']}-template-{worker['type']}-{provisioning_model.lower()}-{worker['zone']}"
     template_resource = {
         'name': template_name,
         'type': 'compute.v1.instanceTemplates',
@@ -184,7 +184,7 @@ def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
     }
 
     ig_resource = {
-        'name': f"{context.env['deployment']}-{worker['type']}-workers-{worker['zone']}",
+        'name': f"{context.env['deployment']}-{worker['type']}-{provisioning_model.lower()}-{worker['zone']}",
         'type': 'compute.v1.instanceGroupManagers',
         'properties': {
             'instanceTemplate': f'$(ref.{template_name}.selfLink)',
