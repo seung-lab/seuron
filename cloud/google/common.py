@@ -148,6 +148,7 @@ def GenerateNetworkInterface(context, subnetwork, ipAddr=None):
     network_interface = {
         'network': f'$(ref.{context.env["deployment"]}-network.selfLink)',
         'subnetwork': f'$(ref.{context.env["deployment"]}-{subnetwork}-subnetwork.selfLink)',
+        'nicType': 'GVNIC',
         'accessConfigs': [{
             'name': 'External NAT',
             'type': 'ONE_TO_ONE_NAT',
