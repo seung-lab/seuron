@@ -26,13 +26,16 @@ DEEPEM_IMAGE = PARAM.get("deepem_image", "zettaai/deepem")
 cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
 training_cluster = "deepem-gpu"
 
-max_trainers = sum(c['max_size'] for c in cluster_info[training_cluster])
+if training_cluster in cluster_info:
+    max_trainers = sum(c['max_size'] for c in cluster_info[training_cluster])
+else:
+    max_trainers = 1
 
-if "rdzv_id" not in PARAM:
+if PARAM and "rdzv_id" not in PARAM:
     PARAM["rdzv_id"] = str(uuid.uuid4())
     Variable.set("training_param", PARAM, serialize_json=True)
 
-if "gpu_ids" not in PARAM:
+if PARAM and "gpu_ids" not in PARAM:
     num_gpus = cluster_info[training_cluster][0]['gpuWorkerAcceleratorCount']
     PARAM["gpu_ids"] = list(range(num_gpus))
     Variable.set("training_param", PARAM, serialize_json=True)
