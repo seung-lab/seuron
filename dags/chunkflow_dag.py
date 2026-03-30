@@ -315,6 +315,7 @@ def supply_default_parameters():
         param["IMAGE_RESOLUTION"] = vol.resolution.tolist()
 
     if "OUTPUT_RESOLUTION" not in param:
+        slack_message("*Assume output resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
         param["OUTPUT_RESOLUTION"] = param["IMAGE_RESOLUTION"]
 
     if "BBOX" not in param:
@@ -336,7 +337,6 @@ def supply_default_parameters():
 
     if "OUTPUT_MIP" not in param:
         param["OUTPUT_MIP"] = param["IMAGE_MIP"]
-        slack_message("*Assume output resolution is the same as the image resolution* {}".format(param["IMAGE_RESOLUTION"]))
 
     if param.get("IMAGE_HISTOGRAM_PATH", "N/A") != "N/A":
         slack_message("*Normalize images with histograms in* `{}`, *lower threshold: {}, upper threshold: {}*".format(param["IMAGE_HISTOGRAM_PATH"], param.get("CONTRAST_NORMALIZATION_LOWER_THRESHOLD", 0.01), param.get("CONTRAST_NORMALIZATION_UPPER_THRESHOLD", 0.99)))
