@@ -55,6 +55,8 @@ fi
 #!/bin/bash
 set -e
 
+mount -t tmpfs -o size=80%,noatime tmpfs /tmp
+
 mkdir -p /share
 mkdir -p /var/log/airflow/logs
 chmod 777 /var/log/airflow/logs
