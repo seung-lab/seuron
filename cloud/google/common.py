@@ -14,7 +14,14 @@ usermod -aG docker ubuntu
 mkdir -p /etc/docker
 cat << EOF > /etc/docker/daemon.json
 {
-    "mtu": 8896
+    "mtu": 8896,
+    "default-ulimits": {
+        "nofile": {
+            "Name": "nofile",
+            "Soft": 65536,
+            "Hard": 65536
+        }
+    }
 }
 EOF
 systemctl restart docker
