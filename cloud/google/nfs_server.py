@@ -12,9 +12,9 @@ def GenerateNFSServerStartupScript(context, hostname_manager):
     oom_canary_cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + "python utils/memory_monitor.py ${AIRFLOW__CELERY__BROKER_URL} bot-message-queue >& /dev/null"
     worker_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue="nfs", concurrency=1)
     nginx_conf = '''worker_processes auto;
-worker_rlimit_nofile 2048;
+worker_rlimit_nofile 65536;
 events {
-    worker_connections 1024;
+    worker_connections 16384;
     use epoll;
 }
 
@@ -78,6 +78,11 @@ apt-get install nfs-kernel-server nginx -y
 echo "/share 172.31.0.0/16(insecure,rw,async,no_subtree_check)" >> /etc/exports
 echo "ALL: 172.31.0.0/16" >> /etc/hosts.allow
 systemctl start nfs-kernel-server.service
+mkdir -p /etc/systemd/system/nginx.service.d
+cat <<EOF > /etc/systemd/system/nginx.service.d/override.conf
+[Service]
+LimitNOFILE=65536
+EOF
 cat << EOF > /etc/nfs.conf.d/local.conf
 [nfsd]
 threads = 64
@@ -85,7 +90,8 @@ EOF
 cat << EOF > /etc/nginx/nginx.conf
 {nginx_conf}
 EOF
-systemctl restart nfs-kernel-server.service
+systemctl daemon-reload
+systemctl restart nfs-kernel-server.service nginx
 touch /etc/bootstrap_done
 sleep 300
 shutdown -h now
