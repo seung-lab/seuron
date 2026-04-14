@@ -22,10 +22,10 @@ resources:
             notificationChannel: seuron-alerts
           enableJupyterInterface: False
           airflow:
-# Please note that `remoteLogFolder` is a mandatory field, as tasks are executed
+# Please note that `remoteWorkspaceFolder` is a mandatory field, as tasks are executed
 # on separate instances and we store log files in a common GCS bucket for easy
 # inspection.
-            remoteLogFolder: # GCS path to save airflow logs
+            remoteWorkspaceFolder: # GCS path to save airflow logs
           #   fernetKey: generated automatically if not given
           #   secretKey: generated automatically if not given
           #   user: airflow
