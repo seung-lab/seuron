@@ -67,24 +67,27 @@ def send_slack_message(msg_payload, client=None, context=None):
         slack_channel = slack_info["channel"]
         slack_thread = slack_info.get("thread_ts", slack_info.get("ts", None))
 
-    if msg_payload.get("attachment", None) is None:
-        client.chat_postMessage(
-            username=slack_workername,
-            channel=slack_channel,
-            thread_ts=slack_thread,
-            reply_broadcast=msg_payload.get("broadcast", False),
-            text=text
-        )
-    else:
-        attachment = msg_payload["attachment"]
-        client.files_upload_v2(
-            username=slack_workername,
-            channel=slack_channel,
-            thread_ts=slack_thread,
-            title=attachment['title'],
-            content=base64.b64decode(attachment['content']),
-            initial_comment=text
-        )
+    try:
+        if msg_payload.get("attachment", None) is None:
+            client.chat_postMessage(
+                username=slack_workername,
+                channel=slack_channel,
+                thread_ts=slack_thread,
+                reply_broadcast=msg_payload.get("broadcast", False),
+                text=text
+            )
+        else:
+            attachment = msg_payload["attachment"]
+            client.files_upload_v2(
+                username=slack_workername,
+                channel=slack_channel,
+                thread_ts=slack_thread,
+                title=attachment['title'],
+                content=base64.b64decode(attachment['content']),
+                initial_comment=text
+            )
+    except Exception as e:
+        print(f"Error sending to Slack: {e}")
 
 
 def replyto(msg, reply, workername=workerid, broadcast=False):
