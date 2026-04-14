@@ -44,10 +44,10 @@ resources:
           #   password: airflow
           workerInstanceGroups:
             - type: gpu
-              zone: us-east1-c
+              zone: us-east1-b
               subnetwork: us-east1
-              machineType: n1-highmem-4
-              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              machineType: g2-standard-4
+              gpuWorkerAcceleratorType: nvidia-l4
               concurrency: 2
               preemptible: True
               sizeLimit: 4
@@ -88,10 +88,10 @@ resources:
               preemptible: True
               sizeLimit: 50
             - type: custom-gpu
-              zone: us-east1-c
+              zone: us-east1-b
               subnetwork: us-east1
-              machineType: n1-highmem-8
-              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              machineType: g2-standard-8
+              gpuWorkerAcceleratorType: nvidia-l4
               concurrency: 2
               preemptible: True
               sizeLimit: 4
@@ -102,10 +102,10 @@ resources:
               preemptible: True
               sizeLimit: 10
             - type: synaptor-gpu
-              zone: us-east1-c
+              zone: us-east1-b
               subnetwork: us-east1
-              machineType: n1-highmem-8
-              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              machineType: g2-standard-8
+              gpuWorkerAcceleratorType: nvidia-l4
               preemptible: True
               sizeLimit: 10
             - type: synaptor-seggraph
@@ -115,10 +115,10 @@ resources:
               preemptible: False
               sizeLimit: 1
             - type: deepem-gpu
-              zone: us-east1-c
+              zone: us-east1-b
               subnetwork: us-east1
-              machineType: n1-standard-16
-              gpuWorkerAcceleratorType: nvidia-tesla-t4
+              machineType: g2-standard-48
+              gpuWorkerAcceleratorType: nvidia-l4
               gpuWorkerAcceleratorCount: 4
               preemptible: true
               sizeLimit: 10
@@ -140,10 +140,10 @@ resources:
           #   pdSSDSizeGB: 1000
           #   numLocalScratchSSD: 4 # each scratch disk is 375 GB
           easysegWorker:
-            zone: us-east1-c
+            zone: us-east1-b
             subnetwork: us-east1
-            machineType: n1-standard-8
-            gpuWorkerAcceleratorType: nvidia-tesla-t4
+            machineType: g2-standard-8
+            gpuWorkerAcceleratorType: nvidia-l4
 # Allowlist of public ip addresses allowing to access the services, strongly recommended.
           # firewallAllowedIPRanges:
           #     - 128.112.0.0/16
