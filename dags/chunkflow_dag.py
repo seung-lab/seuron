@@ -394,16 +394,17 @@ def supply_default_parameters():
             try:
                 trt_engine_path = construct_trt_engine_path(param)
             except Exception:
-                slack_message(f":u7981:*Error: Cannot find any TensorRT engine built for* `{param['ONNX_MODEL_PATH']}`")
-                raise ValueError('No TensorRT engine compiled for ONNX model')
+                slack_message(f"*Warning: Cannot find any TensorRT engine built for* `{param['ONNX_MODEL_PATH']}`, force building TensorRT engine")
+                param["SKIP_TRT_BUILD"] = False
+                trt_engine_path = None
 
-            param["TRT_ENGINE_PATH"] = trt_engine_path
-            slack_message(f":exclamation:*Find prebuild TensorRT engine* `{trt_engine_path}`")
+            if trt_engine_path:
+                slack_message(f":exclamation:*Find prebuild TensorRT engine* `{trt_engine_path}`")
 
-            batch_size = extract_batch_size(trt_engine_path)
-            if batch_size:
-                param["BATCH_SIZE"] = batch_size
-                slack_message(f":exclamation:*Force* `BATCH_SIZE = {batch_size}`")
+                batch_size = extract_batch_size(trt_engine_path)
+                if batch_size:
+                    param["BATCH_SIZE"] = batch_size
+                    slack_message(f":exclamation:*Force* `BATCH_SIZE = {batch_size}`")
         else:
             if "TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLOW_BUILDER_IMAGE" in param:
                 slack_message(":cool:*Build TensorRT engine for ONNX*")
