@@ -54,7 +54,7 @@ resources:
             - type: atomic
               zone: us-east1-c
               subnetwork: us-east1
-              machineType: e2-standard-32
+              machineType: t2d-standard-32
               preemptible: True
               reserveHugePages: True
               sizeLimit: 100
@@ -76,14 +76,14 @@ resources:
             - type: igneous
               zone: us-east1-c
               subnetwork: us-east1
-              machineType: e2-standard-32
+              machineType: t2d-standard-32
               preemptible: True
               concurrency: 32
               sizeLimit: 50
             - type: custom-cpu
               zone: us-east1-c
               subnetwork: us-east1
-              machineType: e2-standard-32
+              machineType: t2d-standard-32
               concurrency: 32
               preemptible: True
               sizeLimit: 50
@@ -98,7 +98,7 @@ resources:
             - type: synaptor-cpu
               zone: us-east1-c
               subnetwork: us-east1
-              machineType: e2-highmem-4
+              machineType: t2d-standard-4
               preemptible: True
               sizeLimit: 10
             - type: synaptor-gpu
