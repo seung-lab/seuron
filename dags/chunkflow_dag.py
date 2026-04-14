@@ -498,42 +498,6 @@ def inference_op(dag, param, queue, wid):
     )
 
 
-def setup_tensorrt(**kwargs):
-    param = Variable.get("inference_param", deserialize_json=True)
-    if "ONNX_MODEL_PATH" not in param:
-        return
-    if "TRT_ENGINE_PATH" in param:
-        return
-
-    ti = kwargs['ti']
-    output = ti.xcom_pull(task_ids="convert_tensorrt")
-    trt_engine_path = None
-    batch_size = None
-    target_prefix = "TRT_ENGINE_PATH:"
-    batch_prefix = "BATCH_SIZE:"
-    for l in output:
-        if l.startswith(target_prefix):
-            try:
-                trt_engine_path = l.removeprefix(target_prefix).strip()
-            except Exception:
-                pass
-        elif l.startswith(batch_prefix):
-            try:
-                batch_size = int(l.removeprefix(batch_prefix).strip())
-            except Exception:
-                pass
-
-    if trt_engine_path:
-        param["TRT_ENGINE_PATH"] = trt_engine_path
-    if batch_size:
-        param["BATCH_SIZE"] = batch_size
-    Variable.set("inference_param", param, serialize_json=True)
-    slack_message(f"Inference with TensorRT engine: `{trt_engine_path}`")
-    if batch_size:
-        slack_message(f"Overwrite batch size to `{batch_size}`")
-    # slack_message('TensorRT engine build output: ```{}```'.format("\n".join(output)))
-
-
 def process_output(**kwargs):
     from igneous_and_cloudvolume import upload_json
     from airflow import configuration as conf
@@ -695,17 +659,7 @@ if "ONNX_MODEL_PATH" in param and ("TRT_ENGINE_CACHE_PATH" in param or "CHUNKFLO
     except:
         start_single_instance_task = placeholder_op(dag_worker, "chunkflow_gpu_scale_single_dummy")
 
-    setup_tensorrt_task = PythonOperator(
-        task_id="setup_tensorrt",
-        provide_context=True,
-        python_callable=setup_tensorrt,
-        priority_weight=100000,
-        on_retry_callback=task_retry_alert,
-        weight_rule=WeightRule.ABSOLUTE,
-        queue="manager",
-        dag=dag_worker
-    )
-    collect_metrics_op(dag_worker) >> start_single_instance_task >> convert_tensorrt_engine_op(dag_worker, param, queue) >> setup_tensorrt_task >> scale_up_cluster_task
+    collect_metrics_op(dag_worker) >> start_single_instance_task >> convert_tensorrt_engine_op(dag_worker, param, queue) >> scale_up_cluster_task
 else:
     collect_metrics_op(dag_worker) >> scale_up_cluster_task
 
