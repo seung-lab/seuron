@@ -152,8 +152,7 @@ def check_onnx_model(param):
 
         if "BATCH_SIZE" in param:
             if param["BATCH_SIZE"] != input_shape[0] or param["BATCH_SIZE"] != output_shape[0]:
-                slack_message(f":u7981:*ERROR: Batch size `{param['BATCH_SIZE']}` does not match the onnx model, input: `{input_shape}`, output: `{output_shape}`*")
-                raise ValueError('Batch size error')
+                slack_message(f":exclamation:*WARNING: Batch size `{param['BATCH_SIZE']}` does not match the onnx model, input: `{input_shape}`, output: `{output_shape}`, override onnx batch size to {param['BATCH_SIZE']}*")
         else:
             if input_shape[0] == output_shape[0]:
                 param["BATCH_SIZE"] = input_shape[0]
