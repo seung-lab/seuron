@@ -10,7 +10,7 @@ from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data
 
 from slack_message import slack_message, task_retry_alert, task_failure_alert
 
-from helper_ops import placeholder_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op
+from helper_ops import placeholder_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op, save_run_parameters_op
 
 from dag_utils import estimate_worker_instances, remove_workers, resolve_url
 
@@ -581,10 +581,6 @@ def process_output(**kwargs):
 
     Variable.set("gcs_buckets", list(gcs_buckets), serialize_json=True)
 
-    if conf.get('logging', 'remote_logging') == "True":
-        remote_log_path = conf.get('logging', 'remote_base_log_folder')
-        upload_json(os.path.join(remote_log_path, "param"), "{}.json".format(param["NAME"]), param)
-
     slack_message('chunkflow setup-env output: ```{}```'.format("\n".join(output)))
 
     Variable.set("chunkflow_done", "no")
@@ -715,6 +711,8 @@ else:
 
 scale_up_cluster_task >> workers >> scale_down_cluster_task
 
+save_params_task = save_run_parameters_op(dag_worker, "inference_param")
+
 [setup_redis_task, update_mount_secrets_op] >> sanity_check_task >> image_parameters >> set_env_task >> process_output_task
 
-scale_up_cluster_task >> wait_for_chunkflow_task >> remove_workers_op >> mark_done_task >> generate_ng_link_task >> scale_down_cluster_task
+scale_up_cluster_task >> wait_for_chunkflow_task >> remove_workers_op >> mark_done_task >> generate_ng_link_task >> save_params_task >> scale_down_cluster_task

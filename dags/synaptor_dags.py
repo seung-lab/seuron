@@ -8,7 +8,7 @@ from airflow.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator
 from dags.slack_message import slack_message
 
-from helper_ops import placeholder_op, scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op
+from helper_ops import placeholder_op, scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op, save_run_parameters_op
 from param_default import synaptor_param_default, default_synaptor_image
 from synaptor_ops import manager_op, drain_op, self_destruct_op
 from synaptor_ops import synaptor_op, wait_op, generate_op, nglink_op
@@ -169,7 +169,8 @@ def fill_dag(dag: DAG, tasklist: list[Task], collect_metrics: bool = True) -> DA
         param["Volumes"]["image"],
         tuple(map(int, param["Dimensions"]["voxelres"].split(","))),
     )
-    curr_operator >> nglink >> stop_nfs_server
+    save_params_task = save_run_parameters_op(dag, "synaptor_param.json")
+    curr_operator >> nglink >> save_params_task >> stop_nfs_server
     scale_down_cluster(dag, curr_cluster, stop_nfs_server)
 
     return dag

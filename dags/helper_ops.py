@@ -221,3 +221,30 @@ def toggle_nfs_server_op(dag, on=False):
         )
     else:
         return placeholder_op(dag, f'dummy_toggle_nfs_server_{"on" if on else "off"}')
+
+def save_run_parameters(varname, **kwargs):
+    from airflow import configuration as conf
+    from airflow.models import Variable
+    from igneous_and_cloudvolume import upload_json
+    import os
+    param = Variable.get(varname, deserialize_json=True)
+    if conf.get('logging', 'remote_logging') == "True":
+        gs_log_path = conf.get('logging', 'remote_base_log_folder')
+        run_param_path = os.path.join("gs://" + gs_log_path[5:].split('/')[0], "runs", varname)
+        name = param.get("NAME", None)
+        if not name:
+            name = kwargs['dag_run'].run_id.replace(':', '_')
+        upload_json(run_param_path, f"{name}.json", param)
+
+def save_run_parameters_op(dag, varname, tid="save_params"):
+    return PythonOperator(
+        task_id=tid,
+        python_callable=save_run_parameters,
+        op_args=[varname,],
+        provide_context=True,
+        default_args=default_args,
+        weight_rule=WeightRule.ABSOLUTE,
+        priority_weight=1000,
+        queue="manager",
+        dag=dag
+    )
