@@ -19,6 +19,7 @@ resources:
           composeLocation: https://raw.githubusercontent.com/seung-lab/seuron/main/deploy/docker-compose-CeleryExecutor.yml
           slack:
             botToken: # bot token for slack
+            appToken: # app-level token for Socket Mode (xapp-), leave empty for RTM mode
             notificationChannel: seuron-alerts
           enableJupyterInterface: False
           airflow:

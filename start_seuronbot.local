@@ -57,8 +57,16 @@ function generate_env() {
 
     worker_name=$(tr -dc 'a-z0-9' < /dev/urandom | head -c 4)
 
-    input_prompt "Token for slack RTM bot if you have one [xoxb-****]:"
-    read -r -s slack_token
+    input_prompt "App-level token for Socket Mode if you have one [xapp-****] (leave empty for RTM mode):"
+    read -r -s slack_app_token
+
+    if [[ -n "${slack_app_token}" ]]; then
+        input_prompt "Bot token for Socket Mode [xoxb-****]:"
+        read -r -s slack_token
+    else
+        input_prompt "Token for slack RTM bot if you have one [xoxb-****]:"
+        read -r -s slack_token
+    fi
 
     if [[ -n "${slack_token}" ]]; then
         input_prompt "Slack channel to send generic bot messages [seuron-alerts]:"
@@ -82,6 +90,10 @@ function generate_env() {
 # Add your slack bot token starts with xoxb-
 # https://api.slack.com/authentication/token-types#bot
 SLACK_TOKEN=${slack_token}
+# App-level token for Socket Mode starts with xapp-
+# Leave empty to use legacy RTM mode
+# https://api.slack.com/apis/connections/socket
+SLACK_APP_TOKEN=${slack_app_token}
 # Channel to send runtime notifications
 SLACK_NOTIFICATION_CHANNEL=${slack_notification_channel}
 # The bot will listen to commands starting with seuron-worker-example-deployment
