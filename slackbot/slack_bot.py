@@ -1,5 +1,5 @@
 from airflow_api import set_variable
-from bot_info import slack_token
+from bot_info import slack_token, slack_app_token
 from seuronbot import SeuronBot
 
 import os
@@ -66,5 +66,5 @@ if __name__ == '__main__':
 
     set_variable("webui_ip", "localhost")
 
-    seuronbot = SeuronBot(slack_token=slack_token)
+    seuronbot = SeuronBot(slack_token=slack_token, app_token=slack_app_token)
     seuronbot.start()
