@@ -85,47 +85,28 @@ SEURON supports two connection modes for its Slack bot: **Socket Mode** (recomme
 > **Important:** A Socket Mode Slack bot must be set up individually for every SEURON instance, whereas an RTM bot can be shared between multiple SEURON deployments.
 
 ### Socket Mode (Recommended)
-Socket Mode uses a WebSocket connection managed through an app-level token. It works with modern Slack apps and does not require a public URL or classic bot tokens.
+Socket Mode uses a WebSocket connection managed through an app-level token. It works with modern Slack apps and does not require a public URL or classic bot tokens. A pre-built [app manifest](slack_manifest.json) is provided to configure all required permissions and events automatically.
 
-#### 1. Create a Slack App
-1. Go to [https://api.slack.com/apps](https://api.slack.com/apps) and click **Create New App** > **From scratch**
-2. Name the app (e.g. `seuron`) and select your workspace
+#### 1. Create the Slack App from the manifest
+1. Go to [https://api.slack.com/apps?new_app=1](https://api.slack.com/apps?new_app=1) and choose **From an app manifest**
+2. Select your workspace and click **Next**
+3. Choose the **JSON** tab and paste the contents of [`slack_manifest.json`](slack_manifest.json)
+4. Click **Next**, review the summary, then click **Create**
 
-#### 2. Enable Socket Mode
-1. In the app settings, go to **Settings** > **Socket Mode**
-2. Toggle **Enable Socket Mode** on
-3. When prompted, create an app-level token with the `connections:write` scope
-4. Save the generated token (starts with `xapp-`) -- this is your `SLACK_APP_TOKEN`
+This configures Socket Mode, all required bot token scopes, and event subscriptions in one step.
 
-#### 3. Subscribe to Events
-1. Go to **Features** > **Event Subscriptions** and toggle **Enable Events** on
-2. Under **Subscribe to bot events**, add the following events:
-    * `message.channels` -- messages in public channels
-    * `message.groups` -- messages in private channels
-    * `message.im` -- direct messages
-    * `message.mpim` -- group direct messages
-    * `reaction_added` -- emoji reactions
+#### 2. Generate the App-Level Token
+1. After creating the app, go to **Settings** > **Basic Information**
+2. Scroll down to **App-Level Tokens** and click **Generate Token and Scopes**
+3. Name the token (e.g. `seuron-socket`), add the `connections:write` scope, and click **Generate**
+4. Copy the token (starts with `xapp-`) -- this is your `SLACK_APP_TOKEN`
 
-#### 4. Configure Bot Token Scopes
-1. Go to **Features** > **OAuth & Permissions**
-2. Under **Scopes** > **Bot Token Scopes**, add:
-    * `chat:write` -- send messages
-    * `files:read` -- access uploaded files
-    * `files:write` -- upload files
-    * `users:read` -- look up user display names
-    * `reactions:read` -- read emoji reactions
-    * `channels:history` -- view messages in public channels
-    * `groups:history` -- view messages in private channels
-    * `im:history` -- view direct messages
-    * `mpim:history` -- view group direct messages
-    * `channels:read` -- view basic channel info
-
-#### 5. Install the App
+#### 3. Install and get the Bot Token
 1. Go to **Settings** > **Install App** and click **Install to Workspace**
 2. Authorize the requested permissions
 3. Copy the **Bot User OAuth Token** (starts with `xoxb-`) -- this is your `SLACK_TOKEN`
 
-#### 6. Configure SEURON
+#### 4. Configure SEURON
 For **local deployment**, the `start_seuronbot.local` script will prompt you for both tokens. Alternatively, set them directly in `.env.local`:
 ```
 SLACK_TOKEN=xoxb-your-bot-token
@@ -133,7 +114,7 @@ SLACK_APP_TOKEN=xapp-your-app-level-token
 SLACK_NOTIFICATION_CHANNEL=seuron-alerts
 ```
 
-For **Google Cloud deployment**, add the app token to `cloud/google/cloud-deployment.yaml`:
+For **Google Cloud deployment**, set the tokens in `cloud/google/cloud-deployment.yaml`:
 ```yaml
 slack:
   botToken: xoxb-your-bot-token
@@ -141,7 +122,7 @@ slack:
   notificationChannel: seuron-alerts
 ```
 
-#### 7. Invite the Bot
+#### 5. Invite the Bot
 Invite the bot user to any Slack channels where you want to interact with it, including the notification channel.
 
 ### RTM Mode (Legacy)
