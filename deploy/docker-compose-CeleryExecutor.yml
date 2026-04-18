@@ -212,6 +212,7 @@ services:
             <<: *airflow-common-env
             ENABLE_JUPYTER_INTERFACE:
             SLACK_TOKEN:
+            SLACK_APP_TOKEN:
             SLACK_NOTIFICATION_CHANNEL:
             DEPLOYMENT:
         command: python slackbot/slack_bot.py

@@ -12,6 +12,7 @@ def get_botid():
 
 
 slack_token = environ.get("SLACK_TOKEN", None)
+slack_app_token = environ.get("SLACK_APP_TOKEN", None)
 slack_notification_channel = environ.get("SLACK_NOTIFICATION_CHANNEL", "seuron-alerts")
 botid = get_botid()
 workerid = "seuron-worker-"+environ["DEPLOYMENT"]
