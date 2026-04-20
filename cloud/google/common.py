@@ -26,6 +26,7 @@ cat << EOF > /etc/docker/daemon.json
 EOF
 systemctl restart docker
 gcloud auth --quiet configure-docker
+gcloud auth --quiet configure-docker us-docker.pkg.dev,us-east1-docker.pkg.dev,us-central1-docker.pkg.dev,us-west1-docker.pkg.dev
 '''
 
 INSTALL_NVIDIA_DOCKER_CMD = '''
