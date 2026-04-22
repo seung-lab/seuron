@@ -23,8 +23,8 @@ def slack_message_op(dag, tid, msg):
 
 
 def placeholder_op(dag, tid):
-    from airflow.operators.dummy import DummyOperator
-    return DummyOperator(
+    from airflow.operators.empty import EmptyOperator
+    return EmptyOperator(
         task_id="dummy_{}".format(tid),
         dag=dag,
         priority_weight=1000,
