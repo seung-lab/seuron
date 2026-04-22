@@ -86,6 +86,10 @@ function generate_env() {
     secret_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ${seuron_image} -c "import os; from base64 import b64encode; print(b64encode(os.urandom(16)).decode('utf-8'))")
     info "Secret key: ${secret_key}"
 
+    info "Generating JWT secret key"
+    jwt_key=$(${DOCKER_CMD} run --entrypoint=/opt/conda/bin/python ${seuron_image} -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+    info "JWT key: ${jwt_key}"
+
     cat << EOF > .env.local
 # Add your slack bot token starts with xoxb-
 # https://api.slack.com/authentication/token-types#bot
@@ -105,7 +109,8 @@ SEURON_TAG=${seuron_image}
 AIRFLOW__CORE__FERNET_KEY=${fernet_key}
 # Secret key for airflow webservice
 # https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#secret-key
-AIRFLOW__WEBSERVER__SECRET_KEY=${secret_key}
+AIRFLOW__API__SECRET_KEY=${secret_key}
+AIRFLOW__API_AUTH__JWT_SECRET=${jwt_key}
 # Username/password for airflow web interface
 _AIRFLOW_WWW_USER_USERNAME=airflow
 _AIRFLOW_WWW_USER_PASSWORD=airflow
