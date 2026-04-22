@@ -241,7 +241,6 @@ def save_run_parameters_op(dag, varname, tid="save_params"):
         task_id=tid,
         python_callable=save_run_parameters,
         op_args=[varname,],
-        provide_context=True,
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,

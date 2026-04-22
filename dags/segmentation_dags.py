@@ -631,7 +631,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     check_seg = PythonOperator(
         task_id="Check_Segmentation",
         python_callable=process_infos,
-        provide_context=True,
         op_args=[param],
         default_args=default_args,
         on_success_callback=task_done_alert,
@@ -657,7 +656,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         comp_seg_task = PythonOperator(
             task_id = "Compare_Segmentation",
             python_callable=compare_segmentation,
-            provide_context=True,
             op_args=[param,],
             default_args=default_args,
             dag=dag_agg,
@@ -741,7 +739,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
-        provide_context=True,
         python_callable=generate_link,
         op_args=[param, True],
         default_args=default_args,
@@ -753,7 +750,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     if "GT_PATH" in param:
         evaluation_task = PythonOperator(
             task_id = "Evaluate_Segmentation",
-            provide_context=True,
             python_callable=evaluate_results,
             op_args=[param,],
             default_args=default_args,

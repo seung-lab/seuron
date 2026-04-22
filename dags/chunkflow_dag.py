@@ -591,7 +591,6 @@ sanity_check_task = PythonOperator(
 
 process_output_task = PythonOperator(
     task_id="process_output",
-    provide_context=True,
     python_callable=process_output,
     priority_weight=100000,
     on_failure_callback=task_failure_alert,

@@ -217,7 +217,6 @@ if not SKIP_EXPORT:
     export = export_op(training_dag)
     report_export_task = PythonOperator(
         task_id="report_export",
-        provide_context=True,
         python_callable=report_export,
         priority_weight=100000,
         on_failure_callback=task_failure_alert,
