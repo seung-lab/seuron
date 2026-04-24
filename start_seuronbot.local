@@ -111,6 +111,7 @@ AIRFLOW__CORE__FERNET_KEY=${fernet_key}
 # https://airflow.apache.org/docs/apache-airflow/stable/configurations-ref.html#secret-key
 AIRFLOW__API__SECRET_KEY=${secret_key}
 AIRFLOW__API_AUTH__JWT_SECRET=${jwt_key}
+AIRFLOW__CORE__EXECUTION_API_SERVER_URL=http://api-server:8080/execution/
 # Username/password for airflow web interface
 _AIRFLOW_WWW_USER_USERNAME=airflow
 _AIRFLOW_WWW_USER_PASSWORD=airflow

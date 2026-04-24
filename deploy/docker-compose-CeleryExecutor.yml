@@ -201,6 +201,7 @@ services:
         environment:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
+            AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://webserver:8080/airflow/execution/
         command: airflow celery worker --without-gossip --without-mingle -q cluster
 
     worker-manager:
