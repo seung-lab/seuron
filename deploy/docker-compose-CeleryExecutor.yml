@@ -176,7 +176,7 @@ services:
 
     webserver:
         <<: *airflow-common
-        command: airflow api-server
+        command: airflow api-server --proxy-headers
         healthcheck:
             test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/health"]
             interval: 60s
@@ -317,11 +317,14 @@ services:
                         location \\/airflow\\/ {\\n
                             proxy_pass \\$$webserver;\\n
                             proxy_set_header Host \\$$http_host;\\n
-                            proxy_redirect off;\\n
                             proxy_http_version 1.1; \\n
                             proxy_set_header Upgrade \\$$http_upgrade; \\n
                             proxy_set_header Connection \\\"upgrade\\\"; \\n
                             proxy_set_header X-Forwarded-Proto \\$$scheme; \\n
+                            proxy_set_header X-Forwarded-Prefix \\/airflow; \\n
+                            proxy_set_header X-Forwarded-Host \\$$http_host; \\n
+                            proxy_set_header X-Forwarded-Port \\$$server_port; \\n
+                            proxy_redirect http:\\/\\/proxy\\/airflow \\/airflow; \\n
                         }\\n
                         location \\/jupyter\\/ {\\n
                             proxy_pass \\$$slackbot;\\n
