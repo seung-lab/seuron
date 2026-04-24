@@ -1,7 +1,7 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from worker_op import worker_op
-from airflow.utils.weight_rule import WeightRule
+from airflow.task.weight_rule import WeightRule
 from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox

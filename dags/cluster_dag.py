@@ -11,11 +11,11 @@ For Infrakit, the following environment variables must be set:
 """ # noqa
 from airflow import DAG
 from datetime import datetime, timedelta
-from airflow.utils.weight_rule import WeightRule
+from airflow.task.weight_rule import WeightRule
 from airflow.models import Variable
-from airflow.hooks.base import BaseHook
-from airflow.operators.python import PythonOperator
-from airflow.operators.latest_only import LatestOnlyOperator
+from airflow.sdk.bases.hook import BaseHook
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
 
 from slack_message import slack_message
 import json

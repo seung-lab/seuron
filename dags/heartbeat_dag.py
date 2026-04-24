@@ -12,8 +12,8 @@ For Infrakit, the following environment variables must be set:
 from airflow import DAG
 from airflow.models import DagRun
 from datetime import datetime
-from airflow.operators.python import PythonOperator
-from airflow.operators.latest_only import LatestOnlyOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
 from airflow import models
@@ -81,7 +81,7 @@ def remove_failed_instances():
     from time import sleep
     from datetime import datetime, timezone
     from airflow.models import Variable
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk.bases.hook import BaseHook
     from common.redis_utils import get_hostname_failures
 
     if Variable.get("vendor") == "Google":

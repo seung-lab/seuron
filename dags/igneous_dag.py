@@ -1,7 +1,7 @@
 from igneous_and_cloudvolume import submit_igneous_tasks, submit_custom_cpu_tasks, submit_custom_gpu_tasks
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.task.weight_rule import WeightRule
 from datetime import datetime
 from slack_message import task_failure_alert
 from helper_ops import scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op, placeholder_op

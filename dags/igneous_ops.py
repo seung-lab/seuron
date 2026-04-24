@@ -1,5 +1,5 @@
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.task.weight_rule import WeightRule
 from slack_message import task_retry_alert
 from igneous_and_cloudvolume import downsample, downsample_for_meshing, ingest_spatial_index, mesh, mesh_manifest, merge_mesh_fragments, create_skeleton_fragments, merge_skeleton_fragments, ingest_spatial_index
 from helper_ops import placeholder_op

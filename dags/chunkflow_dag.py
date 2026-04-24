@@ -1,9 +1,9 @@
 from airflow import DAG
 from airflow.models import Variable
-from airflow.hooks.base import BaseHook
+from airflow.sdk.bases.hook import BaseHook
 from worker_op import worker_op
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.task.weight_rule import WeightRule
 from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels, update_mount_secrets
 from datetime import datetime
 from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data, cv_cleanup_info, mount_secrets
