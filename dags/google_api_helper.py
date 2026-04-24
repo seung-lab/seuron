@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from requests import Response
 from airflow.models import Variable
-from airflow.hooks.base import BaseHook
+from airflow.sdk.bases.hook import BaseHook
 from slack_message import slack_message
 import json
 from common import google_api

@@ -28,7 +28,7 @@ def has_custom_entrypoint(image_name):
 
 
 def pull_image(image_name):
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk.bases.hook import BaseHook
     import slack_sdk as slack
     import docker
     import json

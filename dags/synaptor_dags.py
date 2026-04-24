@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator
 from dags.slack_message import slack_message
 

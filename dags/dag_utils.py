@@ -27,7 +27,7 @@ def check_manager_node(ntasks):
 
 def get_composite_worker_capacities(key=None):
     import json
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk.bases.hook import BaseHook
 
     if not key:
         return get_composite_worker_capacities("composite").union(get_composite_worker_capacities("mega"))
@@ -71,7 +71,7 @@ def estimate_worker_instances(tasks, cluster_info):
 
 
 def get_connection(conn, default_var=None):
-    from airflow.hooks.base import BaseHook
+    from airflow.sdk.bases.hook import BaseHook
     from airflow.exceptions import AirflowNotFoundException
     try:
         ig_conn = BaseHook.get_connection(conn)

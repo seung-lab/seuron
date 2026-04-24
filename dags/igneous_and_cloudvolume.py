@@ -183,7 +183,7 @@ def kombu_tasks(cluster_name, init_workers):
             import json
             from airflow.configuration import conf
             from airflow.models import Variable
-            from airflow.hooks.base import BaseHook
+            from airflow.sdk.bases.hook import BaseHook
             from kombu import Connection
             from kombu_helper import drain_messages
             from dag_utils import estimate_worker_instances
