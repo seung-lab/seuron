@@ -1,5 +1,5 @@
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.task.weight_rule import WeightRule
 from airflow.models import Variable
 from slack_message import slack_message
 from param_default import default_args
@@ -23,7 +23,7 @@ def slack_message_op(dag, tid, msg):
 
 
 def placeholder_op(dag, tid):
-    from airflow.operators.empty import EmptyOperator
+    from airflow.providers.standard.operators.empty import EmptyOperator
     return EmptyOperator(
         task_id="dummy_{}".format(tid),
         dag=dag,
@@ -191,7 +191,7 @@ def reset_cluster_op(dag, stage, key, initial_size, queue):
 
 
 def collect_metrics_op(dag):
-    from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+    from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
     return TriggerDagRunOperator(
         task_id="trigger_compute_metrics",
         trigger_dag_id="compute_metrics",
