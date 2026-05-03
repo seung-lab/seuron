@@ -15,6 +15,7 @@ mkdir -p /etc/docker
 cat << EOF > /etc/docker/daemon.json
 {
     "mtu": 8896,
+    "registry-mirrors": ["https://mirror.gcr.io"],
     "default-ulimits": {
         "nofile": {
             "Name": "nofile",
