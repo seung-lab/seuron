@@ -41,7 +41,12 @@ http {
 }
 '''
     scratch_nvme_config = '''
-DRIVES=($(lsblk | grep -oE 'nvme[a-z0-9A-Z]*' | cut -d' ' -f1 | awk '{ print "/dev/"$1 }'))
+DRIVES=()
+for dev in $(lsblk -dno NAME | grep -oE '^nvme[0-9]+n[0-9]+$'); do
+  if ! lsblk /dev/$dev -no MOUNTPOINT | grep -qE '[^[:space:]]'; then
+    DRIVES+=("/dev/$dev")
+  fi
+done
 if [ ${#DRIVES[@]} -ne 0 ]; then
 mdadm --create /dev/md0 --level=0 --force --raid-devices=${#DRIVES[@]} ${DRIVES[@]}
 mkfs.ext4 -F /dev/md0
