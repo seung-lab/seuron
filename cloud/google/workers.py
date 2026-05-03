@@ -23,6 +23,22 @@ def GenerateEnvironVar(context, env_variables):
 
 
 def GenerateWorkerStartupScript(context, hostname_nfs_server, env_variables, cmd, use_gpu=False, use_hugepages=False, use_shared_volume=False):
+    scratch_nvme_config = '''
+DRIVES=()
+for dev in $(lsblk -dno NAME | grep -oE '^nvme[0-9]+n[0-9]+$'); do
+  if ! lsblk /dev/$dev -no MOUNTPOINT | grep -qE '[^[:space:]]'; then
+    DRIVES+=("/dev/$dev")
+  fi
+done
+if [ ${#DRIVES[@]} -ne 0 ]; then
+mdadm --create /dev/md0 --level=0 --force --raid-devices=${#DRIVES[@]} ${DRIVES[@]}
+mkfs.ext4 -F /dev/md0
+mount /dev/md0 /tmp
+chmod 777 /tmp
+else
+mount -t tmpfs -o size=80%,noatime tmpfs /tmp
+fi
+'''
     startup_script = f'''
 #!/bin/bash
 set -e
@@ -32,8 +48,7 @@ echo "net.ipv6.conf.default.disable_ipv6 = 1" >> /etc/sysctl.conf
 echo "net.ipv6.conf.lo.disable_ipv6 = 1" >> /etc/sysctl.conf
 
 sysctl -p
-
-mount -t tmpfs -o size=80%,noatime tmpfs /tmp
+{scratch_nvme_config}
 mkdir -p /var/log/airflow/logs
 chmod 777 /var/log/airflow/logs
 DEBIAN_FRONTEND=noninteractive apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade
