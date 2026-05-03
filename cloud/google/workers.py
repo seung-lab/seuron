@@ -64,7 +64,7 @@ until mount -o nfsvers=4.2,rsize=262144,wsize=1048576,async {hostname_nfs_server
 '''
 
     if use_hugepages:
-        startup_script += "echo $(free -g|grep Mem|awk '{print int($2/2)}') > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages"
+        startup_script += "echo $(free -g|grep Mem|awk '{print int($2/4)}') > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages"
 
     if use_gpu:
         startup_script += INSTALL_NVIDIA_DOCKER_CMD
