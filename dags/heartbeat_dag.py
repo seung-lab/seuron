@@ -124,7 +124,7 @@ def remove_failed_instances():
             instances = cluster_api.list_managed_instances(ig)
             if not instances:
                 continue
-            if len(instances) <= 4:
+            if len(instances) <= 4 and "composite" not in key:
                 delta_threshold *= 4
                 delta2_threshold *= 4
 
