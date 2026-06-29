@@ -13,7 +13,7 @@ from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, compos
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op, collect_metrics_op, toggle_nfs_server_op, save_run_parameters_op
 
 from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
-from igneous_and_cloudvolume import create_info
+from igneous_and_cloudvolume import create_info, read_single_file
 from igneous_ops import create_igneous_ops
 import numpy as np
 import json
@@ -217,16 +217,43 @@ def get_atomic_files(param, prefix):
     return content
 
 def classify_segmentations(param):
-    prefix = "agg/info/semantic_labels"
-    content = get_files(param, prefix)
     sem_type = [('s', np.uint64), ('dendrite', np.uint64), ('axon', np.uint64), ('glia', np.uint64)]
-    data = np.frombuffer(content, dtype=sem_type)
-    segs = set()
-    for d in data:
-        if d['glia'] > d['dendrite'] and d['glia'] > d['axon']:
-            continue
-        else:
-            segs.add(int(d['s']))
+    seg_size_type = np.dtype([('segid', np.uint64), ('count', np.uint64)])
+
+    # Try to use SEM_PATH if it exists and is uint8
+    use_sem_path = False
+    if "SEM_PATH" in param:
+        try:
+            from cloudvolume import CloudVolume
+            from cloudvolume.exceptions import MalformedInfoFileError
+            vol = CloudVolume(param["SEM_PATH"])
+            if vol.info.get("data_type") == "uint8":
+                use_sem_path = True
+        except MalformedInfoFileError:
+            pass
+        except Exception:
+            pass
+
+    if use_sem_path:
+        prefix = "agg/info/semantic_labels"
+        content = get_files(param, prefix)
+        data = np.frombuffer(content, dtype=sem_type)
+        segs = set()
+        for d in data:
+            if d['glia'] > d['dendrite'] and d['glia'] > d['axon']:
+                continue
+            else:
+                segs.add(int(d['s']))
+    else:
+        slack_message(
+            ":exclamation: SEM_PATH unavailable or non-uint8, "
+            "falling back to seg_size_all.data (no glia filtering)"
+        )
+        content = read_single_file(
+            param["SCRATCH_PATH"], "agg/info/seg_size_all.data"
+        )
+        data = np.frombuffer(content, dtype=seg_size_type)
+        segs = set(int(d['segid']) for d in data)
 
     return segs
 
