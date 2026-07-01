@@ -15,7 +15,7 @@ from airflow.utils.state import State
 from airflow.models import TaskInstance
 
 from worker_op import worker_op
-from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op
+from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, save_run_parameters_op
 from param_default import default_mount_path
 from slack_message import slack_message, task_failure_alert, task_done_alert, task_retry_alert
 from webknossos import export_op, report_export
@@ -244,11 +244,14 @@ report_training = PythonOperator(
     dag=training_dag,
 )
 
+save_params_task = save_run_parameters_op(training_dag, "training_param")
+
 (
     collect_metrics
     >> scale_up
     >> training
     >> report_training
+    >> save_params_task
     >> scale_down
 )
 if not SKIP_EXPORT:
