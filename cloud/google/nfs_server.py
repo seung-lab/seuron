@@ -128,8 +128,11 @@ docker run --rm --name pgbouncer --network airflow-net -p 5432:5432 -e DB_USER=p
 def GenerateNFSServer(context, hostname_manager, hostname_nfs_server):
     nfs_server_param = context.properties["nfsServer"]
 
-    if ('pdSSDSizeGB' in nfs_server_param) == ('numLocalScratchSSD' in nfs_server_param):
-        raise ValueError("You must set one and only one of 'pdSSDSizeGB' and 'numLocalScratchSSD'")
+    has_pd = 'pdSSDSizeGB' in nfs_server_param
+    has_local = 'numLocalScratchSSD' in nfs_server_param
+    has_lssd = 'lssd' in nfs_server_param.get('machineType', '')
+    if not (has_pd ^ has_local) and not (has_lssd and not has_pd and not has_local):
+        raise ValueError("You must set exactly one of 'pdSSDSizeGB', 'numLocalScratchSSD', or use an 'lssd' machine type")
 
     startup_script = GenerateNFSServerStartupScript(context, hostname_manager)
 
