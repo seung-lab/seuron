@@ -502,7 +502,7 @@ def put_file_job(content, param, prefix):
 
 
 @mount_secrets
-@kombu_tasks(cluster_name="igneous", init_workers=8)
+@kombu_tasks(cluster_name="igneous", init_workers=16)
 def downsample_for_meshing(run_name, seg_cloudpath, mask):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -518,7 +518,7 @@ def downsample_for_meshing(run_name, seg_cloudpath, mask):
 
 
 @mount_secrets
-@kombu_tasks(cluster_name="igneous", init_workers=8)
+@kombu_tasks(cluster_name="igneous", init_workers=16)
 def downsample(run_name, cloudpaths):
     import igneous.task_creation as tc
     from slack_message import slack_message
@@ -537,7 +537,7 @@ def downsample(run_name, cloudpaths):
 
 
 @mount_secrets
-@kombu_tasks(cluster_name="igneous", init_workers=8)
+@kombu_tasks(cluster_name="igneous", init_workers=16)
 def mesh(run_name, seg_cloudpath, mesh_quality, sharded, frag_path=None):
     import igneous.task_creation as tc
     from cloudvolume.lib import Vec
@@ -603,7 +603,7 @@ def ingest_spatial_index(run_name, seg_cloudpath, sql_url, db_ext):
 
 
 @mount_secrets
-@kombu_tasks(cluster_name="igneous", init_workers=8)
+@kombu_tasks(cluster_name="igneous", init_workers=16)
 def merge_mesh_fragments(run_name, seg_cloudpath, concurrency, frag_path=None, sql_url=None):
     import os
     import igneous.task_creation as tc
