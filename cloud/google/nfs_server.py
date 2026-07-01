@@ -54,7 +54,7 @@ mkfs.ext4 -F /dev/md0
 mount /dev/md0 /share
 chmod 777 /share
 mkdir -p /share/mariadb
-mkdir -p /share/postgresql/data
+mkdir -p /share/postgresql
 fi
 '''
     startup_script = f'''
@@ -80,7 +80,7 @@ mkfs.ext4 -F /dev/sdb
 mount /dev/sdb /share
 chmod 777 /share
 mkdir -p /share/mariadb
-mkdir -p /share/postgresql/data
+mkdir -p /share/postgresql
 fi
 apt-get install nfs-kernel-server nginx -y
 echo "/share 172.31.0.0/16(insecure,rw,async,no_subtree_check)" >> /etc/exports
@@ -116,7 +116,7 @@ systemctl restart nfs-kernel-server.service
 export POSTGRES_MEM_GB=$(awk '/MemAvailable/ {{print int($2/1024/1024/4)}}' /proc/meminfo)
 export POSTGRES_MAX_CONN=$(awk '/MemAvailable/ {{print int($2/1024/32)}}' /proc/meminfo)
 docker network create airflow-net || true
-docker run --rm --name postgres --network airflow-net --shm-size=2g --tmpfs /tmp:rw -v /share/postgresql/data:/var/lib/postgresql/data --env POSTGRES_PASSWORD=airflow postgres:15-alpine -c max_connections=${{POSTGRES_MAX_CONN}} -c shared_buffers=${{POSTGRES_MEM_GB}}GB > /var/log/airflow/logs/postgres.log 2>&1 &
+docker run --rm --name postgres --security-opt apparmor=unconfined --security-opt seccomp=unconfined --ulimit memlock=-1:-1 --network airflow-net --shm-size=${{POSTGRES_MEM_GB}}g --tmpfs /tmp:rw -v /share/postgresql:/var/lib/postgresql --env POSTGRES_PASSWORD=airflow postgres:18-alpine -c io_method=io_uring -c max_connections=${{POSTGRES_MAX_CONN}} -c shared_buffers=${{POSTGRES_MEM_GB}}GB > /var/log/airflow/logs/postgres.log 2>&1 &
 docker run --rm --name pgbouncer --network airflow-net -p 5432:5432 -e DB_USER=postgres -e DB_PASSWORD=airflow -e DB_NAME='*' -e DB_HOST=postgres -e DB_PORT=5432 -e AUTH_TYPE=scram-sha-256 -e MAX_CLIENT_CONN=100000 -e DEFAULT_POOL_SIZE=${{POSTGRES_MAX_CONN}} -e POOL_MODE=transaction ranlu/pgbouncer:1.24.1 > /var/log/airflow/logs/pgbouncer.log 2>&1 &
 {oom_canary_cmd} &
 {worker_cmd}
