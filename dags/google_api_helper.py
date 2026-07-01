@@ -116,7 +116,7 @@ def resize_cluster(instance_groups, size):
         ig_size = min(target_size, ig['max_size'])
         if ig_size < info_group["size"] and not downsize:
             continue
-        if info_group_manager["targetSize"] > info_group["size"]:
+        if info_group_manager["targetSize"] > (info_group["size"]*2):
             ig_size = min(ig_size, info_group["size"]+1)
         response = google_api.resize_instance_group(ig, ig_size)
         print(json.dumps(response, indent=2))
