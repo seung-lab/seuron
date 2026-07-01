@@ -116,11 +116,11 @@ def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=worker['concurrency'])
     elif worker['type'] == 'atomic':
         cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue=worker['type'], concurrency=1)
-    elif worker['type'] == 'composite':
+    elif worker['type'] == 'composite' or worker['type'] == 'mega':
         atomic_cmd = GenerateCeleryWorkerCommand(docker_image, docker_env+['-p 8793:8793'], queue='atomic', concurrency=1)
         concurrencies = worker['workerConcurrencies']
         if checkConsecutiveWorkers(concurrencies):
-            cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue=worker['type']+'_'+str(c['layer']), concurrency=c['concurrency']) for c in concurrencies])
+            cmd = " & \n".join([atomic_cmd] + [GenerateCeleryWorkerCommand(docker_image, docker_env, queue='composite_'+str(c['layer']), concurrency=c['concurrency']) for c in concurrencies])
     elif worker['type'] == 'igneous':
         cmd = GenerateDockerCommand(docker_image, docker_env) + ' ' + f"python custom/task_execution.py --queue igneous --concurrency {worker['concurrency']} >& /dev/null"
     elif worker['type'] == 'custom-cpu':

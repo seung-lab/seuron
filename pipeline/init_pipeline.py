@@ -40,7 +40,7 @@ def parse_metadata():
                         'zone': c['zone'],
                         'max_size': int(c['sizeLimit']),
                 }
-                if c['type'] == 'composite':
+                if c['type'] == 'composite' or c['type'] == 'mega':
                     worker_setting['workerConcurrencies'] = c['workerConcurrencies']
                 else:
                     worker_setting['concurrency'] = c.get('concurrency', 1)
@@ -68,6 +68,7 @@ target_sizes = {
     'gpu': 0,
     'atomic': 0,
     'composite': 0,
+    'mega': 0,
     'igneous': 0,
     'custom-cpu': 0,
     'custom-gpu': 0,

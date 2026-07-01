@@ -25,12 +25,17 @@ def check_manager_node(ntasks):
     return True
 
 
-def get_composite_worker_capacities():
+def get_composite_worker_capacities(key=None):
     import json
     from airflow.hooks.base_hook import BaseHook
+
+    if not key:
+        return get_composite_worker_capacities("composite").union(get_composite_worker_capacities("mega"))
+
     cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+
     try:
-        composite_worker_info = cluster_info["composite"]
+        composite_worker_info = cluster_info[key]
     except:
         return set()
 

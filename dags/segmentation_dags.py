@@ -12,7 +12,7 @@ from slack_message import slack_message, task_start_alert, task_done_alert, task
 from segmentation_op import composite_chunks_batch_op, overlap_chunks_op, composite_chunks_wrap_op, remap_chunks_batch_op
 from helper_ops import slack_message_op, scale_up_cluster_op, scale_down_cluster_op, wait_op, mark_done_op, reset_flags_op, reset_cluster_op, placeholder_op, collect_metrics_op, toggle_nfs_server_op, save_run_parameters_op
 
-from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID
+from param_default import default_args, CLUSTER_1_CONN_ID, CLUSTER_2_CONN_ID, CLUSTER_3_CONN_ID
 from igneous_and_cloudvolume import create_info, read_single_file
 from igneous_ops import create_igneous_ops
 import numpy as np
@@ -485,6 +485,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     top_mip = v.top_mip_level()
     batch_mip = param.get("BATCH_MIP", 3)
     high_mip = param.get("HIGH_MIP", 5)
+    mega_mip = param.get("MEGA_MIP", 7)
 
     composite_workers = get_composite_worker_capacities()
     missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
@@ -492,7 +493,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     if param.get("OVERLAP_MODE", False):
         overlap_mip = param.get("OVERLAP_MIP", batch_mip)
     local_batch_mip = batch_mip
-    aux_queue = "atomic" if top_mip < high_mip or missing_workers else "composite_"+str(top_mip)
+    aux_queue = "atomic" if top_mip < high_mip or missing_workers else "composite_"+str(min(top_mip,mega_mip-1))
 
 
     #data_bbox = [126280+256, 64280+256, 20826-200, 148720-256, 148720-256, 20993]
@@ -782,9 +783,19 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
             elif stage == "agg":
                 aux_agg_tasks >> scaling_ops[stage]["down_long"]
             else:
-                scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][top_mip])
+                scaling_ops[stage]["down_long"].set_upstream(slack_ops[stage][min(top_mip, mega_mip-1)])
 
     if min(high_mip, top_mip) - batch_mip > 2 or top_mip >= high_mip:
         for stage in ["ws", "agg"]:
             scaling_ops[stage]["up"] = scale_up_cluster_op(dag[stage], stage, CLUSTER_1_CONN_ID, 20, cluster1_size, "cluster")
             scaling_ops[stage]["up"].set_upstream(slack_ops[stage][top_mip])
+
+    if top_mip >= mega_mip:
+        for stage in ["ws", "agg", "cs"]:
+            mega_size = 1
+            scaling_ops[stage]["up_mega"] = scale_up_cluster_op(dag[stage], stage+"_mega", CLUSTER_3_CONN_ID, 1, mega_size, "cluster")
+            for k in generate_chunks[stage].get(mega_mip-1, {}):
+                scaling_ops[stage]["up_mega"].set_upstream(generate_chunks[stage][mega_mip-1][k])
+
+            scaling_ops[stage]["down_mega"] = scale_down_cluster_op(dag[stage], stage+"_mega", CLUSTER_3_CONN_ID, 0, "cluster")
+            scaling_ops[stage]["down_mega"].set_upstream(slack_ops[stage][top_mip])

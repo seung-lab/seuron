@@ -61,17 +61,32 @@ resources:
               sizeLimit: 100
 # For very large dataset, tasks processing higher layer of the octree may
 # require longer time and more memory than atomic workers can provide, in
-# this case, we need to set up a dedicated composite cluster for them.
+# this case, we need to set up dedicated composite and/or mega cluster for
+# them.
            # - type: composite
            #   zone: us-east1-c
            #   subnetwork: us-east1
-           #   machineType: e2-standard-32
+           #   machineType: c3-standard-60-lssd
            #   preemptible: True
            #   reserveHugePages: True
            #   workerConcurrencies:
            #     - layer: 5
-           #       concurrency: 2
+           #       concurrency: 4
            #     - layer: 6
+           #       concurrency: 2
+           #     - layer: 7
+           #       concurrency: 1
+           #   sizeLimit: 1
+           # - type: mega
+           #   zone: us-east1-c
+           #   subnetwork: us-east1
+           #   machineType: c3-standard-180-lssd
+           #   preemptible: True
+           #   reserveHugePages: True
+           #   workerConcurrencies:
+           #     - layer: 7
+           #       concurrency: 2
+           #     - layer: 8
            #       concurrency: 1
            #   sizeLimit: 1
             - type: igneous

@@ -54,9 +54,9 @@ def check_queue(queue):
 def estimate_optimal_number_of_workers(cluster, cluster_info):
     from dag_utils import get_composite_worker_capacities, estimate_worker_instances
 
-    if cluster == "composite":
-        layers = get_composite_worker_capacities()
-        tasks = [check_queue(f"{cluster}_{layer}") for layer in layers]
+    if cluster == "composite" or cluster == "mega":
+        layers = get_composite_worker_capacities(cluster)
+        tasks = [check_queue(f"composite_{layer}") for layer in layers]
         num_workers = sum(tasks)
     else:
         if cluster == "gpu":

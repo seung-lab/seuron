@@ -96,6 +96,7 @@ SLACK_CONN_ID = 'Slack'
 AWS_CONN_ID = 'AWS'
 CLUSTER_1_CONN_ID = "atomic"
 CLUSTER_2_CONN_ID = "composite"
+CLUSTER_3_CONN_ID = "mega"
 
 
 default_mount_path = "/root/.cloudvolume/secrets/"
