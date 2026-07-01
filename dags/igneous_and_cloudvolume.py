@@ -465,7 +465,7 @@ def get_atomic_files_job(v, param, prefix):
             tag = str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])
             yield f'{prefix}_{tag}.data'
 
-    cf = CloudFiles(param["SCRATCH_PATH"])
+    cf = CloudFiles(param["SCRATCH_PATH"], num_threads=32)
 
     data = cf.get(filename_sequence())
 
@@ -479,7 +479,7 @@ def get_atomic_files_job(v, param, prefix):
 def get_files_job(v, param, prefix):
     from cloudfiles import CloudFiles
     from io import BytesIO
-    cf = CloudFiles(param["SCRATCH_PATH"])
+    cf = CloudFiles(param["SCRATCH_PATH"], num_threads=32)
     data = cf.get((prefix+"_"+str(c.mip_level()) + "_" + "_".join([str(i) for i in c.coordinate()])+".data" for c in v))
     with BytesIO() as buffer:
         for x in data:
