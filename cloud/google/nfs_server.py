@@ -19,6 +19,7 @@ events {
 }
 
 http {
+    aio threads;
     sendfile on;
     tcp_nopush on;
     tcp_nodelay on;
