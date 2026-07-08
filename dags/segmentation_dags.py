@@ -793,9 +793,18 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     if top_mip >= mega_mip:
         for stage in ["ws", "agg", "cs"]:
             mega_size = 1
-            scaling_ops[stage]["up_mega"] = scale_up_cluster_op(dag[stage], stage+"_mega", CLUSTER_3_CONN_ID, 1, mega_size, "cluster")
-            for k in generate_chunks[stage].get(mega_mip-1, {}):
-                scaling_ops[stage]["up_mega"].set_upstream(generate_chunks[stage][mega_mip-1][k])
+            scaling_ops[stage]["up_mega"] = scale_up_cluster_op(dag[stage], stage+"_mega", CLUSTER_3_CONN_ID, 1, mega_size, "cluster", trigger_rule="all_success")
 
             scaling_ops[stage]["down_mega"] = scale_down_cluster_op(dag[stage], stage+"_mega", CLUSTER_3_CONN_ID, 0, "cluster")
             scaling_ops[stage]["down_mega"].set_upstream(slack_ops[stage][top_mip])
+
+            if stage == "agg" or stage == "cs":
+                scaling_ops[stage]["pause_long"] = scale_down_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 0, "cluster", tag="pause_long")
+                scaling_ops[stage]["unpause_long"] = scale_up_cluster_op(dag[stage], stage+"_long", CLUSTER_2_CONN_ID, 1, 1, "cluster", tag="unpause_long")
+                for k in generate_chunks[stage].get(mega_mip-1, {}):
+                    scaling_ops[stage]["pause_long"].set_upstream(generate_chunks[stage][mega_mip-1][k])
+                scaling_ops[stage]["up_mega"].set_upstream(scaling_ops[stage]["pause_long"])
+                scaling_ops[stage]["unpause_long"].set_upstream(slack_ops[stage][top_mip])
+            else:
+                for k in generate_chunks[stage].get(mega_mip-1, {}):
+                    scaling_ops[stage]["up_mega"].set_upstream(generate_chunks[stage][mega_mip-1][k])
