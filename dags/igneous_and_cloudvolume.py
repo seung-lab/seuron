@@ -233,6 +233,8 @@ def kombu_tasks(cluster_name, init_workers):
 
                 if not task_generator:
                     task_generator = [task_list]
+                    # release the original reference; task_generator holds it now
+                    del task_list
 
                 batch_size = 500_000
 
@@ -270,6 +272,12 @@ def kombu_tasks(cluster_name, init_workers):
                     check_queue(queue_name, agg=agg, refill_threshold=0)
                     if agg:
                         agg.finalize()
+
+                    # release this chunk's task list before the generator yields the next one
+                    del tlist
+
+                # release the generator/wrapper after all chunks are processed
+                del task_generator
 
                 slack_message("All tasks submitted by {} finished".format(create_tasks.__name__))
                 elapsed_time = time.monotonic() - start_time
