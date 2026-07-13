@@ -119,7 +119,7 @@ export POSTGRES_MEM_GB=$(awk '/MemTotal/ {{print int($2/1024/1024/4 - 5)}}' /pro
 export POSTGRES_MAX_CONN=$(awk '/MemAvailable/ {{print int($2/1024/32)}}' /proc/meminfo)
 docker network create airflow-net || true
 docker run --rm --name postgres --security-opt seccomp=unconfined --ulimit memlock=-1:-1 --network airflow-net --shm-size=${{POSTGRES_MEM_GB}}g --tmpfs /tmp:rw -v /dev/hugepages:/dev/hugepages -v /share/postgresql:/var/lib/postgresql --env POSTGRES_PASSWORD=airflow postgres:18-alpine -c io_method=io_uring -c huge_pages=on -c max_connections=${{POSTGRES_MAX_CONN}} -c shared_buffers=${{POSTGRES_MEM_GB}}GB -c huge_page_size=1GB > /var/log/airflow/logs/postgres.log 2>&1 &
-docker run --rm --name pgbouncer --network airflow-net -p 5432:5432 -e DB_USER=postgres -e DB_PASSWORD=airflow -e DB_NAME='*' -e DB_HOST=postgres -e DB_PORT=5432 -e AUTH_TYPE=scram-sha-256 -e MAX_CLIENT_CONN=100000 -e DEFAULT_POOL_SIZE=${{POSTGRES_MAX_CONN}} -e POOL_MODE=transaction ranlu/pgbouncer:1.24.1 > /var/log/airflow/logs/pgbouncer.log 2>&1 &
+docker run --rm --name pgbouncer --network airflow-net -p 5432:5432 -e DB_USER=postgres -e DB_PASSWORD=airflow -e DB_NAME='*' -e DB_HOST=postgres -e DB_PORT=5432 -e AUTH_TYPE=scram-sha-256 -e MAX_CLIENT_CONN=100000 -e DEFAULT_POOL_SIZE=${{POSTGRES_MAX_CONN}} ranlu/pgbouncer:1.24.1 > /var/log/airflow/logs/pgbouncer.log 2>&1 &
 {oom_canary_cmd} &
 {worker_cmd}
 
