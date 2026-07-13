@@ -183,11 +183,6 @@ def GenerateWorkers(context, hostname_manager, hostname_nfs_server, worker):
         if not worker.get('preemptible', False):
             instance_template['scheduling']['onHostMaintenance'] = 'TERMINATE'
 
-    if worker['type'] == "atomic":
-        instance_template['advancedMachineFeatures'] = {
-            'threadsPerCore': 1
-        }
-
     template_name = f"{context.env['deployment']}-template-{worker['type']}-{provisioning_model.lower()}-{worker['zone']}"
     template_resource = {
         'name': template_name,
