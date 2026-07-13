@@ -485,7 +485,7 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     top_mip = v.top_mip_level()
     batch_mip = param.get("BATCH_MIP", 3)
     high_mip = param.get("HIGH_MIP", 5)
-    mega_mip = param.get("MEGA_MIP", 7)
+    mega_mip = param.get("MEGA_MIP", 20)
 
     composite_workers = get_composite_worker_capacities()
     missing_workers = [x for x in range(param.get("HIGH_MIP", 5), top_mip+1) if x not in composite_workers]
