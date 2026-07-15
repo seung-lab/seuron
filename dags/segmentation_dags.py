@@ -346,7 +346,7 @@ def contact_surfaces(param):
     import base64
     prefix = "cs/cs/complete_cs"
     content = get_files(param, prefix)
-    cs_type = [('s1', np.uint64), ('s2', np.uint64), ('sumx', np.uint64), ('sumy', np.uint64),('sumz', np.uint64), ('size', np.uint64), ('sizex', np.uint64), ('sizey', np.uint64),('sizez', np.uint64),
+    cs_type = [('s1', np.uint64), ('s2', np.uint64), ('sumx', np.uint64), ('sumy', np.uint64),('sumz', np.uint64), ('size', np.uint64), ('sizex', np.uint64), ('sizey', np.uint64),('sizez', np.uint64), ('in_range_sizex', np.uint64), ('in_range_sizey', np.uint64),('in_range_sizez', np.uint64),
     ('minx', np.int64),('miny', np.int64),('minz', np.int64),('maxx', np.int64),('maxy', np.int64),('maxz', np.int64)]
 
     data = np.frombuffer(content, dtype=cs_type)
