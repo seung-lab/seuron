@@ -93,7 +93,7 @@ class AdaptiveRateLimiter:
 def record_hostname_failure(queue: str, hostname: str):
     """Tracks failure counts for hostnames in Redis."""
     if not (hostname and queue):
-        print(f"Could not log failure: missing hostname or queue")
+        print("Could not log failure: missing hostname or queue")
         return
 
     redis_key = f"{queue}_hostname_failures"

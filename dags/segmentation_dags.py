@@ -452,7 +452,7 @@ def process_infos(param):
         return
     vol_data = np.copy(data['count']) * voxel_size(param)
     title = "Distribution of the segment sizes"
-    xlabel = f"Size of segments (nm^3)"
+    xlabel = "Size of segments (nm^3)"
     ylabel = "Number of segments"
     order = np.argsort(vol_data)[::-1]
     ntops = min(20,len(data))
