@@ -225,14 +225,13 @@ def classify_segmentations(param):
     if "SEM_PATH" in param:
         try:
             from cloudvolume import CloudVolume
-            from cloudvolume.exceptions import MalformedInfoFileError
             vol = CloudVolume(param["SEM_PATH"])
             if vol.info.get("data_type") == "uint8":
                 use_sem_path = True
-        except MalformedInfoFileError:
-            pass
         except Exception:
-            pass
+            slack_message(
+                f":exclamation: Failed to read semantic labels from `{param['SEM_PATH']}`"
+            )
 
     if use_sem_path:
         prefix = "agg/info/semantic_labels"
