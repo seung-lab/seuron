@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     if not token:
         try:
-            subprocess.Popen(["jupyter", "lab", "--ip=0.0.0.0", "--no-browser", "--ServerApp.base_url=/jupyter"])
+            subprocess.Popen(["jupyter", "lab", "--ip=0.0.0.0", "--no-browser", "--ServerApp.base_url=/jupyter", "--ServerApp.allow_origin='*'", "--ServerApp.disable_check_xsrf=True"])
         except FileNotFoundError:
             pass
 
