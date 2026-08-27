@@ -52,6 +52,6 @@ def on_show_jupyter(msg):
     host_ip = get_variable("webui_ip")
     token = extract_jupyterlab_token()
     if token:
-        replyto(msg, f"https://{host_ip}/jupyter/lab?token={token}&file-browser-path=/jupyterlab")
+        replyto(msg, f"https://{host_ip}/jupyter?token={token}&file-browser-path=/jupyterlab")
     else:
         replyto(msg, "Cannot find a running jupyter lab server")
