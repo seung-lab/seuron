@@ -115,7 +115,7 @@ def task_retry_alert(context):
 def interpret_error_message(error_message):
     import re
     import os
-    from langchain_google_vertexai import ChatVertexAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_core.prompts import ChatPromptTemplate
     from airflow.hooks.base_hook import BaseHook
     from airflow.models import Variable
@@ -168,7 +168,7 @@ Suggested Fixes:
         ("human", "Airflow error log: {input}"),
     ])
 
-    llm_model = ChatVertexAI(model="gemini-2.5-pro", temperature=0.5)
+    llm_model = ChatGoogleGenerativeAI(model="gemini-3.7-flash", temperature=0.5, vertexai=True)
     error_parse_chain = error_parse_prompt | llm_model
     try:
         msg = error_parse_chain.invoke({"input": error_message})
