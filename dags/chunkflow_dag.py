@@ -390,6 +390,9 @@ def supply_default_parameters():
         except Exception:
             slack_message(":u7981:*ERROR: Failed to check the ONNX model*")
             raise ValueError('Check ONNX model failed')
+        if param.get("REBUILD_TRT_ENGINE", False) and param.get("SKIP_TRT_BUILD", False):
+            param["SKIP_TRT_BUILD"] = False
+            slack_message(":exclamation:*`REBUILD_TRT_ENGINE` is set, ignoring `SKIP_TRT_BUILD`*")
         if param.get("SKIP_TRT_BUILD", False):
             try:
                 trt_engine_path = construct_trt_engine_path(param)
