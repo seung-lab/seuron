@@ -101,6 +101,8 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__CELERY__CELERY_RESULT_BACKEND': f'db+{sqlalchemy_conn}',
         'AIRFLOW__API__SECRET_KEY': context.properties['airflow'].get('secretKey', secret_key),
         'AIRFLOW__API_AUTH__JWT_SECRET': context.properties['airflow'].get('jwtSecretKey', jwt_secret_key),
+        'AIRFLOW__CORE__EXECUTION_API_SERVER_URL': f'http://{hostname_manager}:8080/airflow/execution/',
+        'AIRFLOW_API_BASE_URL': f'http://{hostname_manager}:8080/airflow/',
         'AIRFLOW__LOGGING__REMOTE_LOGGING': 'True',
         'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID': 'GCSConn',
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',

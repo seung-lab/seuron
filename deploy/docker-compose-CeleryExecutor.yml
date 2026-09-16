@@ -13,6 +13,8 @@ x-airflow-common:
         AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:
         AIRFLOW__CELERY__BROKER_URL:
         AIRFLOW__CELERY__CELERY_RESULT_BACKEND:
+        AIRFLOW__API__BASE_URL:
+        AIRFLOW__CORE__EXECUTION_API_SERVER_URL:
         AIRFLOW__API__SECRET_KEY:
         AIRFLOW__API_AUTH__JWT_SECRET:
         AIRFLOW__LOGGING__BASE_LOG_FOLDER:
@@ -177,6 +179,8 @@ services:
     webserver:
         <<: *airflow-common
         command: airflow api-server --proxy-headers
+        ports:
+            - "8080:8080"
         healthcheck:
             test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/health"]
             interval: 60s
@@ -201,7 +205,6 @@ services:
         environment:
             <<: *airflow-common-env
             AIRFLOW__CELERY__WORKER_CONCURRENCY: 1
-            AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://webserver:8080/airflow/execution/
         command: airflow celery worker --without-gossip --without-mingle -q cluster
 
     worker-manager:
