@@ -7,7 +7,6 @@ from docker import APIClient as Client
 from docker.types import Mount
 import docker
 from airflow.exceptions import AirflowException
-from airflow.plugins_manager import AirflowPlugin
 from airflow.models import Variable
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.docker.hooks.docker import DockerHook
@@ -381,14 +380,7 @@ class DockerWithVariablesOperator(DockerRemovableContainer):
                 )
             return super().execute(context)
 
-
-class CustomPlugin(AirflowPlugin):
-    name = "docker_plugin"
-    operators = [DockerRemovableContainer, DockerWithVariablesOperator,
-                 DockerConfigurableOperator]
-    hooks = []
-    executors = []
-    macros = []
-    admin_views = []
-    flask_blueprints = []
-    menu_links = []
+# Note: the AirflowPlugin ``operators``/``hooks``/``executors``
+# registration lists were removed from the plugin system, so this file no
+# longer declares a plugin class. Import the operators directly, e.g.:
+#     from custom.docker_custom import DockerWithVariablesOperator
