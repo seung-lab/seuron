@@ -16,12 +16,12 @@ def slack_message(msg, notification=False, broadcast=False, attachment=None):
 
 def slack_userinfo():
     from param_default import SLACK_CONN_ID
-    from airflow.sdk.bases.hook import BaseHook
+    from dag_utils import get_connection
     import slack_sdk as slack
     import json
     try:
-        slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
-        slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
+        slack_extra = json.loads(get_connection(SLACK_CONN_ID).extra)
+        slack_token = get_connection(SLACK_CONN_ID).password
         slack_username = slack_extra['user']
 
         sc = slack.WebClient(slack_token, timeout=600)

@@ -1,6 +1,5 @@
 from airflow import DAG
 from airflow.models import Variable
-from airflow.sdk.bases.hook import BaseHook
 from worker_op import worker_op
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.task.weight_rule import WeightRule
@@ -12,7 +11,7 @@ from slack_message import slack_message, task_retry_alert, task_failure_alert
 
 from helper_ops import placeholder_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op, save_run_parameters_op
 
-from dag_utils import estimate_worker_instances, remove_workers, resolve_url
+from dag_utils import estimate_worker_instances, remove_workers, resolve_url, get_connection
 
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
@@ -22,7 +21,7 @@ import urllib
 from collections import OrderedDict
 
 param = Variable.get("inference_param", deserialize_json=True)
-cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+cluster_info = json.loads(get_connection("InstanceGroups").extra)
 
 try:
     total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])

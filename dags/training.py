@@ -10,20 +10,20 @@ from airflow import DAG
 from airflow.task.weight_rule import WeightRule
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator as Operator
-from airflow.sdk.bases.hook import BaseHook
 from airflow.utils.state import State
 from airflow.models import TaskInstance
 
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, save_run_parameters_op
 from param_default import default_mount_path
+from dag_utils import get_connection
 from slack_message import slack_message, task_failure_alert, task_done_alert, task_retry_alert
 from webknossos import export_op, report_export
 
 
 PARAM = Variable.get("training_param", {}, deserialize_json=True)
 DEEPEM_IMAGE = PARAM.get("deepem_image", "zettaai/deepem")
-cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+cluster_info = json.loads(get_connection("InstanceGroups").extra)
 training_cluster = "deepem-gpu"
 
 if training_cluster in cluster_info:

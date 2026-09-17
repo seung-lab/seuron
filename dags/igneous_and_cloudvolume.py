@@ -183,10 +183,9 @@ def kombu_tasks(cluster_name, init_workers):
             import json
             from airflow.configuration import conf
             from airflow.models import Variable
-            from airflow.sdk.bases.hook import BaseHook
             from kombu import Connection
             from kombu_helper import drain_messages
-            from dag_utils import estimate_worker_instances
+            from dag_utils import estimate_worker_instances, get_connection
             from slack_message import slack_message
             import traceback
 
@@ -195,7 +194,7 @@ def kombu_tasks(cluster_name, init_workers):
             else:
                 cluster_api = None
 
-            cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+            cluster_info = json.loads(get_connection("InstanceGroups").extra)
 
             broker = conf.get('celery', 'broker_url')
             queue_name = cluster_name

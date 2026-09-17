@@ -27,12 +27,15 @@ def check_manager_node(ntasks):
 
 def get_composite_worker_capacities(key=None):
     import json
-    from airflow.sdk.bases.hook import BaseHook
+    from airflow.exceptions import AirflowNotFoundException
 
     if not key:
         return get_composite_worker_capacities("composite").union(get_composite_worker_capacities("mega"))
 
-    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    ig_conn = get_connection("InstanceGroups")
+    if not ig_conn:
+        raise AirflowNotFoundException("Connection 'InstanceGroups' not found")
+    cluster_info = json.loads(ig_conn.extra)
 
     try:
         composite_worker_info = cluster_info[key]
@@ -71,12 +74,20 @@ def estimate_worker_instances(tasks, cluster_info):
 
 
 def get_connection(conn, default_var=None):
-    from airflow.sdk.bases.hook import BaseHook
     from airflow.exceptions import AirflowNotFoundException
     try:
+        # resolves via the execution API inside task runners.
+        from airflow.sdk.bases.hook import BaseHook
         ig_conn = BaseHook.get_connection(conn)
     except AirflowNotFoundException:
-        return default_var
+        # Parse-time (DAG processor) / legacy fallback: DB-backed lookup,
+        # as in Airflow 2. Contains all errors: if the conn is missing we
+        # return default_var exactly as Airflow 2 did.
+        try:
+            from airflow.models.connection import Connection
+            return Connection.get_connection_from_secrets(conn)
+        except Exception:
+            return default_var
 
     return ig_conn
 

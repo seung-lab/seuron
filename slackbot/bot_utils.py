@@ -13,7 +13,6 @@ from secrets import token_hex
 from kombu_helper import put_message, visible_messages
 import slack_sdk as slack
 from typing import Optional
-from airflow.sdk.bases.hook import BaseHook
 from bot_info import slack_token, botid, workerid, broker_url, slack_notification_channel
 from airflow_api import update_slack_connection, set_variable
 from kombu_helper import drain_messages, peek_message
@@ -113,8 +112,9 @@ def update_slack_thread(msg):
 
 
 def fetch_slack_thread():
+    from dag_utils import get_connection
     SLACK_CONN_ID = "Slack"
-    slack_extra = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
+    slack_extra = json.loads(get_connection(SLACK_CONN_ID).extra)
     return slack_extra
 
 

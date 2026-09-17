@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 
 from requests import Response
 from airflow.models import Variable
-from airflow.sdk.bases.hook import BaseHook
 from slack_message import slack_message
 import json
 from common import google_api
@@ -55,12 +54,13 @@ def get_cluster_size(project_id, instance_groups):
     return total_size
 
 def reset_cluster(key, initial_size):
+    from dag_utils import get_connection
     run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
         project_id = google_api.get_project_id()
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot reset cluster {}".format(key))
@@ -315,9 +315,10 @@ def ramp_down_cluster(key, total_size):
 
 
 def increase_instance_group_size(key, size):
+    from dag_utils import get_connection
     try:
         project_id = google_api.get_project_id()
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
@@ -337,9 +338,10 @@ def increase_instance_group_size(key, size):
         slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
 def reduce_instance_group_size(key, size):
+    from dag_utils import get_connection
     try:
         project_id = google_api.get_project_id()
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
@@ -381,9 +383,10 @@ def cluster_status(name, cluster):
 def collect_resource_metrics(start_time, end_time):
     import pendulum
     from google.cloud import monitoring_v3
+    from dag_utils import get_connection
 
     project_id = google_api.get_project_id()
-    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    cluster_info = json.loads(get_connection("InstanceGroups").extra)
 
     resources = {}
 

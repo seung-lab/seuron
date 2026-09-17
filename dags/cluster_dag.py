@@ -13,7 +13,6 @@ from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.task.weight_rule import WeightRule
 from airflow.models import Variable
-from airflow.sdk.bases.hook import BaseHook
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
 
@@ -71,6 +70,7 @@ def estimate_optimal_number_of_workers(cluster, cluster_info):
 
 
 def cluster_control():
+    from dag_utils import get_connection
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api
     else:
@@ -84,7 +84,7 @@ def cluster_control():
         return
 
     try:
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"), notification=True)

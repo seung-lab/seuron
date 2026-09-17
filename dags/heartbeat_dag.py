@@ -81,7 +81,7 @@ def remove_failed_instances():
     from time import sleep
     from datetime import datetime, timezone
     from airflow.models import Variable
-    from airflow.sdk.bases.hook import BaseHook
+    from dag_utils import get_connection
     from common.redis_utils import get_hostname_failures
 
     if Variable.get("vendor") == "Google":
@@ -93,7 +93,7 @@ def remove_failed_instances():
         return
 
     try:
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection InstanceGroups", notification=True)
