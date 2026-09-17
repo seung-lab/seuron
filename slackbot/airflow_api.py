@@ -2,13 +2,17 @@ import time
 import json
 import functools
 import concurrent.futures
+from datetime import datetime
 
 from airflow import settings
 from airflow.models import DagBag, DagModel, Variable, Connection
 from airflow.models.dagrun import DagRun
+from airflow.models.serialized_dag import SerializedDagModel
 from airflow.api.common.mark_tasks import set_dag_run_state_to_success
 from airflow.api.common.trigger_dag import trigger_dag
 from airflow.utils.state import State, DagRunState
+from airflow.utils.session import create_session
+from airflow.utils.types import DagRunTriggeredByType
 
 from sqlalchemy.orm import exc
 
@@ -23,14 +27,18 @@ def run_in_executor(f, /, *args, **kwargs):
 
 
 def __mark_dags_success():
-    dagbag = DagBag()
     runs = DagRun.find(state=DagRunState.RUNNING)
 
     for r in runs:
         d = r.dag_id
         if d in seuron_dags:
-            dag = dagbag.dags[d]
-            set_dag_run_state_to_success(dag=dag, execution_date=dag.get_latest_execution_date(), commit=True)
+            # mark_tasks operates on the serialized DAG, so look it
+            # up by dag_id instead of pulling the DAG from a DagBag.
+            dag = SerializedDagModel.get_dag(d)
+            if dag is None:
+                print(f"no serialized DAG found for {d}, skipping")
+                continue
+            set_dag_run_state_to_success(dag=dag, run_id=r.run_id, commit=True)
 
 
 def mark_dags_success():
@@ -88,7 +96,7 @@ def check_running():
 
 
 def __run_dag(dag_id):
-    return trigger_dag(dag_id)
+    return trigger_dag(dag_id, triggered_by=DagRunTriggeredByType.CLI)
 
 
 def wait_for_dag_refresh(dag_id):
@@ -142,23 +150,26 @@ def __latest_dagrun_state(dag_id):
         print("=========== dag_id does not exist ============")
         return "null"
 
-    d = dagbag.dags[dag_id]
-    execution_date = d.get_latest_execution_date()
-    if not execution_date:
+    # DAG.get_latest_execution_date()/get_dagrun() are gone, so the
+    # latest run is looked up from the database instead.
+    runs = DagRun.find(dag_id=dag_id)
+    if not runs:
         return "unknown"
-    else:
-        latest_run = d.get_dagrun(execution_date=execution_date)
-        return latest_run.state
+    latest_run = max(runs, key=lambda r: r.logical_date or r.run_after or datetime.min)
+    return latest_run.state
 
 def latest_dagrun_state(dag_id):
     return run_in_executor(__latest_dagrun_state, dag_id)
 
 def set_is_paused(dag_id, is_paused):
-    dag = DagModel.get_dagmodel(dag_id)
+    # DagModel.set_is_paused() is gone; update the column directly.
+    with create_session() as session:
+        dag = DagModel.get_dagmodel(dag_id, session=session)
 
-    if not dag:
-        return False
+        if not dag:
+            return False
 
-    dag.set_is_paused(is_paused=is_paused)
+        dag.is_paused = is_paused
+        session.commit()
 
     return True
