@@ -54,10 +54,31 @@ def task_start_alert(context):
     return slack_alert(":arrow_forward: Task Started", context)
 
 
+def _read_task_log(ti, try_number):
+    import glob
+    import os
+
+    from airflow.configuration import conf
+    from airflow.utils.helpers import log_filename_template_renderer
+
+    try:
+        fname = log_filename_template_renderer()(ti=ti, try_number=try_number)
+        path = os.path.join(conf.get("logging", "base_log_folder"), fname)
+    except Exception:
+        return ""
+    chunks = []
+    for p in sorted(glob.glob(path + "*")):
+        try:
+            with open(p, encoding="utf-8", errors="replace") as f:
+                chunks.append(f.read())
+        except OSError:
+            continue
+    return " ".join(chunks)
+
+
 def task_retry_alert(context):
     from airflow.models import Variable
     from common.redis_utils import AdaptiveRateLimiter, record_hostname_failure
-    from airflow.utils.log.log_reader import TaskLogReader
 
     ti = context.get("task_instance")
     if ti and ti.hostname and ti.queue:
@@ -65,7 +86,7 @@ def task_retry_alert(context):
 
     REDIS_LLM_DB = "SEURON"
     ti = context.get("task_instance")
-    last_try = ti.try_number - 1
+    last_try = ti.try_number
     if last_try > 0:
         webui_ip = Variable.get("webui_ip", default_var="localhost")
         log_url = "https://" + webui_ip + (
@@ -86,14 +107,7 @@ def task_retry_alert(context):
             if rejections_count > 0:
                 summary = f"\nThere have been {rejections_count} retries since the last analysis.\n"
 
-            task_log_reader = TaskLogReader()
-            metadata = {}
-            current_error_message = " ".join([
-                text
-                for text in task_log_reader.read_log_stream(
-                    ti, ti.try_number - 1, metadata
-                )
-            ])
+            current_error_message = _read_task_log(ti, ti.try_number)
 
             if current_error_message:
                 if "No logs found in GCS" in current_error_message and "Found local files" not in current_error_message:
@@ -195,21 +209,14 @@ def send_llm_feedback(msg, summary=None):
 
 def task_failure_alert(context):
     from airflow.models import Variable
-    from airflow.utils.log.log_reader import TaskLogReader
 
     ti = context.get("task_instance")
     webui_ip = Variable.get("webui_ip", default_var="localhost")
     log_url = f"https://{webui_ip}/airflow/dags/{ti.dag_id}/runs/{ti.run_id}/tasks/{ti.task_id}"
     slack_alert(f":exclamation: Task failed, <{log_url}|check the latest error log>", context)
 
-    task_log_reader = TaskLogReader()
-
     if ti.queue == "manager":
-        metadata = {}
-        error_message = " ".join([
-            text
-            for text in task_log_reader.read_log_stream(ti, ti.try_number, metadata)
-        ])
+        error_message = _read_task_log(ti, ti.try_number)
         if "No logs found in GCS" in error_message and "Found local files" not in error_message:
             pass
         elif error_message.endswith("Task is not able to be run"):
