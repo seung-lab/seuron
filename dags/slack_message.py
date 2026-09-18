@@ -56,7 +56,6 @@ def task_start_alert(context):
 
 def task_retry_alert(context):
     from airflow.models import Variable
-    import urllib.parse
     from common.redis_utils import AdaptiveRateLimiter, record_hostname_failure
     from airflow.utils.log.log_reader import TaskLogReader
 
@@ -68,13 +67,9 @@ def task_retry_alert(context):
     ti = context.get("task_instance")
     last_try = ti.try_number - 1
     if last_try > 0:
-        iso = urllib.parse.quote(ti.execution_date.isoformat())
         webui_ip = Variable.get("webui_ip", default_var="localhost")
-        log_url = "https://"+webui_ip + (
-            "/airflow/log"
-            "?dag_id={ti.dag_id}"
-            "&task_id={ti.task_id}"
-            "&execution_date={iso}"
+        log_url = "https://" + webui_ip + (
+            "/airflow/dags/{ti.dag_id}/runs/{ti.run_id}/tasks/{ti.task_id}"
         ).format(**locals())
 
         limiter = AdaptiveRateLimiter(REDIS_LLM_DB, base_backoff_sec=300)
@@ -199,15 +194,12 @@ def send_llm_feedback(msg, summary=None):
 
 
 def task_failure_alert(context):
-    import urllib.parse
-    from sqlalchemy import select
     from airflow.models import Variable
     from airflow.utils.log.log_reader import TaskLogReader
 
     ti = context.get("task_instance")
-    iso = urllib.parse.quote(ti.execution_date.isoformat())
     webui_ip = Variable.get("webui_ip", default_var="localhost")
-    log_url = f"https://{webui_ip}/airflow/log?dag_id={ti.dag_id}&task_id={ti.task_id}&execution_date={iso}"
+    log_url = f"https://{webui_ip}/airflow/dags/{ti.dag_id}/runs/{ti.run_id}/tasks/{ti.task_id}"
     slack_alert(f":exclamation: Task failed, <{log_url}|check the latest error log>", context)
 
     task_log_reader = TaskLogReader()
