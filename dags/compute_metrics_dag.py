@@ -25,7 +25,6 @@ with DAG("compute_metrics",
     def resource_summary(dag_run):
         import humanize
         from time import sleep
-        from airflow.models.dagrun import DagRun
         from airflow.utils.state import DagRunState
         from airflow.models import Variable
         from slack_message import slack_message
@@ -43,17 +42,17 @@ with DAG("compute_metrics",
         conf = dag_run.conf
         target_dag_id = conf["dag_id"]
         target_run_id = conf["run_id"]
-        runs = DagRun.find(dag_id=target_dag_id, run_id=target_run_id)
+        import af_api
 
-        if not runs:
+        target_dag_run = af_api.get_dag_run(target_dag_id, target_run_id)
+
+        if target_dag_run is None:
             slack_message("Cannot find the target dag run")
             return
 
-        target_dag_run = runs[0]
-
         while target_dag_run.state == DagRunState.RUNNING:
             sleep(60)
-            target_dag_run.refresh_from_db()
+            target_dag_run = af_api.get_dag_run(target_dag_id, target_run_id)
 
         start_time = target_dag_run.logical_date
         end_time = target_dag_run.end_date

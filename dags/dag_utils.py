@@ -1,4 +1,3 @@
-from airflow.utils.db import provide_session
 from cloudfiles.paths import to_https_protocol, ascloudpath, ExtractedPath
 
 
@@ -92,19 +91,27 @@ def get_connection(conn, default_var=None):
     return ig_conn
 
 
-@provide_session
-def query_task_instances(queue, session):
-    from airflow import models
+def query_task_instances(queue):
+    """Task instances (v2 API models) assigned to `queue` that are not finished."""
+    import af_api
     from airflow.utils.state import State
-    TI = models.TaskInstance
-    return session.query(TI).filter(TI.queue == queue).filter(TI.state.in_(State.unfinished)).all()
+
+    states = [s for s in State.unfinished if s is not None]
+    return af_api.list_task_instances(state=states, queue=queue)
 
 
 def remove_workers(queue):
+    """Mark the queue's unfinished task instances as successful."""
+    import af_api
     from airflow.utils.state import State
+
     tis = query_task_instances(queue=queue)
+    if not tis:
+        return
     for ti in tis:
-        ti.set_state(State.SUCCESS)
+        af_api.set_task_instance_state(
+            ti.dag_id, ti.dag_run_id, ti.task_id, ti.map_index,
+            State.SUCCESS)
 
 
 def db_name(run_name, data_ext):

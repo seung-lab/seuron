@@ -11,7 +11,6 @@ from airflow.task.weight_rule import WeightRule
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable, BaseOperator as Operator
 from airflow.utils.state import State
-from airflow.models import TaskInstance
 
 from worker_op import worker_op
 from helper_ops import scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, save_run_parameters_op
@@ -57,27 +56,23 @@ def skip_parallel_tasks(context):
 
     slack_message(":exclamation: Stop the rest of training nodes...")
 
-    task_instance = context['task_instance']
+    ti_self = context['ti']
     dag_run = context['dag_run']
 
-    # Get all tasks in the parallel_tasks group
-    parallel_task_ids = [
-        t.task_id for t in dag_run.dag.tasks
-        if t.task_id.startswith('training_') and t.task_id != task_instance.task_id
-    ]
+    import af_api
 
-    # Mark all other running parallel tasks as skipped
-    for task_id in parallel_task_ids:
-        ti = TaskInstance.get_task_instance(
-            task_id=task_id,
-            dag_id=dag_run.dag_id,
-            run_id=dag_run.run_id,
-            map_index=-1,
-        )
-
+    for ti in af_api.list_task_instances(dag_id=dag_run.dag_id, dag_run_id=dag_run.run_id):
+        if ti.map_index != -1:
+            continue
+        if not ti.task_id.startswith("training_"):
+            continue
+        if ti.task_id == ti_self.task_id:
+            continue
         # Only modify tasks that aren't already in a terminal state
-        if ti and ti.state not in State.finished:
-            ti.set_state(State.SKIPPED)
+        if ti.state in State.finished:
+            continue
+        af_api.set_task_instance_state(
+            dag_run.dag_id, dag_run.run_id, ti.task_id, -1, State.SKIPPED)
 
     slack_message(":exclamation: Training cluster stopped")
 

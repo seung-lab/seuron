@@ -10,13 +10,10 @@ For Infrakit, the following environment variables must be set:
     i.e. https://github.com/wongwill86/examples/blob/master/latest/swarm/groups.json
 """ # noqa
 from airflow import DAG
-from airflow.models import DagRun
 from datetime import datetime
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
-from airflow.utils.db import provide_session
 from airflow.utils.state import State
-from airflow import models
 
 from slack_message import slack_message
 
@@ -42,27 +39,18 @@ dag = DAG(
 
 # To use infrakit with > 1 queue, we will have to modify this code to use
 # separate groups file for each queue!
-@provide_session
-def get_num_task_instances(session):
-    query = (session
-        .query(DagRun)
-        .filter(DagRun.dag_id.in_(("watershed", "agglomeration", "chunkflow_worker")))
-        .filter(DagRun.state == State.RUNNING))
-    if query.count() == 0:
+def get_num_task_instances():
+    import af_api
+
+    if not any(r.dag_id in ("watershed", "agglomeration", "chunkflow_worker")
+               for r in af_api.list_dag_runs(state=State.RUNNING)):
         return
 
-    TI = models.TaskInstance
-    running = session.query(TI).filter(
-        TI.state == State.RUNNING
-    ).count()
-
-    queued = session.query(TI).filter(
-        TI.state == State.QUEUED
-    ).count()
-
-    up_for_retry = session.query(TI).filter(
-        TI.state == State.UP_FOR_RETRY
-    ).count()
+    tis = af_api.list_task_instances(
+        state=[State.RUNNING, State.QUEUED, State.UP_FOR_RETRY])
+    running = sum(1 for t in tis if t.state == State.RUNNING)
+    queued = sum(1 for t in tis if t.state == State.QUEUED)
+    up_for_retry = sum(1 for t in tis if t.state == State.UP_FOR_RETRY)
 
     if running > 2: #ws or agg running
         running -= 2
