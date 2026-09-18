@@ -103,6 +103,8 @@ def GenerateAirflowVar(context, hostname_manager):
         'AIRFLOW__API_AUTH__JWT_SECRET': context.properties['airflow'].get('jwtSecretKey', jwt_secret_key),
         'AIRFLOW__CORE__EXECUTION_API_SERVER_URL': f'http://{hostname_manager}:8080/airflow/execution/',
         'AIRFLOW_API_BASE_URL': f'http://{hostname_manager}:8080/airflow/',
+        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflow'].get('user', "airflow"),
+        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflow'].get('password', "airflow"),
         'AIRFLOW__LOGGING__REMOTE_LOGGING': 'True',
         'AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID': 'GCSConn',
         'AIRFLOW__LOGGING__BASE_LOG_FOLDER': '/usr/local/airflow/logs',
