@@ -181,7 +181,16 @@ Suggested Fixes:
     error_parse_chain = error_parse_prompt | llm_model
     try:
         msg = error_parse_chain.invoke({"input": error_message})
-        return msg.content
+        content = msg.content
+        if isinstance(content, list):
+            texts = []
+            for part in content:
+                if isinstance(part, str):
+                    texts.append(part)
+                elif isinstance(part, dict) and part.get("type", "text") == "text":
+                    texts.append(part.get("text", ""))
+            content = "".join(texts)
+        return content
     except Exception:
         return None
 
