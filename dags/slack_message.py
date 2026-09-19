@@ -77,7 +77,7 @@ def _read_task_log(ti, try_number):
 
 
 def task_retry_alert(context):
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from common.redis_utils import AdaptiveRateLimiter, record_hostname_failure
 
     ti = context.get("task_instance")
@@ -88,7 +88,7 @@ def task_retry_alert(context):
     ti = context.get("task_instance")
     last_try = ti.try_number
     if last_try > 0:
-        webui_ip = Variable.get("webui_ip", default_var="localhost")
+        webui_ip = Variable.get("webui_ip", default="localhost")
         log_url = "https://" + webui_ip + (
             "/airflow/dags/{ti.dag_id}/runs/{ti.run_id}/tasks/{ti.task_id}"
         ).format(**locals())
@@ -127,7 +127,7 @@ def interpret_error_message(error_message):
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_core.prompts import ChatPromptTemplate
     from airflow.sdk.bases.hook import BaseHook
-    from airflow.models import Variable
+    from airflow.sdk import Variable
 
     file_path_match = re.findall(r'File "([^"]+)", line \d+, in', error_message)
     if file_path_match:
@@ -141,7 +141,7 @@ def interpret_error_message(error_message):
 </source_code>"""
 
     for p in ["inference_param", "param", "synaptor_param.json", "training_param", "custom_script"]:
-        param = Variable.get(p, default_var="")
+        param = Variable.get(p, default="")
         error_message += f"""
 <parameter name="{p}">
 {param}
@@ -217,10 +217,10 @@ def send_llm_feedback(msg, summary=None):
 
 
 def task_failure_alert(context):
-    from airflow.models import Variable
+    from airflow.sdk import Variable
 
     ti = context.get("task_instance")
-    webui_ip = Variable.get("webui_ip", default_var="localhost")
+    webui_ip = Variable.get("webui_ip", default="localhost")
     log_url = f"https://{webui_ip}/airflow/dags/{ti.dag_id}/runs/{ti.run_id}/tasks/{ti.task_id}"
     slack_alert(f":exclamation: Task failed, <{log_url}|check the latest error log>", context)
 

@@ -1,6 +1,6 @@
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.task.weight_rule import WeightRule
-from airflow.models import Variable
+from airflow.sdk import Variable
 from slack_message import slack_message
 from param_default import default_args
 
@@ -113,7 +113,12 @@ def mark_done_op(dag, process):
 
 def wait(process):
     from time import sleep
-    Variable.setdefault(process, "no")
+    from airflow.sdk.exceptions import AirflowRuntimeError
+
+    try:
+        Variable.get(process)
+    except AirflowRuntimeError:
+        Variable.set(process, "no")
 
     while True:
         cond = Variable.get(process)
@@ -224,7 +229,7 @@ def toggle_nfs_server_op(dag, on=False):
 
 def save_run_parameters(varname, **kwargs):
     from airflow.configuration import conf
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from igneous_and_cloudvolume import upload_json
     import os
     param = Variable.get(varname, deserialize_json=True)

@@ -115,7 +115,7 @@ def mount_secrets(func):
     @wraps(func)
     def inner(*args, **kwargs):
         import os
-        from airflow.models import Variable
+        from airflow.sdk import Variable
         from slack_message import slack_message
         cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
         secrets_lock = os.path.join(cv_secrets_path, ".secrets_mounted")
@@ -126,7 +126,7 @@ def mount_secrets(func):
         if not os.path.exists(cv_secrets_path):
             os.makedirs(cv_secrets_path)
 
-        mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default_var=[])
+        mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default=[])
 
         for k in mount_secrets:
             v = Variable.get(k)
@@ -182,7 +182,7 @@ def kombu_tasks(cluster_name, init_workers):
             import time
             import json
             from airflow.configuration import conf
-            from airflow.models import Variable
+            from airflow.sdk import Variable
             from kombu import Connection
             from kombu_helper import drain_messages
             from dag_utils import estimate_worker_instances, get_connection
@@ -386,7 +386,7 @@ def create_info(stage, param, top_mip):
     import os
     from time import strftime
     from cloudvolume import CloudVolume
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message, slack_userinfo
 
     param["CHUNKMAP_OUTPUT"] = os.path.join(param["SCRATCH_PATH"], stage, "chunkmap")
@@ -784,7 +784,7 @@ def extract_gcs_buckets(script_source):
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4)
 def submit_igneous_tasks():
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message
     python_string = Variable.get("igneous_script")
 
@@ -822,7 +822,7 @@ def submit_igneous_tasks():
 @mount_secrets
 @kombu_tasks(cluster_name="custom-cpu", init_workers=4)
 def submit_custom_cpu_tasks():
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
 
@@ -849,7 +849,7 @@ def submit_custom_cpu_tasks():
 @mount_secrets
 @kombu_tasks(cluster_name="custom-gpu", init_workers=4)
 def submit_custom_gpu_tasks():
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
 

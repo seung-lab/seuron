@@ -16,7 +16,7 @@ def easyseg_dag():
         from datetime import datetime
         from slack_message import slack_message
         from dag_utils import get_connection
-        from airflow.models import Variable
+        from airflow.sdk import Variable
 
         if Variable.get("vendor") == "Google":
             import google_api_helper as cluster_api

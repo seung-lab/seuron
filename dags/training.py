@@ -9,7 +9,8 @@ from datetime import datetime
 from airflow import DAG
 from airflow.task.weight_rule import WeightRule
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.models import Variable, BaseOperator as Operator
+from airflow.models import BaseOperator as Operator
+from airflow.sdk import Variable
 from airflow.utils.state import State
 
 from worker_op import worker_op
@@ -78,7 +79,7 @@ def skip_parallel_tasks(context):
 
 
 def reset_rdzv_id(context):
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     param = Variable.get("training_param", {}, deserialize_json=True)
     param["rdzv_id"] = str(uuid.uuid4())
     Variable.set("training_param", param, serialize_json=True)

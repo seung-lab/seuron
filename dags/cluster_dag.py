@@ -12,7 +12,7 @@ For Infrakit, the following environment variables must be set:
 from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.task.weight_rule import WeightRule
-from airflow.models import Variable
+from airflow.sdk import Variable
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
 
@@ -79,7 +79,7 @@ def cluster_control():
     if cluster_api is None:
         return
 
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
 

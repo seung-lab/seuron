@@ -4,7 +4,7 @@ from airflow.providers.standard.operators.python import PythonOperator
 
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.task.weight_rule import WeightRule
-from airflow.models import Variable
+from airflow.sdk import Variable
 
 from chunkiterator import ChunkIterator
 
@@ -24,7 +24,7 @@ from dag_utils import get_composite_worker_capacities, resolve_url
 
 def generate_ng_payload(param):
     from igneous_and_cloudvolume import dataset_resolution
-    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default=None)
 
     ng_resolution = dataset_resolution(param["SEG_PATH"])
     seg_resolution = ng_resolution
@@ -109,7 +109,7 @@ def generate_link(param, broadcast):
     payload = generate_ng_payload(param)
 
     if not param.get("SKIP_AGG", False):
-        seglist = Variable.get("topsegs", default_var=None)
+        seglist = Variable.get("topsegs", default=None)
         if seglist:
             payload["layers"]["seg"]["segments"] = seglist.split(' ')
 

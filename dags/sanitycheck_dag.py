@@ -5,7 +5,7 @@ from airflow.task.weight_rule import WeightRule
 from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
-from airflow.models import Variable
+from airflow.sdk import Variable
 from param_default import default_seg_workspace, check_worker_image_labels, update_mount_secrets
 from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data, mount_secrets
 import os

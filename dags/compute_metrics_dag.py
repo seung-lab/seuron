@@ -26,14 +26,14 @@ with DAG("compute_metrics",
         import humanize
         from time import sleep
         from airflow.utils.state import DagRunState
-        from airflow.models import Variable
+        from airflow.sdk import Variable
         from slack_message import slack_message
 
         if Variable.get("vendor") != "Google":
             slack_message("Seuron only support compute metric collection for GCE")
             return
 
-        run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+        run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
 
         if not run_metadata.get("track_resources", True):
             return

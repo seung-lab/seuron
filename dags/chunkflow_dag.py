@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.models import Variable
+from airflow.sdk import Variable
 from worker_op import worker_op
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.task.weight_rule import WeightRule
@@ -34,7 +34,7 @@ except:
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
     ng_host = param.get("NG_HOST", "spelunker.cave-explorer.org")
-    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default=None)
 
     try:
         cv_cleanup_info(param["OUTPUT_PATH"])

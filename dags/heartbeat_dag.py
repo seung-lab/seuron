@@ -68,7 +68,7 @@ def remove_failed_instances():
     import humanize
     from time import sleep
     from datetime import datetime, timezone
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from dag_utils import get_connection
     from common.redis_utils import get_hostname_failures
 
@@ -183,7 +183,7 @@ def shutdown_easyseg_worker():
     import redis
     import humanize
     from datetime import datetime
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from dag_utils import get_connection
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api

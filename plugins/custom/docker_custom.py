@@ -7,7 +7,7 @@ from docker import APIClient as Client
 from docker.types import Mount
 import docker
 from airflow.exceptions import AirflowException
-from airflow.models import Variable
+from airflow.sdk import Variable
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.docker.hooks.docker import DockerHook
 from tempfile import TemporaryDirectory

@@ -8,7 +8,8 @@ import requests
 from airflow import DAG
 from airflow.task.weight_rule import WeightRule
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.models import Variable, BaseOperator as Operator
+from airflow.models import BaseOperator as Operator
+from airflow.sdk import Variable
 
 from worker_op import worker_op
 

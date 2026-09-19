@@ -2,7 +2,7 @@ from time import sleep
 from datetime import datetime, timedelta, timezone
 
 from requests import Response
-from airflow.models import Variable
+from airflow.sdk import Variable
 from slack_message import slack_message
 import json
 from common import google_api
@@ -55,7 +55,7 @@ def get_cluster_size(project_id, instance_groups):
 
 def reset_cluster(key, initial_size):
     from dag_utils import get_connection
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
@@ -285,7 +285,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
 
 
 def ramp_up_cluster(key, initial_size, total_size):
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
@@ -300,7 +300,7 @@ def ramp_up_cluster(key, initial_size, total_size):
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
 def ramp_down_cluster(key, total_size):
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
@@ -477,7 +477,7 @@ def collect_resource_metrics(start_time, end_time):
             resources[group_name]["gputime"] = pendulum.duration(seconds=sum(p.value.double_value*alignment_period/100 for p in result.points))
             resources[group_name]["gpu_utilization"] = resources[group_name]["gputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
 
-    buckets = Variable.get("gcs_buckets", deserialize_json=True, default_var=[])
+    buckets = Variable.get("gcs_buckets", deserialize_json=True, default=[])
     resources["GCS"] = {}
 
     for result in query_metric("storage.googleapis.com/api/request_count", aggregation_sum_gcs):
