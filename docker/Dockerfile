@@ -15,10 +15,10 @@ ARG AIRFLOW_HOME=/usr/local/airflow
 ENV AIRFLOW_HOME=${AIRFLOW_HOME}
 ARG AIRFLOW_USER=airflow
 ENV AIRFLOW_USER=${AIRFLOW_USER}
-ARG AIRFLOW_VERSION=2.11.0
+ARG AIRFLOW_VERSION=3.3.1
 ENV AIRFLOW_VERSION=${AIRFLOW_VERSION}
 ARG MINICONDA_PATH=/opt/conda
-ARG MINICONDA_URL=https://github.com/conda-forge/miniforge/releases/download/25.11.0-1/Miniforge3-25.11.0-1-Linux-x86_64.sh
+ARG MINICONDA_URL=https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 ENV PATH=${MINICONDA_PATH}/bin:${PATH}
 
 WORKDIR ${AIRFLOW_HOME}
@@ -38,7 +38,7 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && rm ~/miniconda.sh \
     && conda update conda \
     && conda install -y nomkl \
-    && conda install -y -c conda-forge -c main boto3=1.37.3 botocore=1.37.3 celery=5.5.3 cryptography=45.0.2 gevent kombu=5.5.3 matplotlib-base networkx=3.4.2 numpy=1.26.4 pillow pysimdjson redis-py=5.2.1 scipy zfpy zstandard=0.23.0 \
+    && conda install -y -c conda-forge -c main boto3=1.43.56 botocore=1.43.56 cryptography=50.0.0 celery=5.6.3 gevent kombu=5.6.2 matplotlib-base numpy=2.5.1 pillow pysimdjson redis-py=6.4.0 scipy zfpy zstandard=0.25.0 \
     && find ${MINICONDA_PATH} -follow -type f -name '*.a' -delete \
     && find ${MINICONDA_PATH} -follow -type f -name '*.js.map' -delete \
     && conda clean -yaf \
@@ -46,8 +46,9 @@ RUN savedAptMark="$(apt-mark showmanual)" \
     && CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
     && pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir git+https://github.com/seung-lab/chunk_iterator#egg=chunk-iterator \
-    && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
-    && pip install --no-cache-dir -U numpy==1.26.4 igneous-pipeline onnx langchain[google-genai] \
+    && pip install --no-cache-dir "apache-airflow[celery,postgres,rabbitmq,docker,slack,google,statsd,fab]==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}" \
+    && pip install --no-cache-dir "apache-airflow-client==${AIRFLOW_VERSION}" \
+    && pip install --no-cache-dir -U igneous-pipeline onnx langchain[google-genai] \
     && mkdir -p ${AIRFLOW_HOME}/version \
     && groupadd -r docker \
     && groupadd -r ${AIRFLOW_USER} \
