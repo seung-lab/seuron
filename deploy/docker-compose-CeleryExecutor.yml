@@ -46,7 +46,7 @@ volumes:
 
 services:
     rabbitmq:
-        image: rabbitmq:3.13-management
+        image: rabbitmq:4.2-management
         restart: always
         environment:
             - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
@@ -65,7 +65,7 @@ services:
             retries: 5
 
     postgres:
-        image: postgres:15-alpine
+        image: postgres:18-alpine
         restart: always
         environment:
             - POSTGRES_USER
@@ -73,7 +73,7 @@ services:
             - POSTGRES_DB
         shm_size: "${POSTGRES_SHM_MB}m"
         volumes:
-            - postgres-storage:/var/lib/postgresql/data
+            - postgres-storage:/var/lib/postgresql
         command: -c max_connections=${POSTGRES_MAX_CONN} -c shared_buffers=${POSTGRES_MEM_MB}MB -c idle_in_transaction_session_timeout=300000
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
@@ -81,7 +81,7 @@ services:
             retries: 5
 
     pgbouncer:
-        image: ranlu/pgbouncer:1.22.0
+        image: edoburu/pgbouncer:v1.25.2-p0
         restart: always
         environment:
             - DB_USER=${POSTGRES_USER}
@@ -141,7 +141,7 @@ services:
             - grafana-storage:/var/lib/grafana
 
     redis:
-        image: valkey/valkey:7.2-alpine
+        image: valkey/valkey:9.1-alpine
         restart: always
         command: valkey-server --save 60 1
         ports:
@@ -262,7 +262,7 @@ services:
             --initial-cluster-state new
 
     proxy:
-        image: nginx:1.23.0-alpine
+        image: nginx:1.31.6-alpine
         environment:
             BASIC_AUTH_USERNAME:
             BASIC_AUTH_PASSWORD:
