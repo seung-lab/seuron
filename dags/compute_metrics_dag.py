@@ -54,7 +54,7 @@ with DAG("compute_metrics",
             sleep(60)
             target_dag_run = af_api.get_dag_run(target_dag_id, target_run_id)
 
-        start_time = target_dag_run.logical_date
+        start_time = target_dag_run.logical_date or target_dag_run.start_date
         end_time = target_dag_run.end_date
 
         delay = 240 - (pendulum.now() - end_time).seconds
