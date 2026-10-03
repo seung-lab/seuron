@@ -212,6 +212,11 @@ services:
     dag-processor:
         <<: *airflow-common
         command: airflow dag-processor
+        healthcheck:
+            test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+            interval: 60s
+            timeout: 10s
+            retries: 5
 
     worker-cluster:
         <<: *airflow-common
