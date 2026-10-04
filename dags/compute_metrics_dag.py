@@ -1,6 +1,6 @@
 import pendulum
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 
 
 metrics_default_args = {
@@ -19,22 +19,21 @@ def format_uptime(dt):
 
 with DAG("compute_metrics",
          default_args=metrics_default_args,
-         schedule_interval=None,
+         schedule=None,
          tags=['maintenance']) as dag:
 
     def resource_summary(dag_run):
         import humanize
         from time import sleep
-        from airflow.models.dagrun import DagRun
         from airflow.utils.state import DagRunState
-        from airflow.models import Variable
+        from airflow.sdk import Variable
         from slack_message import slack_message
 
         if Variable.get("vendor") != "Google":
             slack_message("Seuron only support compute metric collection for GCE")
             return
 
-        run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+        run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
 
         if not run_metadata.get("track_resources", True):
             return
@@ -43,19 +42,19 @@ with DAG("compute_metrics",
         conf = dag_run.conf
         target_dag_id = conf["dag_id"]
         target_run_id = conf["run_id"]
-        runs = DagRun.find(dag_id=target_dag_id, run_id=target_run_id)
+        import af_api
 
-        if not runs:
+        target_dag_run = af_api.get_dag_run(target_dag_id, target_run_id)
+
+        if target_dag_run is None:
             slack_message("Cannot find the target dag run")
             return
 
-        target_dag_run = runs[0]
-
         while target_dag_run.state == DagRunState.RUNNING:
             sleep(60)
-            target_dag_run.refresh_from_db()
+            target_dag_run = af_api.get_dag_run(target_dag_id, target_run_id)
 
-        start_time = target_dag_run.logical_date
+        start_time = target_dag_run.logical_date or target_dag_run.start_date
         end_time = target_dag_run.end_date
 
         delay = 240 - (pendulum.now() - end_time).seconds

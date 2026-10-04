@@ -4,9 +4,10 @@ import os
 from typing import Optional
 
 from airflow import DAG
-from airflow.utils.weight_rule import WeightRule
-from airflow.operators.python import PythonOperator
-from airflow.models import Variable, BaseOperator
+from airflow.task.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.models import BaseOperator
+from airflow.sdk import Variable
 
 from worker_op import worker_op
 from param_default import default_synaptor_image
@@ -16,7 +17,7 @@ from nglinks import ImageLayer, SegLayer, generate_ng_payload, wrap_payload
 from kombu_helper import drain_messages
 from dag_utils import remove_workers
 
-from airflow import configuration as conf
+from airflow.configuration import conf
 
 airflow_broker_url = conf.get("celery", "broker_url")
 
@@ -52,7 +53,7 @@ def generate_nglink(
     voxelres: Optional[tuple[int, int, int]] = None,
 ) -> None:
     """Generates a neuroglancer link to view the results."""
-    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default=None)
     layers = [
         ImageLayer("network output", net_output_path),
         SegLayer("synaptor segmentation", seg_path),

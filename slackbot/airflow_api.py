@@ -1,107 +1,40 @@
-import time
 import json
-import functools
-import concurrent.futures
+import time
 
-from airflow import settings
-from airflow.models import DagBag, DagModel, Variable, Connection
-from airflow.models.dagrun import DagRun
-from airflow.api.common.mark_tasks import set_dag_run_state_to_success
-from airflow.api.common.trigger_dag import trigger_dag
-from airflow.utils.state import State, DagRunState
-
-from sqlalchemy.orm import exc
+import af_api
 
 from bot_info import workerid, slack_notification_channel
 
-seuron_dags = ['sanity_check', 'segmentation','watershed','agglomeration', "postprocess", 'chunkflow_worker', 'chunkflow_generator', 'contact_surface', "igneous", "custom-cpu", "custom-gpu", "synaptor_sanity_check", "synaptor", "wkt_cutouts", "wkt_export", "training"]
+seuron_dags = ['sanity_check', 'segmentation', 'watershed', 'agglomeration',
+               "postprocess", 'chunkflow_worker', 'chunkflow_generator',
+               'contact_surface', "igneous", "custom-cpu", "custom-gpu",
+               "synaptor_sanity_check", "synaptor", "wkt_cutouts",
+               "wkt_export", "training"]
 
 
-def run_in_executor(f, /, *args, **kwargs):
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        return executor.submit(functools.partial(f, *args, **kwargs)).result()
-
-
-def __mark_dags_success():
-    dagbag = DagBag()
-    runs = DagRun.find(state=DagRunState.RUNNING)
-
-    for r in runs:
-        d = r.dag_id
-        if d in seuron_dags:
-            dag = dagbag.dags[d]
-            set_dag_run_state_to_success(dag=dag, execution_date=dag.get_latest_execution_date(), commit=True)
-
-
-def mark_dags_success():
-    return run_in_executor(__mark_dags_success)
-
-
-def update_slack_connection(payload, token):
-    conn_id = "Slack"
-    session = settings.Session()
-    print("Delete slack connection")
-    try:
-        to_delete = (session
-                     .query(Connection)
-                     .filter(Connection.conn_id == conn_id)
-                     .one())
-    except exc.NoResultFound:
-        pass
-    except exc.MultipleResultsFound:
-        msg = ('\n\tFound more than one connection with ' +
-               '`conn_id`={conn_id}\n')
-        msg = msg.format(conn_id=conn_id)
-        print(msg)
-        return
-    else:
-        session.delete(to_delete)
-        session.commit()
-
-    print("Add slack connection")
-
-    new_conn = Connection(conn_id=conn_id, conn_type='http', host='localhost', login=workerid, password=token)
-
-    new_conn.set_extra(json.dumps({**payload, "notification_channel": slack_notification_channel}, indent=4))
-    session.add(new_conn)
-    session.commit()
-    session.close()
-
-
-def update_user_info(userid):
-    set_variable('author', userid)
-
-
-def __check_running():
-    """Checks whether the DAGs within the seuron_dags list (above) is running."""
-    runs = DagRun.find(state=DagRunState.RUNNING)
-
-    for r in runs:
-        if r.dag_id in seuron_dags:
-            return True
-
-    return False
+_MISSING = object()
 
 
 def check_running():
-    return run_in_executor(__check_running)
-
-
-def __run_dag(dag_id):
-    return trigger_dag(dag_id)
+    """Checks whether the DAGs within the seuron_dags list (above) is running."""
+    runs = af_api.list_dag_runs(state="running")
+    return any(r.dag_id in seuron_dags for r in runs)
 
 
 def wait_for_dag_refresh(dag_id):
     last_parsed_time = None
     for _ in range(10):
-        dag = DagModel.get_dagmodel(dag_id)
+        dag = af_api.get_dag(dag_id)
+        if dag is None:
+            time.sleep(5)
+            continue
+        parsed = dag.last_parsed_time
         if not last_parsed_time:
-            last_parsed_time = dag.last_parsed_time
-        else:
-            if dag.last_parsed_time > last_parsed_time:
-                print(dag.last_parsed_time)
-                print(last_parsed_time)
-                return
+            last_parsed_time = parsed
+        elif parsed and parsed > last_parsed_time:
+            print(parsed)
+            print(last_parsed_time)
+            return
         time.sleep(5)
 
 
@@ -109,56 +42,87 @@ def run_dag(dag_id, wait_for_completion=False):
     dags_need_refresh = ["segmentation", "chunkflow_worker", "synaptor"]
     if dag_id in dags_need_refresh:
         wait_for_dag_refresh(dag_id)
-    dagrun = run_in_executor(__run_dag, dag_id)
+    run = af_api.trigger_dag_run(dag_id)
     if wait_for_completion:
         while True:
             time.sleep(5)
-            dagrun.refresh_from_db()
-            state = dagrun.state
-            print(f"waiting for dag {dagrun.dag_id}, {dagrun.run_id} state : {state}")
-            if state == DagRunState.SUCCESS or state == DagRunState.FAILED:
-                ntasks = len(dagrun.get_task_instances(state=State.task_states))
-                print(dagrun.start_date, dagrun.end_date, ntasks)
-                if state == DagRunState.SUCCESS and ntasks == 0:
+            run = af_api.get_dag_run(dag_id, run.dag_run_id)
+            state = run.state
+            print(f"waiting for dag {run.dag_id}, {run.dag_run_id} state : {state}")
+            if state == "success" or state == "failed":
+                ntasks = len(af_api.list_task_instances(dag_id, run.dag_run_id))
+                print(run.start_date, run.end_date, ntasks)
+                if state == "success" and ntasks == 0:
                     print("0 task in the dagrun, retrigger")
-                    dagrun = run_in_executor(__run_dag, dag_id)
+                    run = af_api.trigger_dag_run(dag_id)
                 else:
                     break
-    return dagrun
+    return run
+
+
+def mark_dags_success():
+    runs = af_api.list_dag_runs(state="running")
+    for r in runs:
+        if r.dag_id not in seuron_dags:
+            continue
+        try:
+            af_api.set_dag_run_state(r.dag_id, r.dag_run_id, "success")
+        except RuntimeError as exc:
+            # e.g. 404 for a run whose DAG is no longer serialized
+            print(f"failed to mark {r.dag_id}/{r.dag_run_id} success: {exc}")
+
+
+def update_slack_connection(payload, token):
+    conn_id = "Slack"
+    print("Upsert slack connection")
+    af_api.upsert_connection(
+        conn_id,
+        conn_type='http',
+        host='localhost',
+        login=workerid,
+        password=token,
+        extra=json.dumps({**payload, "notification_channel": slack_notification_channel}, indent=4),
+    )
+
+
+def update_user_info(userid):
+    set_variable('author', userid)
 
 
 def get_variable(key, deserialize_json=False, **kwargs):
-    return Variable.get(key, deserialize_json=deserialize_json, **kwargs)
+    default_var = kwargs.pop("default_var", _MISSING)
+    if kwargs:
+        raise TypeError(f"unsupported kwargs: {sorted(kwargs)}")
+    value = af_api.get_variable(key)
+    if value is None:
+        if default_var is _MISSING:
+            raise KeyError(key)
+        return default_var
+    if deserialize_json:
+        return json.loads(value)
+    return value
 
 
 def set_variable(key, value, serialize_json=False):
-    Variable.set(key, value, serialize_json=serialize_json)
+    if serialize_json:
+        value = json.dumps(value)
+    af_api.set_variable(key, str(value))
 
 
-def __latest_dagrun_state(dag_id):
+def latest_dagrun_state(dag_id):
     print("check dag states")
-    dagbag = DagBag()
-    if dag_id not in dagbag.dags:
+    if af_api.get_dag(dag_id) is None:
         print("=========== dag_id does not exist ============")
         return "null"
 
-    d = dagbag.dags[dag_id]
-    execution_date = d.get_latest_execution_date()
-    if not execution_date:
+    runs = af_api.list_dag_runs(dag_id=dag_id)
+    if not runs:
         return "unknown"
-    else:
-        latest_run = d.get_dagrun(execution_date=execution_date)
-        return latest_run.state
+    # run_after is a required field of DAGRunResponse, so the key is always
+    # a tz-aware datetime (logical_date is null for manual runs)
+    latest_run = max(runs, key=lambda r: r.logical_date or r.run_after)
+    return latest_run.state
 
-def latest_dagrun_state(dag_id):
-    return run_in_executor(__latest_dagrun_state, dag_id)
 
 def set_is_paused(dag_id, is_paused):
-    dag = DagModel.get_dagmodel(dag_id)
-
-    if not dag:
-        return False
-
-    dag.set_is_paused(is_paused=is_paused)
-
-    return True
+    return af_api.set_dag_paused(dag_id, is_paused)

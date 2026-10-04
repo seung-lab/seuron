@@ -34,8 +34,6 @@ def GenerateEnvironVar(context, hostname_manager):
         'DEPLOYMENT': context.env['deployment'],
         'ZONE': context.properties['zone'],
         'SEURON_TAG': context.properties['seuronImage'],
-        '_AIRFLOW_WWW_USER_USERNAME': context.properties['airflow'].get('user', "airflow"),
-        '_AIRFLOW_WWW_USER_PASSWORD': context.properties['airflow'].get('password', "airflow"),
         'POSTGRES_USER': postgres_user,
         'POSTGRES_PASSWORD': postgres_password,
         'POSTGRES_DB': postgres_db,
@@ -103,6 +101,12 @@ iptables -I INPUT -p tcp --dport 6379 -s 10.253.0.0/16 -j ACCEPT
 iptables -I DOCKER-USER -p tcp --dport 6379 -j DROP
 iptables -I DOCKER-USER -p tcp --dport 6379 -s 172.16.0.0/12 -j ACCEPT
 iptables -I DOCKER-USER -p tcp --dport 6379 -s 10.253.0.0/16 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8080 -j DROP
+iptables -I INPUT -p tcp --dport 8080 -s 172.16.0.0/12 -j ACCEPT
+iptables -I INPUT -p tcp --dport 8080 -s 10.253.0.0/16 -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 8080 -j DROP
+iptables -I DOCKER-USER -p tcp --dport 8080 -s 172.16.0.0/12 -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 8080 -s 10.253.0.0/16 -j ACCEPT
 
 while true
 do

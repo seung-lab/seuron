@@ -1,6 +1,6 @@
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
-from airflow.models import Variable
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.task.weight_rule import WeightRule
+from airflow.sdk import Variable
 from slack_message import slack_message
 from param_default import default_args
 
@@ -23,8 +23,8 @@ def slack_message_op(dag, tid, msg):
 
 
 def placeholder_op(dag, tid):
-    from airflow.operators.dummy import DummyOperator
-    return DummyOperator(
+    from airflow.providers.standard.operators.empty import EmptyOperator
+    return EmptyOperator(
         task_id="dummy_{}".format(tid),
         dag=dag,
         priority_weight=1000,
@@ -113,7 +113,12 @@ def mark_done_op(dag, process):
 
 def wait(process):
     from time import sleep
-    Variable.setdefault(process, "no")
+    from airflow.sdk.exceptions import AirflowRuntimeError
+
+    try:
+        Variable.get(process)
+    except AirflowRuntimeError:
+        Variable.set(process, "no")
 
     while True:
         cond = Variable.get(process)
@@ -191,7 +196,7 @@ def reset_cluster_op(dag, stage, key, initial_size, queue):
 
 
 def collect_metrics_op(dag):
-    from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+    from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
     return TriggerDagRunOperator(
         task_id="trigger_compute_metrics",
         trigger_dag_id="compute_metrics",
@@ -223,8 +228,8 @@ def toggle_nfs_server_op(dag, on=False):
         return placeholder_op(dag, f'dummy_toggle_nfs_server_{"on" if on else "off"}')
 
 def save_run_parameters(varname, **kwargs):
-    from airflow import configuration as conf
-    from airflow.models import Variable
+    from airflow.configuration import conf
+    from airflow.sdk import Variable
     from igneous_and_cloudvolume import upload_json
     import os
     param = Variable.get(varname, deserialize_json=True)
@@ -241,7 +246,6 @@ def save_run_parameters_op(dag, varname, tid="save_params"):
         task_id=tid,
         python_callable=save_run_parameters,
         op_args=[varname,],
-        provide_context=True,
         default_args=default_args,
         weight_rule=WeightRule.ABSOLUTE,
         priority_weight=1000,

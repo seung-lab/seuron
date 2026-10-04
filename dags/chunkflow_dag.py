@@ -1,9 +1,8 @@
 from airflow import DAG
-from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
+from airflow.sdk import Variable
 from worker_op import worker_op
-from airflow.operators.python import PythonOperator
-from airflow.utils.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.task.weight_rule import WeightRule
 from param_default import default_args, default_mount_path, default_chunkflow_workspace, check_worker_image_labels, update_mount_secrets
 from datetime import datetime
 from igneous_and_cloudvolume import check_queue, cv_has_data, cv_scale_with_data, cv_cleanup_info, mount_secrets
@@ -12,7 +11,7 @@ from slack_message import slack_message, task_retry_alert, task_failure_alert
 
 from helper_ops import placeholder_op, mark_done_op, scale_up_cluster_op, scale_down_cluster_op, setup_redis_op, collect_metrics_op, save_run_parameters_op
 
-from dag_utils import estimate_worker_instances, remove_workers, resolve_url
+from dag_utils import estimate_worker_instances, remove_workers, resolve_url, get_connection
 
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
@@ -22,7 +21,7 @@ import urllib
 from collections import OrderedDict
 
 param = Variable.get("inference_param", deserialize_json=True)
-cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+cluster_info = json.loads(get_connection("InstanceGroups").extra)
 
 try:
     total_gpus = sum(c['max_size'] for c in cluster_info['gpu'])
@@ -35,7 +34,7 @@ except:
 def generate_ng_link():
     param = Variable.get("inference_param", deserialize_json=True)
     ng_host = param.get("NG_HOST", "spelunker.cave-explorer.org")
-    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default=None)
 
     try:
         cv_cleanup_info(param["OUTPUT_PATH"])
@@ -205,7 +204,7 @@ def extract_batch_size(fpath):
 def supply_default_parameters():
     from docker_helper import health_check_info
     from kombu_helper import drain_messages
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     param = Variable.get("inference_param", deserialize_json=True)
 
     statsd_host = conf.get('metrics', 'statsd_host')
@@ -420,7 +419,7 @@ def supply_default_parameters():
 
 
 def setup_env_op(dag, param, queue):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/setup_env.sh")} {broker_url}"'
@@ -447,7 +446,7 @@ def setup_env_op(dag, param, queue):
 
 
 def convert_tensorrt_engine_op(dag, param, queue):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
     mount_path = param.get("MOUNT_PATH", default_mount_path)
@@ -477,7 +476,7 @@ def convert_tensorrt_engine_op(dag, param, queue):
 
 
 def inference_op(dag, param, queue, wid):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     broker_url = conf.get('celery', 'broker_url')
     workspace_path = param.get("WORKSPACE_PATH", default_chunkflow_workspace)
     cmdlist = f'bash -c "{os.path.join(workspace_path, "scripts/inference.sh")} {broker_url}"'
@@ -504,7 +503,7 @@ def inference_op(dag, param, queue, wid):
 
 def process_output(**kwargs):
     from igneous_and_cloudvolume import upload_json
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     from dag_utils import check_manager_node
     import re
     from cloudfiles.paths import extract
@@ -566,8 +565,8 @@ generator_default_args = {
 }
 
 
-dag_generator = DAG("chunkflow_generator", default_args=generator_default_args, schedule_interval=None, tags=['inference'])
-dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule_interval=None, tags=['inference'])
+dag_generator = DAG("chunkflow_generator", default_args=generator_default_args, schedule=None, tags=['inference'])
+dag_worker = DAG("chunkflow_worker", default_args=default_args, schedule=None, tags=['inference'])
 
 image_parameters = PythonOperator(
     task_id="setup_image_parameters",
@@ -591,7 +590,6 @@ sanity_check_task = PythonOperator(
 
 process_output_task = PythonOperator(
     task_id="process_output",
-    provide_context=True,
     python_callable=process_output,
     priority_weight=100000,
     on_failure_callback=task_failure_alert,

@@ -1,10 +1,10 @@
 from airflow import DAG
 
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.utils.weight_rule import WeightRule
-from airflow.models import Variable
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.task.weight_rule import WeightRule
+from airflow.sdk import Variable
 
 from chunkiterator import ChunkIterator
 
@@ -24,7 +24,7 @@ from dag_utils import get_composite_worker_capacities, resolve_url
 
 def generate_ng_payload(param):
     from igneous_and_cloudvolume import dataset_resolution
-    ng_subs = Variable.get("ng_subs", deserialize_json=True, default_var=None)
+    ng_subs = Variable.get("ng_subs", deserialize_json=True, default=None)
 
     ng_resolution = dataset_resolution(param["SEG_PATH"])
     seg_resolution = ng_resolution
@@ -109,7 +109,7 @@ def generate_link(param, broadcast):
     payload = generate_ng_payload(param)
 
     if not param.get("SKIP_AGG", False):
-        seglist = Variable.get("topsegs", default_var=None)
+        seglist = Variable.get("topsegs", default=None)
         if seglist:
             payload["layers"]["seg"]["segments"] = seglist.split(' ')
 
@@ -119,17 +119,17 @@ def generate_link(param, broadcast):
     slack_message(url, broadcast=broadcast)
 
 
-dag_manager = DAG("segmentation", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag_manager = DAG("segmentation", default_args=default_args, schedule=None, tags=['segmentation'])
 
 dag = dict()
 
-dag["ws"] = DAG("watershed", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["ws"] = DAG("watershed", default_args=default_args, schedule=None, tags=['segmentation'])
 
-dag["agg"] = DAG("agglomeration", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["agg"] = DAG("agglomeration", default_args=default_args, schedule=None, tags=['segmentation'])
 
-dag["cs"] = DAG("contact_surface", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["cs"] = DAG("contact_surface", default_args=default_args, schedule=None, tags=['segmentation'])
 
-dag["pp"] = DAG("postprocess", default_args=default_args, schedule_interval=None, tags=['segmentation'])
+dag["pp"] = DAG("postprocess", default_args=default_args, schedule=None, tags=['segmentation'])
 
 dag_ws = dag["ws"]
 dag_agg = dag["agg"]
@@ -262,7 +262,7 @@ def compare_segmentation(param):
     from collections import defaultdict
     from evaluate_segmentation import read_chunks, evaluate_rand, evaluate_voi, find_large_diff
     from igneous_and_cloudvolume import upload_json
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     size_threshold = 1e6  # nm^3
     segs = classify_segmentations(param)
     prefix = "agg/evaluation/evaluation"
@@ -298,7 +298,7 @@ def compare_segmentation(param):
 
 
 def evaluate_results(param):
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     if "GT_PATH" not in param:
         return
 
@@ -631,7 +631,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     check_seg = PythonOperator(
         task_id="Check_Segmentation",
         python_callable=process_infos,
-        provide_context=True,
         op_args=[param],
         default_args=default_args,
         on_success_callback=task_done_alert,
@@ -657,7 +656,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
         comp_seg_task = PythonOperator(
             task_id = "Compare_Segmentation",
             python_callable=compare_segmentation,
-            provide_context=True,
             op_args=[param,],
             default_args=default_args,
             dag=dag_agg,
@@ -741,7 +739,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
 
     nglink_task = PythonOperator(
         task_id = "Generate_neuroglancer_link",
-        provide_context=True,
         python_callable=generate_link,
         op_args=[param, True],
         default_args=default_args,
@@ -753,7 +750,6 @@ if "BBOX" in param and "CHUNK_SIZE" in param: #and "AFF_MIP" in param:
     if "GT_PATH" in param:
         evaluation_task = PythonOperator(
             task_id = "Evaluate_Segmentation",
-            provide_context=True,
             python_callable=evaluate_results,
             op_args=[param,],
             default_args=default_args,

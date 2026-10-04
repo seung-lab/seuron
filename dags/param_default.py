@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 
 def check_worker_image_labels(variable):
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from docker_helper import pull_image
     if variable == "param":
         image_name = "WORKER_IMAGE"
@@ -18,7 +18,7 @@ def check_worker_image_labels(variable):
 
 
 def update_mount_secrets(variable):
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     param = Variable.get(variable, deserialize_json=True)
     mount_secrets = param.get("MOUNT_SECRETS", [])
     Variable.set("mount_secrets", mount_secrets, serialize_json=True)

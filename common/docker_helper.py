@@ -28,7 +28,7 @@ def has_custom_entrypoint(image_name):
 
 
 def pull_image(image_name):
-    from airflow.hooks.base_hook import BaseHook
+    from dag_utils import get_connection
     import slack_sdk as slack
     import docker
     import json
@@ -37,8 +37,8 @@ def pull_image(image_name):
     import traceback
     from slack_message import slack_message
     SLACK_CONN_ID = "Slack"
-    slack_token = BaseHook.get_connection(SLACK_CONN_ID).password
-    slack_info = json.loads(BaseHook.get_connection(SLACK_CONN_ID).extra)
+    slack_token = get_connection(SLACK_CONN_ID).password
+    slack_info = json.loads(get_connection(SLACK_CONN_ID).extra)
     slack_channel = slack_info["channel"]
     slack_thread = slack_info.get("thread_ts", slack_info.get("ts", None))
     # Create Docker and Slack clients

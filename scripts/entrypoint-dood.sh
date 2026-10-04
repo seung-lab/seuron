@@ -4,7 +4,7 @@ set -eo pipefail
 source scripts/add-user-docker.sh
 
 # this doesn't protect from docker but it's a little more secure
-export PYTHONPATH=$AIRFLOW_HOME/common:$PYTHONPATH
+export PYTHONPATH=$AIRFLOW_HOME/common:$AIRFLOW_HOME/dags:$PYTHONPATH
 
 echo "start script with group $DOCKER_GROUP"
 
