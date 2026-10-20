@@ -8,13 +8,14 @@ import concurrent.futures
 import logging
 import time
 import tenacity
-from threading import Event
+from secrets import token_hex
+from threading import Event, Lock
 from slack_sdk.rtm_v2 import RTMClient
 from slack_sdk.socket_mode import SocketModeClient
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
-from bot_info import botid, workerid, broker_url
+from bot_info import botid, workerid, broker_url, slack_token
 from bot_utils import replyto, extract_command, strip_app_footer, update_slack_thread, create_run_token, send_message
 from airflow_api import check_running, set_variable, get_variable
 from kombu_helper import get_message, visible_messages
@@ -51,7 +52,79 @@ def check_image_updates(context):
             replyto(context, f":u7981:*WARNING*: Local image `{image_info['name']}` is outdated, your tasks may not run correctly, upgrade the bot ASAP!")
 
 
-def run_cmd(func, context, exclusive=False, cancelable=False):
+# A command that came through a Slack app (e.g. Claude, see strip_app_footer)
+# and starts or stops something waits for a person: the bot posts a Confirm
+# button, and the command runs when someone clicks it or sends
+# "<worker>, confirm <code>" without the app.
+CONFIRM_ACTION = "seuron_confirm"
+CONFIRM_TTL = 3600  # seconds
+_pending = {}  # code -> (func, context, exclusive, cancelable, deadline)
+_pending_lock = Lock()
+
+
+def request_confirmation(func, context, exclusive, cancelable):
+    code = token_hex(3)
+    with _pending_lock:
+        now = time.time()
+        for k in [k for k, v in _pending.items() if v[-1] < now]:
+            del _pending[k]
+        _pending[code] = (func, context, exclusive, cancelable, now + CONFIRM_TTL)
+
+    text = (f"<@{context['user']}>, `{context['text']}` was sent through an app, "
+            f"so a person has to confirm it within {CONFIRM_TTL // 60} minutes: "
+            f"click Confirm, or send `{workerid}, confirm {code}` yourself.")
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": text}},
+        {"type": "actions", "elements": [{
+            "type": "button",
+            "action_id": CONFIRM_ACTION,
+            "value": code,
+            "style": "primary",
+            "text": {"type": "plain_text", "text": "Confirm"},
+        }]},
+    ]
+    try:
+        WebClient(token=slack_token, timeout=300).chat_postMessage(
+            username=workerid,
+            channel=context["channel"],
+            thread_ts=context.get("thread_ts", context.get("ts")),
+            text=text,
+            blocks=blocks,
+        )
+    except Exception:
+        logger.exception("Cannot post the confirmation request")
+
+
+def confirm_pending(code, user):
+    with _pending_lock:
+        entry = _pending.pop(code, None)
+    if entry is None:
+        return False
+    func, context, exclusive, cancelable, deadline = entry
+    if deadline < time.time():
+        replyto(context, f"The confirmation for `{context['text']}` has expired, send the command again")
+        return True
+    replyto(context, f"`{context['text']}` confirmed by <@{user}>")
+    run_cmd(func, context, exclusive=exclusive, cancelable=cancelable)
+    return True
+
+
+def confirm_listener(context):
+    cmd = extract_command(context['text'])
+    if not cmd.startswith("confirm"):
+        return False
+    if context.get("from_app", False):
+        replyto(context, "A confirmation has to come from a person, not through an app")
+    elif not confirm_pending(cmd[len("confirm"):], context["user"]):
+        replyto(context, "Nothing to confirm with that code")
+    return True
+
+
+def run_cmd(func, context, exclusive=False, cancelable=False, confirm=False):
+    if confirm and context.get("from_app", False):
+        request_confirmation(func, context, exclusive, cancelable)
+        return
+
     if exclusive:
         reset_run_metadata()
         if check_running():
@@ -75,6 +148,13 @@ class SeuronBot:
             "extra_parameters": False,
             "file_inputs": False,
             "command": help_listener,
+    }, {
+            "triggers": ["confirm"],
+            "description": "Confirm a command that was sent through an app, with the code the bot gave",
+            "exclusive": False,
+            "extra_parameters": True,
+            "file_inputs": False,
+            "command": confirm_listener,
     }]
 
     hello_listeners = []
@@ -158,7 +238,10 @@ class SeuronBot:
 
     def process_message(self, client, event: dict):
         if isinstance(event.get("text"), str):
-            event["text"] = strip_app_footer(event["text"])
+            text = strip_app_footer(event["text"])
+            if text != event["text"]:
+                event["text"] = text
+                event["from_app"] = True
         if self.filter_msg(event) or event.get("from_jupyter", False):
             handled = False
             check_image_updates(event)
@@ -198,6 +281,12 @@ class SeuronBot:
                 self.process_reaction(client, event)
             else:
                 logger.debug("Unhandled event type: %s", event_type)
+        elif req.type == "interactive":
+            payload = req.payload
+            if payload.get("type") == "block_actions":
+                for action in payload.get("actions", []):
+                    if action.get("action_id") == CONFIRM_ACTION:
+                        self.executor.submit(confirm_pending, action["value"], payload["user"]["id"])
         elif req.type == "hello":
             self.process_hello(client, {})
 
@@ -216,9 +305,14 @@ class SeuronBot:
         return __call__
 
     @classmethod
-    def on_message(cls, trigger_phrases="", description="", exclusive=True, cancelable=True, extra_parameters=False, file_inputs=False):
+    def on_message(cls, trigger_phrases="", description="", exclusive=True, cancelable=True, extra_parameters=False, file_inputs=False, confirm=None):
         if isinstance(trigger_phrases, str):
             trigger_phrases = [trigger_phrases]
+        # Sent through an app, a command waits for a person to confirm it
+        # (request_confirmation). By default that is every exclusive command,
+        # the ones that start something.
+        if confirm is None:
+            confirm = exclusive
 
         def __call__(*args, **kwargs):
             func = args[0]
@@ -228,12 +322,12 @@ class SeuronBot:
                 actual_cmd = extract_command(context['text'])
                 if not extra_parameters:
                     if actual_cmd in trigger_cmds:
-                        run_cmd(func, context, exclusive=exclusive, cancelable=cancelable)
+                        run_cmd(func, context, exclusive=exclusive, cancelable=cancelable, confirm=confirm)
                         return True
                 else:
                     for c in trigger_cmds:
                         if actual_cmd.startswith(c):
-                            run_cmd(func, context, exclusive=exclusive, cancelable=cancelable)
+                            run_cmd(func, context, exclusive=exclusive, cancelable=cancelable, confirm=confirm)
                             return True
 
                 return False
@@ -244,6 +338,7 @@ class SeuronBot:
                 "command": new_message_listener,
                 "exclusive": exclusive,
                 "cancelable": cancelable,
+                "confirm": confirm,
                 "extra_parameters": extra_parameters,
                 "file_inputs": file_inputs,
             })

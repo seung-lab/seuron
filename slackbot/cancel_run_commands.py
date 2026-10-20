@@ -17,7 +17,8 @@ else:
                       description="Cancel the current run, must provide a matching token",
                       exclusive=False,
                       cancelable=False,
-                      extra_parameters=True)
+                      extra_parameters=True,
+                      confirm=True)
 def on_cancel_run(msg):
     token = get_variable("run_token")
     cmd = extract_command(msg["text"])
