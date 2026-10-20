@@ -15,7 +15,7 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 from bot_info import botid, workerid, broker_url
-from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message
+from bot_utils import replyto, extract_command, strip_app_footer, update_slack_thread, create_run_token, send_message
 from airflow_api import check_running, set_variable, get_variable
 from kombu_helper import get_message, visible_messages
 from docker_helper import get_registry_data
@@ -157,6 +157,8 @@ class SeuronBot:
             return True
 
     def process_message(self, client, event: dict):
+        if isinstance(event.get("text"), str):
+            event["text"] = strip_app_footer(event["text"])
         if self.filter_msg(event) or event.get("from_jupyter", False):
             handled = False
             check_image_updates(event)

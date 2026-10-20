@@ -24,6 +24,16 @@ def clear_queues():
     drain_messages(broker_url, "seuronbot_cmd")
 
 
+# Messages posted through a Slack app (e.g. the Claude app) end with an
+# attribution footer such as "*Sent using* <@U0B30QES91R|Claude>". It is not
+# part of the command, and left in place it breaks the exact command match.
+APP_FOOTER = re.compile(r"\s*[_*]*Sent using[_*]*\s*<@[A-Z0-9]+(?:\|[^>]*)?>\s*$")
+
+
+def strip_app_footer(text):
+    return APP_FOOTER.sub("", text)
+
+
 @lru_cache(maxsize=1)
 def extract_command(text):
     cmd = text.replace(workerid, "").replace(botid, "")
