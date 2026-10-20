@@ -24,14 +24,11 @@ def clear_queues():
     drain_messages(broker_url, "seuronbot_cmd")
 
 
-# Messages posted through a Slack app (e.g. the Claude app) end with an
-# attribution footer such as "*Sent using* <@U0B30QES91R|Claude>". It is not
-# part of the command, and left in place it breaks the exact command match.
-APP_FOOTER = re.compile(r"\s*[_*]*Sent using[_*]*\s*<@[A-Z0-9]+(?:\|[^>]*)?>\s*$")
-
-
-def strip_app_footer(text):
-    return APP_FOOTER.sub("", text)
+# An agent (e.g. Claude) talks to the bot through these two queues instead of
+# Slack: it puts a command on the input queue and reads the bot's replies to it
+# from the output queue. The replies also go to the Slack thread it names.
+AGENT_INPUT_QUEUE = "agent-input-queue"
+AGENT_OUTPUT_QUEUE = "agent-output-queue"
 
 
 @lru_cache(maxsize=1)
@@ -110,6 +107,8 @@ def replyto(msg, reply, workername=workerid, broadcast=False):
     if msg.get("from_jupyter", False):
         send_message(msg_payload, context=None)
     else:
+        if msg.get("from_agent", False):
+            put_message(broker_url, AGENT_OUTPUT_QUEUE, msg_payload)
         send_message(msg_payload, context=msg)
 
 
@@ -183,6 +182,16 @@ def download_file(msg):
         }
         send_message(msg_payload)
         return "python", base64.b64decode(attachment["content"].encode("utf-8")).decode("utf-8")
+    elif msg.get("from_agent", False) and msg.get("attachment", None):
+        # Parameters only: unlike a Jupyter cell, nothing an agent sends is run
+        # as code, by the bot or by the workers.
+        content = msg["attachment"]
+        try:
+            json5.loads(content)
+        except (ValueError, TypeError):
+            replyto(msg, "An agent can only attach a JSON file")
+            return None, None
+        return "JSON", content
     else:
         replyto(msg, "You need to upload a parameter file with this message")
         return None, None

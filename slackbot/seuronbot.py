@@ -16,9 +16,9 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 from bot_info import botid, workerid, broker_url, slack_token
-from bot_utils import replyto, extract_command, strip_app_footer, update_slack_thread, create_run_token, send_message
+from bot_utils import replyto, extract_command, update_slack_thread, create_run_token, send_message, AGENT_INPUT_QUEUE, AGENT_OUTPUT_QUEUE
 from airflow_api import check_running, set_variable, get_variable
-from kombu_helper import get_message, visible_messages
+from kombu_helper import get_message, put_message, visible_messages
 from docker_helper import get_registry_data
 
 logger = logging.getLogger(__name__)
@@ -52,10 +52,10 @@ def check_image_updates(context):
             replyto(context, f":u7981:*WARNING*: Local image `{image_info['name']}` is outdated, your tasks may not run correctly, upgrade the bot ASAP!")
 
 
-# A command that came through a Slack app (e.g. Claude, see strip_app_footer)
-# and starts or stops something waits for a person: the bot posts a Confirm
-# button, and the command runs when someone clicks it or sends
-# "<worker>, confirm <code>" without the app.
+# A command from an agent (see AGENT_INPUT_QUEUE) that starts or stops
+# something waits for a person: the bot posts a Confirm button in the thread,
+# and the command runs when someone clicks it or sends
+# "<worker>, confirm <code>" in Slack.
 CONFIRM_ACTION = "seuron_confirm"
 CONFIRM_TTL = 3600  # seconds
 _pending = {}  # code -> (func, context, exclusive, cancelable, deadline)
@@ -70,7 +70,7 @@ def request_confirmation(func, context, exclusive, cancelable):
             del _pending[k]
         _pending[code] = (func, context, exclusive, cancelable, now + CONFIRM_TTL)
 
-    text = (f"<@{context['user']}>, `{context['text']}` was sent through an app, "
+    text = (f"<@{context['user']}>, `{context['text']}` was sent by an agent, "
             f"so a person has to confirm it within {CONFIRM_TTL // 60} minutes: "
             f"click Confirm, or send `{workerid}, confirm {code}` yourself.")
     blocks = [
@@ -113,15 +113,35 @@ def confirm_listener(context):
     cmd = extract_command(context['text'])
     if not cmd.startswith("confirm"):
         return False
-    if context.get("from_app", False):
-        replyto(context, "A confirmation has to come from a person, not through an app")
+    if context.get("from_agent", False):
+        replyto(context, "A confirmation has to come from a person, not from an agent")
     elif not confirm_pending(cmd[len("confirm"):], context["user"]):
         replyto(context, "Nothing to confirm with that code")
     return True
 
 
+def agent_event(payload):
+    """The context of a command from an agent, or None if the message is malformed.
+
+    The agent names the Slack thread the command belongs to and the person it
+    acts for: replies, the run's messages and the cancel token go there, as for
+    a command sent in that thread. Only these fields are taken; an attachment is
+    the text of a JSON parameter file (see download_file).
+    """
+    if not isinstance(payload, dict):
+        return None
+    event = {k: payload.get(k) for k in ("text", "user", "channel", "thread_ts")}
+    if not all(isinstance(v, str) and v for v in event.values()):
+        return None
+    event["ts"] = event["thread_ts"]
+    event["from_agent"] = True
+    if isinstance(payload.get("attachment"), str):
+        event["attachment"] = payload["attachment"]
+    return event
+
+
 def run_cmd(func, context, exclusive=False, cancelable=False, confirm=False):
-    if confirm and context.get("from_app", False):
+    if confirm and context.get("from_agent", False):
         request_confirmation(func, context, exclusive, cancelable)
         return
 
@@ -150,7 +170,7 @@ class SeuronBot:
             "command": help_listener,
     }, {
             "triggers": ["confirm"],
-            "description": "Confirm a command that was sent through an app, with the code the bot gave",
+            "description": "Confirm a command that an agent sent, with the code the bot gave",
             "exclusive": False,
             "extra_parameters": True,
             "file_inputs": False,
@@ -237,12 +257,7 @@ class SeuronBot:
             return True
 
     def process_message(self, client, event: dict):
-        if isinstance(event.get("text"), str):
-            text = strip_app_footer(event["text"])
-            if text != event["text"]:
-                event["text"] = text
-                event["from_app"] = True
-        if self.filter_msg(event) or event.get("from_jupyter", False):
+        if event.get("from_jupyter", False) or event.get("from_agent", False) or self.filter_msg(event):
             handled = False
             check_image_updates(event)
             for listener in self.message_listeners:
@@ -308,7 +323,7 @@ class SeuronBot:
     def on_message(cls, trigger_phrases="", description="", exclusive=True, cancelable=True, extra_parameters=False, file_inputs=False, confirm=None):
         if isinstance(trigger_phrases, str):
             trigger_phrases = [trigger_phrases]
-        # Sent through an app, a command waits for a person to confirm it
+        # Sent by an agent, a command waits for a person to confirm it
         # (request_confirmation). By default that is every exclusive command,
         # the ones that start something.
         if confirm is None:
@@ -383,10 +398,24 @@ class SeuronBot:
                 self.executor.submit(self.process_message, None, msg_payload)
                 time.sleep(1)
 
+    def fetch_agent_messages(self, queue=AGENT_INPUT_QUEUE):
+        while True:
+            msg_payload = get_message(broker_url, queue, timeout=30)
+            if msg_payload:
+                event = agent_event(msg_payload)
+                if event:
+                    self.executor.submit(self.process_message, None, event)
+                else:
+                    put_message(broker_url, AGENT_OUTPUT_QUEUE, {
+                        "text": "Ignored: an agent message needs the strings text, user, channel and thread_ts",
+                    })
+                time.sleep(1)
+
     def start(self):
         futures = []
         futures.append(self.executor.submit(self.fetch_bot_messages))
         futures.append(self.executor.submit(self.fetch_jupyter_messages))
+        futures.append(self.executor.submit(self.fetch_agent_messages))
         try:
             if self.app_token:
                 self.socket_client.connect()
