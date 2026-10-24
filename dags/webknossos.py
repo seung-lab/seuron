@@ -6,9 +6,10 @@ from datetime import datetime
 import requests
 
 from airflow import DAG
-from airflow.utils.weight_rule import WeightRule
-from airflow.operators.python import PythonOperator
-from airflow.models import Variable, BaseOperator as Operator
+from airflow.task.weight_rule import WeightRule
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.models import BaseOperator as Operator
+from airflow.sdk import Variable
 
 from worker_op import worker_op
 
@@ -187,7 +188,7 @@ default_args = dict(
 sanity_check_dag = DAG(
     "wkt_sanity_check",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["webknossos"],
 )
 
@@ -211,14 +212,13 @@ validate_wk_param_op >> sanity_check_op(sanity_check_dag, "wk2cv")
 cutout_dag = DAG(
     "wkt_cutouts",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["webknossos", "training"],
 )
 
 cutout = cutout_op(cutout_dag)
 report_cutout_task = PythonOperator(
     task_id="report_cutout",
-    provide_context=True,
     python_callable=report_cutout,
     priority_weight=100000,
     on_failure_callback=task_failure_alert,
@@ -234,14 +234,13 @@ cutout >> report_cutout_task
 export_dag = DAG(
     "wkt_export",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["webknossos", "training"],
 )
 
 export = export_op(export_dag)
 report_export_task = PythonOperator(
     task_id="report_export",
-    provide_context=True,
     python_callable=report_export,
     priority_weight=100000,
     on_failure_callback=task_failure_alert,

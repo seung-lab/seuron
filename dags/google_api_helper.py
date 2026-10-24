@@ -2,8 +2,7 @@ from time import sleep
 from datetime import datetime, timedelta, timezone
 
 from requests import Response
-from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
+from airflow.sdk import Variable
 from slack_message import slack_message
 import json
 from common import google_api
@@ -55,12 +54,13 @@ def get_cluster_size(project_id, instance_groups):
     return total_size
 
 def reset_cluster(key, initial_size):
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    from dag_utils import get_connection
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
         project_id = google_api.get_project_id()
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot reset cluster {}".format(key))
@@ -285,7 +285,7 @@ def redistribute_instances(key, instance_groups, target_size, move_instances=Fal
 
 
 def ramp_up_cluster(key, initial_size, total_size):
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
@@ -300,7 +300,7 @@ def ramp_up_cluster(key, initial_size, total_size):
     Variable.set("cluster_target_size", target_sizes, serialize_json=True)
 
 def ramp_down_cluster(key, total_size):
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
     try:
@@ -315,9 +315,10 @@ def ramp_down_cluster(key, total_size):
 
 
 def increase_instance_group_size(key, size):
+    from dag_utils import get_connection
     try:
         project_id = google_api.get_project_id()
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot increase the size of the cluster to {} instances".format(size))
@@ -337,9 +338,10 @@ def increase_instance_group_size(key, size):
         slack_message(":arrow_up: Scale up cluster {} to {} instances".format(key, real_size))
 
 def reduce_instance_group_size(key, size):
+    from dag_utils import get_connection
     try:
         project_id = google_api.get_project_id()
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"))
         slack_message(":exclamation:Cannot reduce the size of the cluster to {} instances".format(size))
@@ -381,9 +383,10 @@ def cluster_status(name, cluster):
 def collect_resource_metrics(start_time, end_time):
     import pendulum
     from google.cloud import monitoring_v3
+    from dag_utils import get_connection
 
     project_id = google_api.get_project_id()
-    cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+    cluster_info = json.loads(get_connection("InstanceGroups").extra)
 
     resources = {}
 
@@ -474,7 +477,7 @@ def collect_resource_metrics(start_time, end_time):
             resources[group_name]["gputime"] = pendulum.duration(seconds=sum(p.value.double_value*alignment_period/100 for p in result.points))
             resources[group_name]["gpu_utilization"] = resources[group_name]["gputime"].total_seconds()/resources[group_name]["uptime"].total_seconds()*100
 
-    buckets = Variable.get("gcs_buckets", deserialize_json=True, default_var=[])
+    buckets = Variable.get("gcs_buckets", deserialize_json=True, default=[])
     resources["GCS"] = {}
 
     for result in query_metric("storage.googleapis.com/api/request_count", aggregation_sum_gcs):

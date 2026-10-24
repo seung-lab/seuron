@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.models import Variable, BaseOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.models import BaseOperator
+from airflow.sdk import Variable
 from dags.slack_message import slack_message
 
 from helper_ops import placeholder_op, scale_up_cluster_op, scale_down_cluster_op, collect_metrics_op, toggle_nfs_server_op, save_run_parameters_op
@@ -68,7 +69,7 @@ def supply_database_parameters():
 dag_sanity = DAG(
     "synaptor_sanity_check",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["synaptor"],
 )
 
@@ -341,7 +342,7 @@ db_assignment = [
 dag = DAG(
     "synaptor",
     default_args=default_args,
-    schedule_interval=None,
+    schedule=None,
     tags=["synaptor"],
 )
 

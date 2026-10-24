@@ -39,7 +39,7 @@ def process_worker_errors(err_queue):
 
 
 def check_queue(queue, agg=None, refill_threshold=0):
-    from airflow import configuration
+    from airflow.configuration import conf
     import requests
     from time import sleep
     from slack_message import slack_message
@@ -49,7 +49,7 @@ def check_queue(queue, agg=None, refill_threshold=0):
     from collections import deque
     import pendulum
 
-    broker = configuration.get('celery', 'BROKER_URL')
+    broker = conf.get('celery', 'broker_url')
     totalTries = 2
     nTries = totalTries
     count = 0
@@ -115,7 +115,7 @@ def mount_secrets(func):
     @wraps(func)
     def inner(*args, **kwargs):
         import os
-        from airflow.models import Variable
+        from airflow.sdk import Variable
         from slack_message import slack_message
         cv_secrets_path = os.path.join(os.path.expanduser('~'), ".cloudvolume/secrets")
         secrets_lock = os.path.join(cv_secrets_path, ".secrets_mounted")
@@ -126,7 +126,7 @@ def mount_secrets(func):
         if not os.path.exists(cv_secrets_path):
             os.makedirs(cv_secrets_path)
 
-        mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default_var=[])
+        mount_secrets = Variable.get("mount_secrets", deserialize_json=True, default=[])
 
         for k in mount_secrets:
             v = Variable.get(k)
@@ -181,12 +181,11 @@ def kombu_tasks(cluster_name, init_workers):
         def inner(*args, **kwargs):
             import time
             import json
-            from airflow import configuration
-            from airflow.models import Variable
-            from airflow.hooks.base_hook import BaseHook
+            from airflow.configuration import conf
+            from airflow.sdk import Variable
             from kombu import Connection
             from kombu_helper import drain_messages
-            from dag_utils import estimate_worker_instances
+            from dag_utils import estimate_worker_instances, get_connection
             from slack_message import slack_message
             import traceback
 
@@ -195,9 +194,9 @@ def kombu_tasks(cluster_name, init_workers):
             else:
                 cluster_api = None
 
-            cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+            cluster_info = json.loads(get_connection("InstanceGroups").extra)
 
-            broker = configuration.get('celery', 'BROKER_URL')
+            broker = conf.get('celery', 'broker_url')
             queue_name = cluster_name
             start_time = time.monotonic()
 
@@ -387,7 +386,7 @@ def create_info(stage, param, top_mip):
     import os
     from time import strftime
     from cloudvolume import CloudVolume
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message, slack_userinfo
 
     param["CHUNKMAP_OUTPUT"] = os.path.join(param["SCRATCH_PATH"], stage, "chunkmap")
@@ -785,7 +784,7 @@ def extract_gcs_buckets(script_source):
 @mount_secrets
 @kombu_tasks(cluster_name="igneous", init_workers=4)
 def submit_igneous_tasks():
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message
     python_string = Variable.get("igneous_script")
 
@@ -823,7 +822,7 @@ def submit_igneous_tasks():
 @mount_secrets
 @kombu_tasks(cluster_name="custom-cpu", init_workers=4)
 def submit_custom_cpu_tasks():
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
 
@@ -850,7 +849,7 @@ def submit_custom_cpu_tasks():
 @mount_secrets
 @kombu_tasks(cluster_name="custom-gpu", init_workers=4)
 def submit_custom_gpu_tasks():
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from slack_message import slack_message
     python_string = Variable.get("custom_script")
 

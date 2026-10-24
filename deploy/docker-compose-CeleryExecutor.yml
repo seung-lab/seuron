@@ -13,7 +13,12 @@ x-airflow-common:
         AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:
         AIRFLOW__CELERY__BROKER_URL:
         AIRFLOW__CELERY__CELERY_RESULT_BACKEND:
-        AIRFLOW__WEBSERVER__SECRET_KEY:
+        AIRFLOW__API__BASE_URL:
+        _AIRFLOW_WWW_USER_USERNAME:
+        _AIRFLOW_WWW_USER_PASSWORD:
+        AIRFLOW__CORE__EXECUTION_API_SERVER_URL:
+        AIRFLOW__API__SECRET_KEY:
+        AIRFLOW__API_AUTH__JWT_SECRET:
         AIRFLOW__LOGGING__BASE_LOG_FOLDER:
         AIRFLOW__LOGGING__REMOTE_LOGGING:
         AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER:
@@ -41,7 +46,7 @@ volumes:
 
 services:
     rabbitmq:
-        image: rabbitmq:3.13-management
+        image: rabbitmq:4.2-management
         restart: always
         environment:
             - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit heartbeat 600 consumer_timeout 2592000000
@@ -60,7 +65,7 @@ services:
             retries: 5
 
     postgres:
-        image: postgres:15-alpine
+        image: postgres:18-alpine
         restart: always
         environment:
             - POSTGRES_USER
@@ -68,7 +73,7 @@ services:
             - POSTGRES_DB
         shm_size: "${POSTGRES_SHM_MB}m"
         volumes:
-            - postgres-storage:/var/lib/postgresql/data
+            - postgres-storage:/var/lib/postgresql
         command: -c max_connections=${POSTGRES_MAX_CONN} -c shared_buffers=${POSTGRES_MEM_MB}MB -c idle_in_transaction_session_timeout=300000
         healthcheck:
             test: ["CMD", "pg_isready", "-U", "airflow"]
@@ -76,7 +81,7 @@ services:
             retries: 5
 
     pgbouncer:
-        image: ranlu/pgbouncer:1.22.0
+        image: edoburu/pgbouncer:v1.25.2-p0
         restart: always
         environment:
             - DB_USER=${POSTGRES_USER}
@@ -136,7 +141,7 @@ services:
             - grafana-storage:/var/lib/grafana
 
     redis:
-        image: valkey/valkey:7.2-alpine
+        image: valkey/valkey:9.1-alpine
         restart: always
         command: valkey-server --save 60 1
         ports:
@@ -175,9 +180,11 @@ services:
 
     webserver:
         <<: *airflow-common
-        command: airflow webserver
+        command: airflow api-server --proxy-headers
+        ports:
+            - "8080:8080"
         healthcheck:
-            test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/health"]
+            test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/api/v2/monitor/health"]
             interval: 60s
             timeout: 10s
             retries: 5
@@ -187,6 +194,26 @@ services:
         command: airflow scheduler
         healthcheck:
             test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+            interval: 60s
+            timeout: 10s
+            retries: 5
+
+    # Required in Airflow 3: asset-triggered DAGs and deferred tasks only fire
+    # via a live TriggererJob; the UI health pill also checks for one.
+    triggerer:
+        <<: *airflow-common
+        command: airflow triggerer
+        healthcheck:
+            test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+            interval: 60s
+            timeout: 10s
+            retries: 5
+
+    dag-processor:
+        <<: *airflow-common
+        command: airflow dag-processor
+        healthcheck:
+            test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
             interval: 60s
             timeout: 10s
             retries: 5
@@ -251,7 +278,7 @@ services:
             --initial-cluster-state new
 
     proxy:
-        image: nginx:1.23.0-alpine
+        image: nginx:1.31.6-alpine
         environment:
             BASIC_AUTH_USERNAME:
             BASIC_AUTH_PASSWORD:
@@ -312,11 +339,14 @@ services:
                         location \\/airflow\\/ {\\n
                             proxy_pass \\$$webserver;\\n
                             proxy_set_header Host \\$$http_host;\\n
-                            proxy_redirect off;\\n
                             proxy_http_version 1.1; \\n
                             proxy_set_header Upgrade \\$$http_upgrade; \\n
                             proxy_set_header Connection \\\"upgrade\\\"; \\n
                             proxy_set_header X-Forwarded-Proto \\$$scheme; \\n
+                            proxy_set_header X-Forwarded-Prefix \\/airflow; \\n
+                            proxy_set_header X-Forwarded-Host \\$$http_host; \\n
+                            proxy_set_header X-Forwarded-Port \\$$server_port; \\n
+                            proxy_redirect http:\\/\\/proxy\\/airflow \\/airflow; \\n
                         }\\n
                         location \\/jupyter\\/ {\\n
                             proxy_pass \\$$slackbot;\\n

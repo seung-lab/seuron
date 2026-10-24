@@ -1,11 +1,11 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from worker_op import worker_op
-from airflow.utils.weight_rule import WeightRule
+from airflow.task.weight_rule import WeightRule
 from datetime import datetime, timedelta
 from cloudvolume import CloudVolume
 from cloudvolume.lib import Bbox
-from airflow.models import Variable
+from airflow.sdk import Variable
 from param_default import default_seg_workspace, check_worker_image_labels, update_mount_secrets
 from igneous_and_cloudvolume import check_cloud_paths_empty, cv_has_data, cv_scale_with_data, mount_secrets
 import os
@@ -28,7 +28,7 @@ default_args = {
 
 dag = DAG(
     dag_id=DAG_ID,
-    schedule_interval=None,
+    schedule=None,
     default_args=default_args,
     catchup=False,
     tags=['segmentation'],
@@ -56,7 +56,7 @@ def task_done_alert(context):
 
 @mount_secrets
 def check_cv_data():
-    from airflow import configuration as conf
+    from airflow.configuration import conf
     param = Variable.get("param", deserialize_json=True)
 
     statsd_host = conf.get('metrics', 'statsd_host')

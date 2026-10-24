@@ -10,13 +10,10 @@ For Infrakit, the following environment variables must be set:
     i.e. https://github.com/wongwill86/examples/blob/master/latest/swarm/groups.json
 """ # noqa
 from airflow import DAG
-from airflow.models import DagRun
 from datetime import datetime
-from airflow.operators.python import PythonOperator
-from airflow.operators.latest_only import LatestOnlyOperator
-from airflow.utils.db import provide_session
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
 from airflow.utils.state import State
-from airflow import models
 
 from slack_message import slack_message
 
@@ -34,7 +31,7 @@ SCHEDULE_INTERVAL = '2-59/7 * * * *'
 
 dag = DAG(
     dag_id=DAG_ID,
-    schedule_interval=SCHEDULE_INTERVAL,
+    schedule=SCHEDULE_INTERVAL,
     default_args=default_args,
     catchup=False,
     tags=['maintenance'],
@@ -42,27 +39,18 @@ dag = DAG(
 
 # To use infrakit with > 1 queue, we will have to modify this code to use
 # separate groups file for each queue!
-@provide_session
-def get_num_task_instances(session):
-    query = (session
-        .query(DagRun)
-        .filter(DagRun.dag_id.in_(("watershed", "agglomeration", "chunkflow_worker")))
-        .filter(DagRun.state == State.RUNNING))
-    if query.count() == 0:
+def get_num_task_instances():
+    import af_api
+
+    if not any(r.dag_id in ("watershed", "agglomeration", "chunkflow_worker")
+               for r in af_api.list_dag_runs(state=State.RUNNING)):
         return
 
-    TI = models.TaskInstance
-    running = session.query(TI).filter(
-        TI.state == State.RUNNING
-    ).count()
-
-    queued = session.query(TI).filter(
-        TI.state == State.QUEUED
-    ).count()
-
-    up_for_retry = session.query(TI).filter(
-        TI.state == State.UP_FOR_RETRY
-    ).count()
+    tis = af_api.list_task_instances(
+        state=[State.RUNNING, State.QUEUED, State.UP_FOR_RETRY])
+    running = sum(1 for t in tis if t.state == State.RUNNING)
+    queued = sum(1 for t in tis if t.state == State.QUEUED)
+    up_for_retry = sum(1 for t in tis if t.state == State.UP_FOR_RETRY)
 
     if running > 2: #ws or agg running
         running -= 2
@@ -80,8 +68,8 @@ def remove_failed_instances():
     import humanize
     from time import sleep
     from datetime import datetime, timezone
-    from airflow.models import Variable
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.sdk import Variable
+    from dag_utils import get_connection
     from common.redis_utils import get_hostname_failures
 
     if Variable.get("vendor") == "Google":
@@ -93,7 +81,7 @@ def remove_failed_instances():
         return
 
     try:
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection InstanceGroups", notification=True)
@@ -195,7 +183,7 @@ def shutdown_easyseg_worker():
     import redis
     import humanize
     from datetime import datetime
-    from airflow.models import Variable
+    from airflow.sdk import Variable
     from dag_utils import get_connection
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api

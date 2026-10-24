@@ -11,11 +11,10 @@ For Infrakit, the following environment variables must be set:
 """ # noqa
 from airflow import DAG
 from datetime import datetime, timedelta
-from airflow.utils.weight_rule import WeightRule
-from airflow.models import Variable
-from airflow.hooks.base_hook import BaseHook
-from airflow.operators.python import PythonOperator
-from airflow.operators.latest_only import LatestOnlyOperator
+from airflow.task.weight_rule import WeightRule
+from airflow.sdk import Variable
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.latest_only import LatestOnlyOperator
 
 from slack_message import slack_message
 import json
@@ -35,7 +34,7 @@ SCHEDULE_INTERVAL = '*/20 * * * *'
 
 dag = DAG(
     dag_id=DAG_ID,
-    schedule_interval=SCHEDULE_INTERVAL,
+    schedule=SCHEDULE_INTERVAL,
     default_args=default_args,
     catchup=False,
     tags=['maintenance'],
@@ -71,6 +70,7 @@ def estimate_optimal_number_of_workers(cluster, cluster_info):
 
 
 def cluster_control():
+    from dag_utils import get_connection
     if Variable.get("vendor") == "Google":
         import google_api_helper as cluster_api
     else:
@@ -79,12 +79,12 @@ def cluster_control():
     if cluster_api is None:
         return
 
-    run_metadata = Variable.get("run_metadata", deserialize_json=True, default_var={})
+    run_metadata = Variable.get("run_metadata", deserialize_json=True, default={})
     if not run_metadata.get("manage_clusters", True):
         return
 
     try:
-        cluster_info = json.loads(BaseHook.get_connection("InstanceGroups").extra)
+        cluster_info = json.loads(get_connection("InstanceGroups").extra)
         target_sizes = Variable.get("cluster_target_size", deserialize_json=True)
     except:
         slack_message(":exclamation:Failed to load the cluster information from connection {}".format("InstanceGroups"), notification=True)
